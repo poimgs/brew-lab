@@ -3,19 +3,23 @@
 ## Foundation
 Project-level specifications: goals, technology choices, conventions.
 
-(No specs yet)
+| Spec | Code | Purpose |
+|------|------|---------|
 
 ## Domain
 Core data model: entities, structures, business rules.
 
-(No specs yet)
+| Spec | Code | Purpose |
+|------|------|---------|
 
 ## Features
 User-facing functionality specifications.
 
-(No specs yet)
+| Spec | Code | Purpose |
+|------|------|---------|
 
 ## System
 Cross-cutting technical concerns: API design, infrastructure, deployment.
 
-(No specs yet)
+| Spec | Code | Purpose |
+|------|------|---------|

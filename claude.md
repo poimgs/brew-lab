@@ -17,15 +17,12 @@ A web application for tracking and analyzing coffee brewing experiments.
 
 ### Creating/Updating Specs
 - New specs go in appropriate category directory
-- Always update `specs/index.md` to stay aligned
+- Update `specs/index.md` with a new row for new spec: link to spec, link to related code, purpose summary
 - Spec format:
   - **Context**: Why this spec exists
   - **Requirements**: What must be true
   - **Design Decisions**: Chosen approach with rationale
   - **Open Questions**: Unresolved items (if any)
-
-## Technical Standards
-(Defined in specs/foundation/tech-stack.md)
 
 ## File Organization
 ```
