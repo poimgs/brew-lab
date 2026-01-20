@@ -2,6 +2,8 @@
 
 A web application for tracking and analyzing coffee brewing experiments.
 
+Read `specs/index.md` for project overview and specifications.
+
 ## Specs-Based Workflow
 
 ### Before Implementation
