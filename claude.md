@@ -29,6 +29,6 @@ Read `specs/index.md` for project overview and specifications.
 ## File Organization
 ```
 specs/           # Specifications (categorized)
-plans/           # Implementation plans (ephemeral)
+plans/           # Working implementation plans only (delete when complete)
 src/             # Application source (structure TBD)
 ```

@@ -65,5 +65,5 @@ Cross-cutting technical concerns: API design, infrastructure, deployment.
 |------|--------|------|---------|
 | [database.md](system/database.md) | Partial (~15%) | — | Schema design decisions, field types, migrations approach |
 | [api-design.md](system/api-design.md) | Partial (~10%) | — | REST conventions, endpoint patterns, request/response formats |
-| [authentication.md](system/authentication.md) | Complete (~90%) | `backend/internal/services/auth/` | Email/password auth, JWT, session handling, single-user lock |
+| [authentication.md](system/authentication.md) | Complete | `backend/internal/services/auth/` | Email/password auth, JWT, session handling, CLI user provisioning |
 | [design-system.md](system/design-system.md) | Partial (~70%) | `frontend/src/` | Colors, typography, spacing, components, accessibility |

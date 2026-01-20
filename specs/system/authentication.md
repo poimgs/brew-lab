@@ -13,17 +13,22 @@ This specification defines the authentication system for the Coffee Experiment T
 
 Email/password authentication with JWT tokens.
 
-### Registration
+### User Provisioning
 
-1. User provides email and password
-2. Email must be valid format
-3. Password requirements:
-   - Minimum 8 characters
-   - At least one uppercase letter
-   - At least one lowercase letter
-   - At least one number
-4. Password is hashed using bcrypt (cost factor 12)
-5. Account created, JWT issued
+Users are created via CLI tool (no public registration endpoint):
+
+```bash
+cd backend && make seed-user EMAIL=user@example.com PASSWORD=SecurePass123!
+```
+
+Password requirements:
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one digit
+- At least one special character
+
+Password is hashed using bcrypt (cost factor 12).
 
 ### Login
 
@@ -76,26 +81,11 @@ Refresh Token:
 3. Client clears access token from memory
 4. Refresh token cookie cleared
 
-### Single-User Lock
-
-For initial deployment:
-1. Only one account can be registered
-2. Registration endpoint returns 403 after first user created
-3. Can be disabled via environment variable for multi-user
-
 ### Session Management
 
 - No server-side session storage (stateless JWT)
 - Refresh token stored in database for revocation
 - Token blacklist not implemented initially (short access token lifetime sufficient)
-
-### Password Reset
-
-1. User requests reset with email
-2. Reset token generated (UUID, 1 hour expiry)
-3. Email sent with reset link (requires email service)
-4. User sets new password with token
-5. All existing sessions invalidated
 
 ## Design Decisions
 
@@ -170,10 +160,8 @@ Access-Control-Allow-Headers: Content-Type, Authorization
 
 ### Rate Limiting
 
-Login endpoint should be rate-limited:
+Login endpoint is rate-limited:
 - 5 attempts per minute per IP
-- 10 attempts per minute per email
-- Exponential backoff after failures
 
 ### Password Storage
 
@@ -182,26 +170,6 @@ Login endpoint should be rate-limited:
 - Use constant-time comparison for password verification
 
 ## API Endpoints
-
-### Register
-```
-POST /api/v1/auth/register
-{
-  "email": "user@example.com",
-  "password": "SecurePass123"
-}
-
-Response 201:
-{
-  "data": {
-    "user": {
-      "id": "uuid",
-      "email": "user@example.com"
-    },
-    "access_token": "eyJ..."
-  }
-}
-```
 
 ### Login
 ```
@@ -262,8 +230,3 @@ Response 200:
 }
 ```
 
-## Open Questions
-
-1. **Email Service**: Which provider for password reset emails?
-2. **2FA**: Worth implementing for single-user tool?
-3. **Session Revocation**: Need to revoke all sessions on password change?
