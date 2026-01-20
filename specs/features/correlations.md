@@ -1,6 +1,6 @@
-# Correlations Feature
+# Correlations
 
-## Context
+## Overview
 
 Correlation analysis helps users discover relationships between brewing variables (inputs) and taste outcomes. By visualizing these patterns across their experiment history, users can identify which variables most affect their results.
 
@@ -221,6 +221,144 @@ r = Σ((xi - x̄)(yi - ȳ)) / √(Σ(xi - x̄)² × Σ(yi - ȳ)²)
 ⚠️ Only 8 experiments with TDS data - need more for reliable correlation
 ⚠️ Correlation ≠ causation. Other variables may be involved.
 ```
+
+---
+
+## API Endpoints
+
+### Get Correlation Matrix
+```
+GET /api/v1/analysis/correlations
+```
+
+Returns correlation coefficients between input and outcome variables.
+
+**Query Parameters:**
+- `coffee_id`: Filter to specific coffee (optional)
+- `date_from`, `date_to`: Date range filter
+- `process`: Filter by coffee process
+- `min_samples`: Minimum experiments required (default: 10)
+
+**Response:**
+```json
+{
+  "data": {
+    "correlations": {
+      "water_temperature": {
+        "overall_score": {"r": 0.42, "n": 45, "p": 0.004},
+        "acidity_intensity": {"r": 0.65, "n": 38, "p": 0.001},
+        "sweetness_intensity": {"r": 0.21, "n": 38, "p": 0.15},
+        "bitterness_intensity": {"r": -0.15, "n": 38, "p": 0.35},
+        "body_weight": {"r": 0.33, "n": 35, "p": 0.05}
+      },
+      "coffee_weight": {
+        "overall_score": {"r": 0.28, "n": 50, "p": 0.05},
+        "body_weight": {"r": 0.61, "n": 42, "p": 0.001}
+      },
+      "days_off_roast": {
+        "overall_score": {"r": -0.35, "n": 47, "p": 0.02},
+        "aroma_intensity": {"r": -0.45, "n": 40, "p": 0.003}
+      }
+    },
+    "inputs": ["water_temperature", "coffee_weight", "water_weight", "bloom_time", "total_brew_time", "days_off_roast"],
+    "outcomes": ["overall_score", "acidity_intensity", "sweetness_intensity", "bitterness_intensity", "body_weight", "aroma_intensity"],
+    "total_experiments": 50,
+    "filters_applied": {
+      "min_samples": 10
+    }
+  }
+}
+```
+
+**Correlation Object:**
+- `r`: Pearson correlation coefficient (-1 to 1)
+- `n`: Sample size (number of experiments with both values)
+- `p`: p-value for statistical significance
+
+### Get Single Correlation Detail
+```
+GET /api/v1/analysis/correlations/:input/:outcome
+```
+
+Returns detailed data for a specific input→outcome correlation.
+
+**Query Parameters:**
+Same as correlation matrix
+
+**Response:**
+```json
+{
+  "data": {
+    "input_variable": "water_temperature",
+    "outcome_variable": "acidity_intensity",
+    "correlation": {
+      "r": 0.65,
+      "n": 38,
+      "p": 0.001,
+      "interpretation": "moderate_positive"
+    },
+    "scatter_data": [
+      {"x": 85, "y": 4, "experiment_id": "uuid1"},
+      {"x": 88, "y": 5, "experiment_id": "uuid2"},
+      {"x": 92, "y": 8, "experiment_id": "uuid3"}
+    ],
+    "insights": "Higher water temperature is associated with higher acidity intensity in your experiments.",
+    "experiments": [
+      {
+        "id": "uuid1",
+        "brew_date": "2026-01-19T10:30:00Z",
+        "coffee_name": "Kiamaina",
+        "input_value": 92,
+        "outcome_value": 8
+      }
+    ]
+  }
+}
+```
+
+### Get Correlation Insights
+```
+GET /api/v1/analysis/insights
+```
+
+Returns auto-generated insights based on strongest correlations.
+
+**Query Parameters:**
+Same as correlation matrix
+
+**Response:**
+```json
+{
+  "data": {
+    "insights": [
+      {
+        "type": "strong_correlation",
+        "input": "water_temperature",
+        "outcome": "acidity_intensity",
+        "r": 0.65,
+        "message": "Temperature strongly affects acidity (+0.65). Your highest-rated brews tend to use 89-91°C."
+      },
+      {
+        "type": "negative_correlation",
+        "input": "days_off_roast",
+        "outcome": "aroma_intensity",
+        "r": -0.45,
+        "message": "Days off roast negatively correlates with aroma (-0.45). Fresher coffee produces more aromatic cups."
+      }
+    ],
+    "warnings": [
+      {
+        "type": "insufficient_data",
+        "field": "tds",
+        "n": 8,
+        "message": "Only 8 experiments with TDS data - need more for reliable correlation"
+      }
+    ]
+  }
+}
+```
+
+---
 
 ## Design Decisions
 

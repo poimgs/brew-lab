@@ -1,6 +1,6 @@
-# Recommendations Feature
+# Recommendations
 
-## Context
+## Overview
 
 Recommendations connect user-identified brew issues to actionable suggestions via the rules engine. When a user tags issues on an experiment, matching rules surface their suggestions. This closes the loop between tracking problems and learning solutions.
 
@@ -194,6 +194,142 @@ When no rules match selected issues:
 │ ...                                                     │
 └─────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## API Endpoints
+
+### Get Recommendations
+```
+POST /api/v1/analysis/recommendations
+```
+
+Get rule-based recommendations for given issue tags.
+
+**Request:**
+```json
+{
+  "issue_tags": ["too_acidic", "lacks_sweetness"],
+  "experiment_id": "uuid"  // optional, for context and variable comparisons
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "recommendations": [
+      {
+        "rule_id": "uuid",
+        "rule_name": "Reduce Acidity by Lowering Temperature",
+        "suggestion": "Lower water temperature by 2-3°C. This reduces acid extraction while maintaining body.",
+        "confidence": "High",
+        "source": "James Hoffmann video",
+        "matched_conditions": ["too_acidic"],
+        "expected_effects": [
+          {"variable": "acidity_intensity", "direction": "decrease", "magnitude": "moderate"}
+        ]
+      },
+      {
+        "rule_id": "uuid",
+        "rule_name": "Increase Sweetness with Longer Bloom",
+        "suggestion": "Extend bloom time to 90 seconds...",
+        "confidence": "Medium",
+        "matched_conditions": ["lacks_sweetness"],
+        "expected_effects": [...]
+      }
+    ],
+    "unmatched_tags": []
+  }
+}
+```
+
+### Dismiss Recommendation
+```
+POST /api/v1/experiments/:id/dismiss-recommendation
+```
+
+Dismiss a recommendation for a specific experiment.
+
+**Request:**
+```json
+{
+  "rule_id": "uuid"
+}
+```
+
+**Response:** `204 No Content`
+
+### Get Dismissed Recommendations
+```
+GET /api/v1/experiments/:id/dismissed-recommendations
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "dismissed_rule_ids": ["uuid1", "uuid2"]
+  }
+}
+```
+
+### Undo Dismiss
+```
+DELETE /api/v1/experiments/:id/dismiss-recommendation/:rule_id
+```
+
+**Response:** `204 No Content`
+
+### Try Recommendation
+```
+POST /api/v1/experiments/:id/try-recommendation
+```
+
+Creates a new experiment linked to the original, with a note about the suggestion being tried.
+
+**Request:**
+```json
+{
+  "rule_id": "uuid",
+  "coffee_id": "uuid"  // optional, defaults to same coffee
+}
+```
+
+**Response:** `201 Created` with new experiment template
+
+The new experiment includes:
+- `improvement_notes`: "Trying: [suggestion summary]"
+- Link back to original experiment for comparison
+
+### Get Experiments with Unresolved Issues
+```
+GET /api/v1/experiments/with-issues
+```
+
+Returns experiments that have issue tags but haven't been marked as resolved.
+
+**Query Parameters:**
+- `page`, `per_page`: Pagination
+- `has_recommendations`: Filter to only experiments with matching rules
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "brew_date": "2026-01-19T10:30:00Z",
+      "coffee_name": "Kiamaina",
+      "issue_tags": ["too_acidic", "lacks_sweetness"],
+      "recommendation_count": 2
+    }
+  ],
+  "pagination": {...}
+}
+```
+
+---
 
 ## Design Decisions
 

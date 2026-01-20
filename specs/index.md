@@ -35,35 +35,72 @@ Coffee (metadata) 1:N ← Experiment (brew record)
 
 ---
 
-## Domain
-Core data model: entities, structures, business rules.
+## Specification Structure
 
-| Spec | Status | Code | Purpose |
-|------|--------|------|---------|
-| [coffee.md](domain/coffee.md) | Not Started | — | Coffee entity fields, validation, relationship to experiments |
-| [experiment.md](domain/experiment.md) | Not Started | — | Experiment entity: all variables (pre-brew, brew, post-brew, outcomes), required vs optional |
-| [rules.md](domain/rules.md) | Not Started | — | Rule structure: conditions (input variables), effects (outcome changes), matching logic |
-| [issue-tags.md](domain/issue-tags.md) | Not Started | — | Predefined issue tags, custom tags, mapping to outcome variables |
-| [mineral-profiles.md](domain/mineral-profiles.md) | Not Started | — | Mineral modifier profiles (Catalyst, Affinity), chemical properties |
+This project uses a **foundations + features** structure designed for AI-assisted development:
+
+- **Foundations**: Cross-cutting conventions (read once, apply everywhere)
+- **Features**: Self-contained specs with entity + API + UI in one document
+
+Each feature spec can be read in isolation to understand and implement that feature.
+
+---
+
+## Foundations
+
+Conventions and patterns used across all features. Read these first.
+
+| Spec | Purpose |
+|------|---------|
+| [api-conventions.md](foundations/api-conventions.md) | REST patterns, errors, pagination, filtering |
+| [database-conventions.md](foundations/database-conventions.md) | Schema patterns, types, migrations |
+| [design-system.md](foundations/design-system.md) | UI patterns, colors, typography, components |
+
+---
 
 ## Features
-User-facing functionality specifications.
 
-| Spec | Status | Code | Purpose |
-|------|--------|------|---------|
-| [coffee-library.md](features/coffee-library.md) | Not Started | — | Add/edit coffees, view brew history per coffee |
-| [brew-tracking.md](features/brew-tracking.md) | Not Started | — | Entry flow, optional field expansion, defaults system |
-| [experiment-review.md](features/experiment-review.md) | Not Started | — | List view, detail view, comparison, filtering/sorting |
-| [rules-engine.md](features/rules-engine.md) | Not Started | — | Rule CRUD, condition builder UI, effect specification |
-| [recommendations.md](features/recommendations.md) | Not Started | — | Issue tagging flow, rule matching, displaying suggestions |
-| [correlations.md](features/correlations.md) | Not Started | — | Correlation calculation, table view, heatmap visualization |
+Self-contained feature specifications. Each includes entity definitions, API endpoints, and UI specs.
 
-## System
-Cross-cutting technical concerns: API design, infrastructure, deployment.
+| Spec | Status | Purpose |
+|------|--------|---------|
+| [authentication.md](features/authentication.md) | Complete | User entity, login/signup, JWT, session handling |
+| [coffee-library.md](features/coffee-library.md) | Not Started | Coffee entity + CRUD API + library UI |
+| [brew-tracking.md](features/brew-tracking.md) | Not Started | Experiment entity + logging API + entry forms |
+| [experiment-review.md](features/experiment-review.md) | Not Started | List/detail views, comparison, filtering |
+| [rules-engine.md](features/rules-engine.md) | Not Started | Rules entity + issue tags + rule management UI |
+| [recommendations.md](features/recommendations.md) | Not Started | Rule matching, suggestion display, try/dismiss flow |
+| [correlations.md](features/correlations.md) | Not Started | Correlation analysis + matrix/heatmap visualization |
+| [mineral-profiles.md](features/mineral-profiles.md) | Not Started | Mineral profile reference data |
 
-| Spec | Status | Code | Purpose |
-|------|--------|------|---------|
-| [database.md](system/database.md) | Partial (~15%) | — | Schema design decisions, field types, migrations approach |
-| [api-design.md](system/api-design.md) | Partial (~10%) | — | REST conventions, endpoint patterns, request/response formats |
-| [authentication.md](system/authentication.md) | Complete | `backend/internal/services/auth/` | Email/password auth, JWT, session handling, CLI user provisioning |
-| [design-system.md](system/design-system.md) | Partial (~70%) | `frontend/src/` | Colors, typography, spacing, components, accessibility |
+---
+
+## Reading Guide
+
+**For implementing a feature:**
+1. Read the relevant foundations specs (api-conventions, database-conventions, design-system)
+2. Read the feature spec for full context (entity, API, UI in one place)
+3. Implement
+
+**For AI agents:**
+- Each feature spec is self-contained
+- No need to read domain/ or system/ directories (they no longer exist)
+- Foundations provide shared conventions referenced by all features
+
+---
+
+## Implementation Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Authentication | Complete | `backend/internal/services/auth/` |
+| Database Schema | Not Started | Migrations pending |
+| Coffee API | Not Started | — |
+| Experiment API | Not Started | — |
+| Rules API | Not Started | — |
+| Frontend Coffee Library | Not Started | — |
+| Frontend Brew Tracking | Not Started | — |
+| Frontend Review | Not Started | — |
+| Frontend Rules | Not Started | — |
+| Frontend Recommendations | Not Started | — |
+| Frontend Correlations | Not Started | — |

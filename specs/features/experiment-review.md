@@ -1,6 +1,6 @@
-# Experiment Review Feature
+# Experiment Review
 
-## Context
+## Overview
 
 Experiment review is how users browse, filter, and analyze their brewing history. It supports:
 - Finding specific experiments
@@ -8,16 +8,9 @@ Experiment review is how users browse, filter, and analyze their brewing history
 - Understanding patterns over time
 - Detailed examination of individual brews
 
-## Requirements
+---
 
-### User Stories
-
-1. **Browse History**: As a user, I can see all my experiments chronologically
-2. **Filter & Search**: As a user, I can find experiments by coffee, date, score, etc.
-3. **View Details**: As a user, I can see complete details of any experiment
-4. **Compare Experiments**: As a user, I can compare 2-4 experiments side-by-side
-5. **Edit Experiment**: As a user, I can correct or add details after entry
-6. **Delete Experiment**: As a user, I can remove erroneous experiments
+## User Interface
 
 ### Experiment List View
 
@@ -214,6 +207,70 @@ Click column header to sort, click again to reverse.
 │         [Cancel]  [Delete]              │
 └─────────────────────────────────────────┘
 ```
+
+---
+
+## API Endpoints
+
+This feature primarily uses the experiment endpoints defined in brew-tracking.md. Additional endpoints specific to review functionality:
+
+### Compare Experiments
+```
+POST /api/v1/experiments/compare
+```
+
+**Request:**
+```json
+{
+  "experiment_ids": ["uuid1", "uuid2", "uuid3", "uuid4"]
+}
+```
+
+Maximum 4 experiments. Returns full experiment objects with computed delta values.
+
+**Response:**
+```json
+{
+  "data": {
+    "experiments": [
+      {
+        "id": "uuid1",
+        "brew_date": "2026-01-19T10:30:00Z",
+        "coffee": {...},
+        "coffee_weight": 15.0,
+        "water_temperature": 92,
+        "acidity_intensity": 7,
+        "overall_score": 7
+      },
+      {...}
+    ],
+    "deltas": {
+      "water_temperature": {"min": 88, "max": 95, "trend": "variable"},
+      "acidity_intensity": {"min": 5, "max": 8, "trend": "decreasing"},
+      "overall_score": {"min": 6, "max": 8, "trend": "increasing"}
+    }
+  }
+}
+```
+
+**Delta Trends:**
+- `increasing`: Values trend upward in chronological order
+- `decreasing`: Values trend downward
+- `stable`: Values are the same
+- `variable`: No clear trend
+
+### Export Experiments
+```
+GET /api/v1/experiments/export
+```
+
+**Query Parameters:**
+- Same filters as list experiments
+- `format`: `csv` or `json` (default: csv)
+
+**Response:** File download with appropriate Content-Type header
+
+---
 
 ## Design Decisions
 
