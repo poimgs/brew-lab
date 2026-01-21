@@ -354,13 +354,13 @@ Processing methods evolve and vary regionally. Free text with UI suggestions bal
 
 The system tracks coffee metadata, not inventory levels. Users manually decide when a coffee is "finished" by simply not creating new experiments for it.
 
-### List as Primary View
+### Card Grid as Primary View
 
-Coffee list is the primary view (not cards) because:
-- Efficient scanning of many coffees
-- Easy sorting and filtering
-- Consistent with experiment list
-- Works well on smaller screens
+Coffee library uses a card grid layout because:
+- Better visual scanning for coffee metadata
+- Cards accommodate varying content lengths (tasting notes, etc.)
+- More engaging visual presentation for a collection
+- Natural grouping of related information per coffee
 
 ### Autocomplete over Dropdowns
 
