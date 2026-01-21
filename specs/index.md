@@ -66,7 +66,7 @@ Self-contained feature specifications. Each includes entity definitions, API end
 |------|--------|---------|
 | [authentication.md](features/authentication.md) | Complete | User entity, login/signup, JWT, session handling |
 | [coffee-library.md](features/coffee-library.md) | Frontend Complete | Coffee entity + CRUD API + library UI |
-| [brew-tracking.md](features/brew-tracking.md) | Not Started | Experiment entity + logging API + entry forms |
+| [brew-tracking.md](features/brew-tracking.md) | Frontend Complete | Experiment entity + logging API + entry forms |
 | [experiment-review.md](features/experiment-review.md) | Not Started | List/detail views, comparison, filtering |
 | [rules-engine.md](features/rules-engine.md) | Not Started | Rules entity + issue tags + rule management UI |
 | [recommendations.md](features/recommendations.md) | Not Started | Rule matching, suggestion display, try/dismiss flow |
@@ -99,7 +99,7 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | Experiment API | Not Started | — |
 | Rules API | Not Started | — |
 | Frontend Coffee Library | Complete | `frontend/src/features/library/` |
-| Frontend Brew Tracking | Not Started | — |
+| Frontend Brew Tracking | Complete | `frontend/src/features/experiments/` |
 | Frontend Review | Not Started | — |
 | Frontend Rules | Not Started | — |
 | Frontend Recommendations | Not Started | — |

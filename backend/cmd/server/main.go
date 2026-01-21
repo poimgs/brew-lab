@@ -15,6 +15,10 @@ import (
 	"github.com/poimgs/coffee-tracker/backend/internal/repository"
 	"github.com/poimgs/coffee-tracker/backend/internal/router"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/auth"
+	coffeeservice "github.com/poimgs/coffee-tracker/backend/internal/services/coffee"
+	"github.com/poimgs/coffee-tracker/backend/internal/services/defaults"
+	"github.com/poimgs/coffee-tracker/backend/internal/services/experiment"
+	"github.com/poimgs/coffee-tracker/backend/internal/services/tags"
 )
 
 func main() {
@@ -31,22 +35,40 @@ func main() {
 
 	log.Println("Connected to database")
 
+	// Repositories
 	userRepo := repository.NewUserRepository(pool)
 	tokenRepo := repository.NewTokenRepository(pool)
+	coffeeRepo := repository.NewCoffeeRepository(pool)
+	experimentRepo := repository.NewExperimentRepository(pool)
+	experimentTagsRepo := repository.NewExperimentTagsRepository(pool)
+	issueTagsRepo := repository.NewIssueTagsRepository(pool)
+	userDefaultsRepo := repository.NewUserDefaultsRepository(pool)
 
+	// Auth services
 	passwordSvc := auth.NewPasswordService(cfg.BcryptCost)
 	jwtSvc := auth.NewJWTService(cfg.JWTSecret, cfg.JWTAccessTokenExpiry, cfg.JWTRefreshTokenExpiry)
 	authSvc := auth.NewAuthService(userRepo, tokenRepo, passwordSvc, jwtSvc)
 
+	// Domain services
+	coffeeSvc := coffeeservice.NewCoffeeService(coffeeRepo)
+	experimentSvc := experiment.NewExperimentService(experimentRepo, experimentTagsRepo, issueTagsRepo, coffeeSvc)
+	defaultsSvc := defaults.NewDefaultsService(userDefaultsRepo)
+	tagsSvc := tags.NewTagsService(issueTagsRepo)
+
+	// Middleware
 	authMiddleware := middleware.NewAuthMiddleware(jwtSvc)
 	corsMiddleware := middleware.NewCORS(cfg.CORSAllowedOrigins)
 	loginRateLimiter := middleware.NewLoginRateLimiter(cfg.RateLimitLoginPerIP)
 
 	r := router.New(&router.Config{
-		AuthService:      authSvc,
-		AuthMiddleware:   authMiddleware,
-		CORSMiddleware:   corsMiddleware,
-		LoginRateLimiter: loginRateLimiter,
+		AuthService:       authSvc,
+		CoffeeService:     coffeeSvc,
+		ExperimentService: experimentSvc,
+		DefaultsService:   defaultsSvc,
+		TagsService:       tagsSvc,
+		AuthMiddleware:    authMiddleware,
+		CORSMiddleware:    corsMiddleware,
+		LoginRateLimiter:  loginRateLimiter,
 	})
 
 	server := &http.Server{
