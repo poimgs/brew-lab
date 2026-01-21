@@ -1,5 +1,7 @@
 import { useState } from "react"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { RootLayout, PageHeader } from "@/components/layout"
+import { ProtectedRoute } from "@/components/protected-route"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,8 +16,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Plus, Coffee, Zap } from "lucide-react"
+import { AuthProvider } from "@/contexts/auth-context"
+import { LoginPage } from "@/features/auth/login-page"
 
-function App() {
+function HomePage() {
   const [sliderValue, setSliderValue] = useState([50])
   const [inputValue, setInputValue] = useState("250")
 
@@ -167,6 +171,26 @@ function App() {
         </div>
       </RootLayout>
     </TooltipProvider>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <HomePage />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
 
