@@ -224,6 +224,110 @@ export interface DefaultsResponse {
   data: UserDefaults;
 }
 
+// Effect Mapping types
+export type MappingDirection = "increase" | "decrease";
+export type EffectDirection = "increase" | "decrease" | "none";
+export type Confidence = "low" | "medium" | "high";
+
+export interface Effect {
+  output_variable: string;
+  direction: EffectDirection;
+  range_min?: number;
+  range_max?: number;
+  confidence: Confidence;
+}
+
+export interface EffectMapping {
+  id: string;
+  name: string;
+  variable: string;
+  direction: MappingDirection;
+  tick_description: string;
+  effects: Effect[];
+  source?: string;
+  notes?: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EffectMappingFormData {
+  name: string;
+  variable: string;
+  direction: MappingDirection;
+  tick_description: string;
+  effects: Effect[];
+  source?: string;
+  notes?: string;
+}
+
+export interface EffectMappingListParams {
+  page?: number;
+  per_page?: number;
+  variable?: string;
+  active?: boolean;
+  search?: string;
+}
+
+export interface EffectMappingListResponse {
+  data: EffectMapping[];
+  pagination: {
+    total: number;
+    page: number;
+    per_page: number;
+    total_pages: number;
+  };
+}
+
+export interface Gap {
+  variable: string;
+  direction: "increase" | "decrease";
+  amount: number;
+}
+
+export interface RelevantMappingsRequest {
+  gaps: Gap[];
+}
+
+export interface RelevanceMatch {
+  gap_variable: string;
+  gap_direction: string;
+  effect_direction: string;
+  matches: boolean;
+}
+
+export interface RelevantMapping {
+  mapping: EffectMapping;
+  relevance: RelevanceMatch[];
+}
+
+export interface RelevantMappingsResponse {
+  data: RelevantMapping[];
+}
+
+// Input variable options for forms
+export const INPUT_VARIABLES = [
+  { value: "temperature", label: "Temperature", tickUnit: "5°C" },
+  { value: "ratio", label: "Ratio", tickUnit: "1 step" },
+  { value: "grind_size", label: "Grind Size", tickUnit: "clicks" },
+  { value: "bloom_time", label: "Bloom Time", tickUnit: "15 seconds" },
+  { value: "total_brew_time", label: "Total Brew Time", tickUnit: "15 seconds" },
+  { value: "coffee_weight", label: "Coffee Weight", tickUnit: "1 gram" },
+  { value: "pour_count", label: "Pour Count", tickUnit: "1 pour" },
+  { value: "pour_technique", label: "Pour Technique", tickUnit: "categorical" },
+  { value: "filter_type", label: "Filter Type", tickUnit: "categorical" },
+] as const;
+
+export const OUTPUT_VARIABLES = [
+  { value: "acidity", label: "Acidity" },
+  { value: "sweetness", label: "Sweetness" },
+  { value: "bitterness", label: "Bitterness" },
+  { value: "body", label: "Body" },
+  { value: "aroma", label: "Aroma" },
+  { value: "aftertaste", label: "Aftertaste" },
+  { value: "overall", label: "Overall" },
+] as const;
+
 class ApiClient {
   private accessToken: string | null = null;
 
@@ -453,6 +557,68 @@ class ApiClient {
   async deleteDefault(field: string): Promise<void> {
     return this.request<void>(`/defaults/${field}`, {
       method: "DELETE",
+    });
+  }
+
+  // Effect Mapping methods
+  async listEffectMappings(
+    params?: EffectMappingListParams
+  ): Promise<EffectMappingListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          searchParams.append(key, String(value));
+        }
+      });
+    }
+    const query = searchParams.toString();
+    return this.request<EffectMappingListResponse>(
+      `/effect-mappings${query ? `?${query}` : ""}`
+    );
+  }
+
+  async getEffectMapping(id: string): Promise<EffectMapping> {
+    return this.request<EffectMapping>(`/effect-mappings/${id}`);
+  }
+
+  async createEffectMapping(
+    data: EffectMappingFormData
+  ): Promise<EffectMapping> {
+    return this.request<EffectMapping>("/effect-mappings", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateEffectMapping(
+    id: string,
+    data: EffectMappingFormData
+  ): Promise<EffectMapping> {
+    return this.request<EffectMapping>(`/effect-mappings/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteEffectMapping(id: string): Promise<void> {
+    return this.request<void>(`/effect-mappings/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async toggleEffectMapping(id: string): Promise<EffectMapping> {
+    return this.request<EffectMapping>(`/effect-mappings/${id}/toggle`, {
+      method: "PATCH",
+    });
+  }
+
+  async getRelevantMappings(
+    request: RelevantMappingsRequest
+  ): Promise<RelevantMappingsResponse> {
+    return this.request<RelevantMappingsResponse>("/effect-mappings/relevant", {
+      method: "POST",
+      body: JSON.stringify(request),
     });
   }
 }

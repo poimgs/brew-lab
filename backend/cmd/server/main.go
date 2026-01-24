@@ -17,6 +17,7 @@ import (
 	"github.com/poimgs/coffee-tracker/backend/internal/services/auth"
 	coffeeservice "github.com/poimgs/coffee-tracker/backend/internal/services/coffee"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/defaults"
+	"github.com/poimgs/coffee-tracker/backend/internal/services/effectmapping"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/experiment"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/tags"
 )
@@ -43,6 +44,7 @@ func main() {
 	experimentTagsRepo := repository.NewExperimentTagsRepository(pool)
 	issueTagsRepo := repository.NewIssueTagsRepository(pool)
 	userDefaultsRepo := repository.NewUserDefaultsRepository(pool)
+	effectMappingRepo := repository.NewEffectMappingRepository(pool)
 
 	// Auth services
 	passwordSvc := auth.NewPasswordService(cfg.BcryptCost)
@@ -54,6 +56,7 @@ func main() {
 	experimentSvc := experiment.NewExperimentService(experimentRepo, experimentTagsRepo, issueTagsRepo, coffeeSvc)
 	defaultsSvc := defaults.NewDefaultsService(userDefaultsRepo)
 	tagsSvc := tags.NewTagsService(issueTagsRepo)
+	effectMappingSvc := effectmapping.NewEffectMappingService(effectMappingRepo)
 
 	// Middleware
 	authMiddleware := middleware.NewAuthMiddleware(jwtSvc)
@@ -61,15 +64,16 @@ func main() {
 	loginRateLimiter := middleware.NewLoginRateLimiter(cfg.RateLimitLoginPerIP)
 
 	r := router.New(&router.Config{
-		AuthService:       authSvc,
-		CoffeeService:     coffeeSvc,
-		ExperimentService: experimentSvc,
-		DefaultsService:   defaultsSvc,
-		TagsService:       tagsSvc,
-		AuthMiddleware:    authMiddleware,
-		CORSMiddleware:    corsMiddleware,
-		LoginRateLimiter:  loginRateLimiter,
-		CookieSecure:      cfg.CookieSecure,
+		AuthService:          authSvc,
+		CoffeeService:        coffeeSvc,
+		ExperimentService:    experimentSvc,
+		DefaultsService:      defaultsSvc,
+		TagsService:          tagsSvc,
+		EffectMappingService: effectMappingSvc,
+		AuthMiddleware:       authMiddleware,
+		CORSMiddleware:       corsMiddleware,
+		LoginRateLimiter:     loginRateLimiter,
+		CookieSecure:         cfg.CookieSecure,
 	})
 
 	server := &http.Server{
