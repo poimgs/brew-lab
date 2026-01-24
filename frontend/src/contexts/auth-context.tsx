@@ -36,9 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function initAuth() {
       try {
         const response = await api.refreshToken();
-        if (response.data.access_token) {
-          const meResponse = await api.getMe();
-          setUser(meResponse.data);
+        if (response.access_token) {
+          setUser(response.user);
         }
       } catch {
         // No valid refresh token, user needs to log in

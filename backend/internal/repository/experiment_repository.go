@@ -249,7 +249,7 @@ func (r *ExperimentRepository) List(ctx context.Context, params ExperimentListPa
 	}
 	defer rows.Close()
 
-	var experiments []*models.Experiment
+	experiments := make([]*models.Experiment, 0)
 	for rows.Next() {
 		exp, err := scanExperimentRows(rows)
 		if err != nil {

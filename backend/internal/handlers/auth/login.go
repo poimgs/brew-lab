@@ -11,14 +11,16 @@ import (
 )
 
 type LoginHandler struct {
-	authSvc  *auth.AuthService
-	validate *validator.Validate
+	authSvc      *auth.AuthService
+	validate     *validator.Validate
+	cookieSecure bool
 }
 
-func NewLoginHandler(authSvc *auth.AuthService, validate *validator.Validate) *LoginHandler {
+func NewLoginHandler(authSvc *auth.AuthService, validate *validator.Validate, cookieSecure bool) *LoginHandler {
 	return &LoginHandler{
-		authSvc:  authSvc,
-		validate: validate,
+		authSvc:      authSvc,
+		validate:     validate,
+		cookieSecure: cookieSecure,
 	}
 }
 
@@ -56,6 +58,6 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	SetRefreshTokenCookie(w, refreshToken, h.authSvc.GetJWTService().GetRefreshTokenExpiry())
+	SetRefreshTokenCookie(w, refreshToken, h.authSvc.GetJWTService().GetRefreshTokenExpiry(), h.cookieSecure)
 	response.OK(w, authResp)
 }

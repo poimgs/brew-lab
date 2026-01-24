@@ -9,11 +9,12 @@ import (
 )
 
 type RefreshHandler struct {
-	authSvc *auth.AuthService
+	authSvc      *auth.AuthService
+	cookieSecure bool
 }
 
-func NewRefreshHandler(authSvc *auth.AuthService) *RefreshHandler {
-	return &RefreshHandler{authSvc: authSvc}
+func NewRefreshHandler(authSvc *auth.AuthService, cookieSecure bool) *RefreshHandler {
+	return &RefreshHandler{authSvc: authSvc, cookieSecure: cookieSecure}
 }
 
 func (h *RefreshHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +26,7 @@ func (h *RefreshHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	authResp, newRefreshToken, err := h.authSvc.Refresh(r.Context(), refreshToken)
 	if err != nil {
-		ClearRefreshTokenCookie(w)
+		ClearRefreshTokenCookie(w, h.cookieSecure)
 		if errors.Is(err, auth.ErrInvalidToken) {
 			response.Unauthorized(w, "invalid or expired refresh token")
 			return
@@ -34,6 +35,6 @@ func (h *RefreshHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	SetRefreshTokenCookie(w, newRefreshToken, h.authSvc.GetJWTService().GetRefreshTokenExpiry())
+	SetRefreshTokenCookie(w, newRefreshToken, h.authSvc.GetJWTService().GetRefreshTokenExpiry(), h.cookieSecure)
 	response.OK(w, authResp)
 }

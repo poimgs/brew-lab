@@ -69,6 +69,7 @@ func main() {
 		AuthMiddleware:    authMiddleware,
 		CORSMiddleware:    corsMiddleware,
 		LoginRateLimiter:  loginRateLimiter,
+		CookieSecure:      cfg.CookieSecure,
 	})
 
 	server := &http.Server{

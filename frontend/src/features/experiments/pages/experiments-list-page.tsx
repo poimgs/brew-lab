@@ -26,15 +26,15 @@ export function ExperimentsListPage() {
       page: parseInt(searchParams.get("page") ?? "1"),
       page_size: 12,
       coffee_id: searchParams.get("coffee_id") ?? undefined,
-      tag_id: searchParams.get("tag_id") ?? undefined,
-      min_score: searchParams.get("min_score")
-        ? parseInt(searchParams.get("min_score")!)
+      tags: searchParams.get("tags") ?? undefined,
+      score_gte: searchParams.get("score_gte")
+        ? parseInt(searchParams.get("score_gte")!)
         : undefined,
-      max_score: searchParams.get("max_score")
-        ? parseInt(searchParams.get("max_score")!)
+      score_lte: searchParams.get("score_lte")
+        ? parseInt(searchParams.get("score_lte")!)
         : undefined,
-      start_date: searchParams.get("start_date") ?? undefined,
-      end_date: searchParams.get("end_date") ?? undefined,
+      date_from: searchParams.get("date_from") ?? undefined,
+      date_to: searchParams.get("date_to") ?? undefined,
       sort_by:
         (searchParams.get("sort_by") as ExperimentListParams["sort_by"]) ??
         "brew_date",
@@ -50,8 +50,13 @@ export function ExperimentsListPage() {
     setLoading(true)
     try {
       const response = await api.listExperiments(filters)
-      setExperiments(response.data)
-      setPagination(response.pagination)
+      setExperiments(response.experiments)
+      setPagination({
+        page: response.page,
+        page_size: response.per_page,
+        total: response.total,
+        total_pages: Math.ceil(response.total / response.per_page),
+      })
     } catch (err) {
       console.error("Failed to fetch experiments:", err)
     } finally {

@@ -34,12 +34,12 @@ export function useCoffees(params: CoffeeListParams = {}): UseCoffeesResult {
     setError(null);
     try {
       const response = await api.listCoffees(params);
-      setCoffees(response.data);
+      setCoffees(response.coffees);
       setPagination({
-        page: response.pagination.page,
-        pageSize: response.pagination.page_size,
-        total: response.pagination.total,
-        totalPages: response.pagination.total_pages,
+        page: response.page,
+        pageSize: response.page_size,
+        total: response.total_count,
+        totalPages: response.total_pages,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch coffees");

@@ -12,9 +12,8 @@ export interface LoginResponse {
 }
 
 export interface RefreshResponse {
-  data: {
-    access_token: string;
-  };
+  user: User;
+  access_token: string;
 }
 
 export interface MeResponse {
@@ -73,13 +72,11 @@ export interface CoffeeListParams {
 }
 
 export interface CoffeeListResponse {
-  data: Coffee[];
-  pagination: {
-    page: number;
-    page_size: number;
-    total: number;
-    total_pages: number;
-  };
+  coffees: Coffee[];
+  total_count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
 }
 
 export interface CoffeeResponse {
@@ -191,23 +188,20 @@ export interface ExperimentListParams {
   page?: number;
   page_size?: number;
   coffee_id?: string;
-  min_score?: number;
-  max_score?: number;
-  start_date?: string;
-  end_date?: string;
-  tag_id?: string;
+  score_gte?: number;
+  score_lte?: number;
+  date_from?: string;
+  date_to?: string;
+  tags?: string;
   sort_by?: "brew_date" | "created_at" | "overall_score";
   sort_dir?: "asc" | "desc";
 }
 
 export interface ExperimentListResponse {
-  data: Experiment[];
-  pagination: {
-    page: number;
-    page_size: number;
-    total: number;
-    total_pages: number;
-  };
+  experiments: Experiment[];
+  total: number;
+  page: number;
+  per_page: number;
 }
 
 export interface ExperimentResponse {
@@ -215,7 +209,7 @@ export interface ExperimentResponse {
 }
 
 export interface TagListResponse {
-  data: IssueTag[];
+  tags: IssueTag[];
 }
 
 export interface TagResponse {
@@ -295,7 +289,7 @@ class ApiClient {
     const response = await this.request<RefreshResponse>("/auth/refresh", {
       method: "POST",
     });
-    this.accessToken = response.data.access_token;
+    this.accessToken = response.access_token;
     return response;
   }
 

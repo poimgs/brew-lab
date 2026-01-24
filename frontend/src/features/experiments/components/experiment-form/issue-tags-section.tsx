@@ -39,7 +39,7 @@ export function IssueTagsSection({
   async function fetchTags() {
     try {
       const response = await api.listTags()
-      setTags(response.data)
+      setTags(response.tags)
     } catch (err) {
       console.error("Failed to fetch tags:", err)
     } finally {

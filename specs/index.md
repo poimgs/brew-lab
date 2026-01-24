@@ -65,8 +65,8 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | Spec | Status | Purpose |
 |------|--------|---------|
 | [authentication.md](features/authentication.md) | Complete | User entity, login/signup, JWT, session handling |
-| [coffee-library.md](features/coffee-library.md) | Frontend Complete | Coffee entity + CRUD API + library UI |
-| [brew-tracking.md](features/brew-tracking.md) | Frontend Complete | Experiment entity + logging API + entry forms |
+| [coffee-library.md](features/coffee-library.md) | Complete | Coffee entity + CRUD API + library UI |
+| [brew-tracking.md](features/brew-tracking.md) | Complete | Experiment entity + logging API + entry forms |
 | [experiment-review.md](features/experiment-review.md) | Not Started | List/detail views, comparison, filtering |
 | [rules-engine.md](features/rules-engine.md) | Not Started | Rules entity + issue tags + rule management UI |
 | [recommendations.md](features/recommendations.md) | Not Started | Rule matching, suggestion display, try/dismiss flow |
@@ -94,9 +94,9 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Authentication | Complete | `backend/internal/services/auth/` |
-| Database Schema | Not Started | Migrations pending |
-| Coffee API | Not Started | — |
-| Experiment API | Not Started | — |
+| Database Schema | Complete | `backend/migrations/` |
+| Coffee API | Complete | `backend/internal/handlers/coffee/` |
+| Experiment API | Complete | `backend/internal/handlers/experiment/` |
 | Rules API | Not Started | — |
 | Frontend Coffee Library | Complete | `frontend/src/features/library/` |
 | Frontend Brew Tracking | Complete | `frontend/src/features/experiments/` |

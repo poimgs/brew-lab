@@ -35,8 +35,8 @@ export function ExperimentFilters({ filters, onChange }: ExperimentFiltersProps)
           api.listCoffees({ page_size: 100 }),
           api.listTags(),
         ])
-        setCoffees(coffeesRes.data)
-        setTags(tagsRes.data)
+        setCoffees(coffeesRes.coffees)
+        setTags(tagsRes.tags)
       } catch (err) {
         console.error("Failed to fetch filter options:", err)
       }
@@ -54,11 +54,11 @@ export function ExperimentFilters({ filters, onChange }: ExperimentFiltersProps)
 
   const activeFilterCount = [
     filters.coffee_id,
-    filters.tag_id,
-    filters.min_score,
-    filters.max_score,
-    filters.start_date,
-    filters.end_date,
+    filters.tags,
+    filters.score_gte,
+    filters.score_lte,
+    filters.date_from,
+    filters.date_to,
   ].filter(Boolean).length
 
   return (
@@ -114,9 +114,9 @@ export function ExperimentFilters({ filters, onChange }: ExperimentFiltersProps)
               <div className="space-y-2">
                 <Label>Tag</Label>
                 <Select
-                  value={filters.tag_id ?? "all"}
+                  value={filters.tags ?? "all"}
                   onValueChange={(value) =>
-                    handleChange({ tag_id: value === "all" ? undefined : value })
+                    handleChange({ tags: value === "all" ? undefined : value })
                   }
                 >
                   <SelectTrigger>
@@ -125,7 +125,7 @@ export function ExperimentFilters({ filters, onChange }: ExperimentFiltersProps)
                   <SelectContent>
                     <SelectItem value="all">Any tag</SelectItem>
                     {tags.map((tag) => (
-                      <SelectItem key={tag.id} value={tag.id}>
+                      <SelectItem key={tag.id} value={tag.name}>
                         {tag.name}
                       </SelectItem>
                     ))}
@@ -136,10 +136,10 @@ export function ExperimentFilters({ filters, onChange }: ExperimentFiltersProps)
               <div className="space-y-2">
                 <Label>Min Score</Label>
                 <Select
-                  value={filters.min_score?.toString() ?? "any"}
+                  value={filters.score_gte?.toString() ?? "any"}
                   onValueChange={(value) =>
                     handleChange({
-                      min_score: value === "any" ? undefined : parseInt(value),
+                      score_gte: value === "any" ? undefined : parseInt(value),
                     })
                   }
                 >
@@ -161,9 +161,9 @@ export function ExperimentFilters({ filters, onChange }: ExperimentFiltersProps)
                 <Label>From Date</Label>
                 <Input
                   type="date"
-                  value={filters.start_date ?? ""}
+                  value={filters.date_from ?? ""}
                   onChange={(e) =>
-                    handleChange({ start_date: e.target.value || undefined })
+                    handleChange({ date_from: e.target.value || undefined })
                   }
                 />
               </div>
@@ -172,9 +172,9 @@ export function ExperimentFilters({ filters, onChange }: ExperimentFiltersProps)
                 <Label>To Date</Label>
                 <Input
                   type="date"
-                  value={filters.end_date ?? ""}
+                  value={filters.date_to ?? ""}
                   onChange={(e) =>
-                    handleChange({ end_date: e.target.value || undefined })
+                    handleChange({ date_to: e.target.value || undefined })
                   }
                 />
               </div>

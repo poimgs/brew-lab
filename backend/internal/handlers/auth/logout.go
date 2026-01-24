@@ -8,11 +8,12 @@ import (
 )
 
 type LogoutHandler struct {
-	authSvc *auth.AuthService
+	authSvc      *auth.AuthService
+	cookieSecure bool
 }
 
-func NewLogoutHandler(authSvc *auth.AuthService) *LogoutHandler {
-	return &LogoutHandler{authSvc: authSvc}
+func NewLogoutHandler(authSvc *auth.AuthService, cookieSecure bool) *LogoutHandler {
+	return &LogoutHandler{authSvc: authSvc, cookieSecure: cookieSecure}
 }
 
 func (h *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -21,6 +22,6 @@ func (h *LogoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = h.authSvc.Logout(r.Context(), refreshToken)
 	}
 
-	ClearRefreshTokenCookie(w)
+	ClearRefreshTokenCookie(w, h.cookieSecure)
 	response.NoContent(w)
 }

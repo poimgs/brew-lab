@@ -40,7 +40,7 @@ export function CoffeeSelect({
           sort_by: "roast_date",
           sort_dir: "desc",
         })
-        setCoffees(response.data)
+        setCoffees(response.coffees)
       } catch (err) {
         console.error("Failed to fetch coffees:", err)
       } finally {

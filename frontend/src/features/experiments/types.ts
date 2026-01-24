@@ -111,11 +111,11 @@ export interface ExperimentListParams {
   page?: number
   page_size?: number
   coffee_id?: string
-  min_score?: number
-  max_score?: number
-  start_date?: string
-  end_date?: string
-  tag_id?: string
+  score_gte?: number
+  score_lte?: number
+  date_from?: string
+  date_to?: string
+  tags?: string
   sort_by?: "brew_date" | "created_at" | "overall_score"
   sort_dir?: "asc" | "desc"
 }

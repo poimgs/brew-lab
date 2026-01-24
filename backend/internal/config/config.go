@@ -17,6 +17,7 @@ type Config struct {
 	CORSAllowedOrigins     []string
 	RateLimitLoginPerIP    int
 	RateLimitLoginPerEmail int
+	CookieSecure           bool
 }
 
 func Load() *Config {
@@ -30,6 +31,7 @@ func Load() *Config {
 		CORSAllowedOrigins:     getStringSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000"}),
 		RateLimitLoginPerIP:    getInt("RATE_LIMIT_LOGIN_PER_IP", 5),
 		RateLimitLoginPerEmail: getInt("RATE_LIMIT_LOGIN_PER_EMAIL", 10),
+		CookieSecure:           getBool("COOKIE_SECURE", false),
 	}
 }
 
@@ -61,6 +63,13 @@ func getDuration(key string, defaultValue time.Duration) time.Duration {
 func getStringSlice(key string, defaultValue []string) []string {
 	if value := os.Getenv(key); value != "" {
 		return strings.Split(value, ",")
+	}
+	return defaultValue
+}
+
+func getBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		return strings.ToLower(value) == "true" || value == "1"
 	}
 	return defaultValue
 }

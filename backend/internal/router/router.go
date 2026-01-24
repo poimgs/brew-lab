@@ -28,6 +28,7 @@ type Config struct {
 	AuthMiddleware     *middleware.AuthMiddleware
 	CORSMiddleware     func(http.Handler) http.Handler
 	LoginRateLimiter   func(http.Handler) http.Handler
+	CookieSecure       bool
 }
 
 func New(cfg *Config) *chi.Mux {
@@ -47,12 +48,12 @@ func New(cfg *Config) *chi.Mux {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Route("/auth", func(r chi.Router) {
-			r.With(cfg.LoginRateLimiter).Post("/login", authhandlers.NewLoginHandler(cfg.AuthService, validate).ServeHTTP)
-			r.Post("/refresh", authhandlers.NewRefreshHandler(cfg.AuthService).ServeHTTP)
+			r.With(cfg.LoginRateLimiter).Post("/login", authhandlers.NewLoginHandler(cfg.AuthService, validate, cfg.CookieSecure).ServeHTTP)
+			r.Post("/refresh", authhandlers.NewRefreshHandler(cfg.AuthService, cfg.CookieSecure).ServeHTTP)
 
 			r.Group(func(r chi.Router) {
 				r.Use(cfg.AuthMiddleware.Authenticate)
-				r.Post("/logout", authhandlers.NewLogoutHandler(cfg.AuthService).ServeHTTP)
+				r.Post("/logout", authhandlers.NewLogoutHandler(cfg.AuthService, cfg.CookieSecure).ServeHTTP)
 				r.Get("/me", authhandlers.NewMeHandler(cfg.AuthService).ServeHTTP)
 			})
 		})
