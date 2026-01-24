@@ -90,6 +90,7 @@ func New(cfg *Config) *chi.Mux {
 				r.Post("/copy", experimentshandlers.NewCopyHandler(cfg.ExperimentService).ServeHTTP)
 				r.Post("/tags", experimentshandlers.NewAddTagsHandler(cfg.ExperimentService).ServeHTTP)
 				r.Delete("/tags/{tagID}", experimentshandlers.NewRemoveTagHandler(cfg.ExperimentService).ServeHTTP)
+				r.Get("/optimization", experimentshandlers.NewOptimizationHandler(cfg.ExperimentService).ServeHTTP)
 			})
 		})
 

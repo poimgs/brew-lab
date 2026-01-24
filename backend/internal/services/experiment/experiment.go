@@ -26,12 +26,18 @@ type FilterPaperGetter interface {
 	GetByID(ctx context.Context, userID, filterPaperID uuid.UUID) (*models.FilterPaperResponse, error)
 }
 
+// EffectMappingFinder interface for effect mapping service dependency
+type EffectMappingFinder interface {
+	FindRelevant(ctx context.Context, userID uuid.UUID, input *models.FindRelevantInput) (*models.FindRelevantResult, error)
+}
+
 type ExperimentService struct {
-	experimentRepo     *repository.ExperimentRepository
-	experimentTagsRepo *repository.ExperimentTagsRepository
-	issueTagsRepo      *repository.IssueTagsRepository
-	coffeeGetter       CoffeeGetter
-	filterPaperGetter  FilterPaperGetter
+	experimentRepo      *repository.ExperimentRepository
+	experimentTagsRepo  *repository.ExperimentTagsRepository
+	issueTagsRepo       *repository.IssueTagsRepository
+	coffeeGetter        CoffeeGetter
+	filterPaperGetter   FilterPaperGetter
+	effectMappingFinder EffectMappingFinder
 }
 
 func NewExperimentService(
@@ -40,13 +46,15 @@ func NewExperimentService(
 	issueTagsRepo *repository.IssueTagsRepository,
 	coffeeGetter CoffeeGetter,
 	filterPaperGetter FilterPaperGetter,
+	effectMappingFinder EffectMappingFinder,
 ) *ExperimentService {
 	return &ExperimentService{
-		experimentRepo:     experimentRepo,
-		experimentTagsRepo: experimentTagsRepo,
-		issueTagsRepo:      issueTagsRepo,
-		coffeeGetter:       coffeeGetter,
-		filterPaperGetter:  filterPaperGetter,
+		experimentRepo:      experimentRepo,
+		experimentTagsRepo:  experimentTagsRepo,
+		issueTagsRepo:       issueTagsRepo,
+		coffeeGetter:        coffeeGetter,
+		filterPaperGetter:   filterPaperGetter,
+		effectMappingFinder: effectMappingFinder,
 	}
 }
 
@@ -350,4 +358,118 @@ func (s *ExperimentService) GetExperimentCountForCoffee(ctx context.Context, cof
 // GetLastBrewedForCoffee returns the last brew date for a coffee
 func (s *ExperimentService) GetLastBrewedForCoffee(ctx context.Context, coffeeID uuid.UUID) (*models.Experiment, error) {
 	return s.experimentRepo.GetLatestForCoffee(ctx, uuid.Nil, coffeeID)
+}
+
+// GetOptimization returns the experiment with its computed gaps and relevant effect mappings
+func (s *ExperimentService) GetOptimization(ctx context.Context, userID, experimentID uuid.UUID) (*models.OptimizationResponse, error) {
+	// Get the experiment with computed gaps
+	expResp, err := s.GetByID(ctx, userID, experimentID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build gaps input from the experiment's computed gaps
+	var relevantMappings []*models.EffectMappingResponse
+	if expResp.Gaps != nil && s.effectMappingFinder != nil {
+		gaps := make([]models.GapInput, 0)
+
+		if expResp.Gaps.Acidity != nil && expResp.Gaps.Acidity.Direction != models.GapDirectionOnTarget {
+			current := 0.0
+			if expResp.Gaps.Acidity.Current != nil {
+				current = float64(*expResp.Gaps.Acidity.Current)
+			}
+			target := 0.0
+			if expResp.Gaps.Acidity.Target != nil {
+				target = float64(*expResp.Gaps.Acidity.Target)
+			}
+			gaps = append(gaps, models.GapInput{
+				OutputVariable: models.OutputVariableAcidity,
+				CurrentValue:   current,
+				TargetValue:    target,
+			})
+		}
+
+		if expResp.Gaps.Sweetness != nil && expResp.Gaps.Sweetness.Direction != models.GapDirectionOnTarget {
+			current := 0.0
+			if expResp.Gaps.Sweetness.Current != nil {
+				current = float64(*expResp.Gaps.Sweetness.Current)
+			}
+			target := 0.0
+			if expResp.Gaps.Sweetness.Target != nil {
+				target = float64(*expResp.Gaps.Sweetness.Target)
+			}
+			gaps = append(gaps, models.GapInput{
+				OutputVariable: models.OutputVariableSweetness,
+				CurrentValue:   current,
+				TargetValue:    target,
+			})
+		}
+
+		if expResp.Gaps.Bitterness != nil && expResp.Gaps.Bitterness.Direction != models.GapDirectionOnTarget {
+			current := 0.0
+			if expResp.Gaps.Bitterness.Current != nil {
+				current = float64(*expResp.Gaps.Bitterness.Current)
+			}
+			target := 0.0
+			if expResp.Gaps.Bitterness.Target != nil {
+				target = float64(*expResp.Gaps.Bitterness.Target)
+			}
+			gaps = append(gaps, models.GapInput{
+				OutputVariable: models.OutputVariableBitterness,
+				CurrentValue:   current,
+				TargetValue:    target,
+			})
+		}
+
+		if expResp.Gaps.Body != nil && expResp.Gaps.Body.Direction != models.GapDirectionOnTarget {
+			current := 0.0
+			if expResp.Gaps.Body.Current != nil {
+				current = float64(*expResp.Gaps.Body.Current)
+			}
+			target := 0.0
+			if expResp.Gaps.Body.Target != nil {
+				target = float64(*expResp.Gaps.Body.Target)
+			}
+			gaps = append(gaps, models.GapInput{
+				OutputVariable: models.OutputVariableBody,
+				CurrentValue:   current,
+				TargetValue:    target,
+			})
+		}
+
+		if expResp.Gaps.Aroma != nil && expResp.Gaps.Aroma.Direction != models.GapDirectionOnTarget {
+			current := 0.0
+			if expResp.Gaps.Aroma.Current != nil {
+				current = float64(*expResp.Gaps.Aroma.Current)
+			}
+			target := 0.0
+			if expResp.Gaps.Aroma.Target != nil {
+				target = float64(*expResp.Gaps.Aroma.Target)
+			}
+			gaps = append(gaps, models.GapInput{
+				OutputVariable: models.OutputVariableAroma,
+				CurrentValue:   current,
+				TargetValue:    target,
+			})
+		}
+
+		// Find relevant mappings if there are any gaps
+		if len(gaps) > 0 {
+			result, err := s.effectMappingFinder.FindRelevant(ctx, userID, &models.FindRelevantInput{
+				Gaps: gaps,
+			})
+			if err == nil && result != nil {
+				relevantMappings = result.Mappings
+			}
+		}
+	}
+
+	if relevantMappings == nil {
+		relevantMappings = []*models.EffectMappingResponse{}
+	}
+
+	return &models.OptimizationResponse{
+		Experiment:       expResp,
+		RelevantMappings: relevantMappings,
+	}, nil
 }

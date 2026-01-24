@@ -11,6 +11,7 @@ import { PreBrewSection } from "./pre-brew-section"
 import { BrewSection } from "./brew-section"
 import { SensorySection } from "./sensory-section"
 import { IssueTagsSection } from "./issue-tags-section"
+import { TargetProfileSection } from "./target-profile-section"
 import { api, type ExperimentFormData, type Experiment } from "@/lib/api"
 
 interface ExperimentFormProps {
@@ -74,6 +75,11 @@ export function ExperimentForm({
         aftertaste_notes: experiment.aftertaste_notes,
         improvement_notes: experiment.improvement_notes,
         tag_ids: experiment.issue_tags?.map((t) => t.id) ?? [],
+        target_acidity: experiment.target_acidity,
+        target_sweetness: experiment.target_sweetness,
+        target_bitterness: experiment.target_bitterness,
+        target_body: experiment.target_body,
+        target_aroma: experiment.target_aroma,
       })
       setLoadingDefaults(false)
     } else {
@@ -242,6 +248,8 @@ export function ExperimentForm({
           <BrewSection data={formData} onChange={handleChange} />
 
           <SensorySection data={formData} onChange={handleChange} />
+
+          <TargetProfileSection data={formData} onChange={handleChange} />
 
           <IssueTagsSection
             selectedTagIds={formData.tag_ids ?? []}

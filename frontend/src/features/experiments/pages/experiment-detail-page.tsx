@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { ExperimentForm } from "../components/experiment-form"
+import { OptimizationTab } from "../components/optimization"
 import { api, type Experiment, type ExperimentFormData } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -212,86 +214,93 @@ export function ExperimentDetailPage() {
         }
       />
 
-      <div className="space-y-6">
-        {/* Overview Card */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-wrap items-start gap-6">
-              {experiment.overall_score && (
-                <div className="flex items-center gap-2">
-                  <Star
-                    className={cn(
-                      "h-6 w-6",
-                      experiment.overall_score >= 7
-                        ? "fill-yellow-500 text-yellow-500"
-                        : "text-muted-foreground"
-                    )}
-                  />
-                  <span className="font-mono text-2xl font-bold">
-                    {experiment.overall_score}
-                  </span>
-                  <span className="text-muted-foreground">/10</span>
-                </div>
-              )}
-              {experiment.days_off_roast !== undefined && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="h-5 w-5" />
-                  <span>Day {experiment.days_off_roast} off roast</span>
-                </div>
-              )}
-              {experiment.calculated_ratio && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Droplets className="h-5 w-5" />
-                  <span>1:{experiment.calculated_ratio.toFixed(1)} ratio</span>
-                </div>
-              )}
-              {experiment.total_brew_time && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="h-5 w-5" />
-                  <span>{formatTime(experiment.total_brew_time)} brew time</span>
-                </div>
-              )}
+      {/* Overview Card - Always visible */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap items-start gap-6">
+            {experiment.overall_score && (
+              <div className="flex items-center gap-2">
+                <Star
+                  className={cn(
+                    "h-6 w-6",
+                    experiment.overall_score >= 7
+                      ? "fill-yellow-500 text-yellow-500"
+                      : "text-muted-foreground"
+                  )}
+                />
+                <span className="font-mono text-2xl font-bold">
+                  {experiment.overall_score}
+                </span>
+                <span className="text-muted-foreground">/10</span>
+              </div>
+            )}
+            {experiment.days_off_roast !== undefined && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Calendar className="h-5 w-5" />
+                <span>Day {experiment.days_off_roast} off roast</span>
+              </div>
+            )}
+            {experiment.calculated_ratio && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Droplets className="h-5 w-5" />
+                <span>1:{experiment.calculated_ratio.toFixed(1)} ratio</span>
+              </div>
+            )}
+            {experiment.total_brew_time && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-5 w-5" />
+                <span>{formatTime(experiment.total_brew_time)} brew time</span>
+              </div>
+            )}
+          </div>
+
+          <Separator className="my-4" />
+
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-medium mb-2">Overall Notes</h4>
+              <p className="text-muted-foreground whitespace-pre-wrap">
+                {experiment.overall_notes}
+              </p>
             </div>
 
-            <Separator className="my-4" />
-
-            <div className="space-y-4">
+            {experiment.improvement_notes && (
               <div>
-                <h4 className="font-medium mb-2">Overall Notes</h4>
+                <h4 className="font-medium mb-2">Ideas for Next Time</h4>
                 <p className="text-muted-foreground whitespace-pre-wrap">
-                  {experiment.overall_notes}
+                  {experiment.improvement_notes}
                 </p>
               </div>
+            )}
 
-              {experiment.improvement_notes && (
-                <div>
-                  <h4 className="font-medium mb-2">Ideas for Next Time</h4>
-                  <p className="text-muted-foreground whitespace-pre-wrap">
-                    {experiment.improvement_notes}
-                  </p>
+            {experiment.issue_tags && experiment.issue_tags.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Issue Tags</h4>
+                <div className="flex flex-wrap gap-2">
+                  {experiment.issue_tags.map((tag) => (
+                    <Badge
+                      key={tag.id}
+                      variant={tag.is_system ? "secondary" : "outline"}
+                    >
+                      {tag.name}
+                    </Badge>
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-              {experiment.issue_tags && experiment.issue_tags.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Issue Tags</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {experiment.issue_tags.map((tag) => (
-                      <Badge
-                        key={tag.id}
-                        variant={tag.is_system ? "secondary" : "outline"}
-                      >
-                        {tag.name}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="parameters" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="parameters">Parameters</TabsTrigger>
+          <TabsTrigger value="outcomes">Outcomes</TabsTrigger>
+          <TabsTrigger value="optimization">Optimization</TabsTrigger>
+        </TabsList>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <TabsContent value="parameters" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
           {/* Pre-Brew Parameters */}
           <Card>
             <CardHeader>
@@ -398,100 +407,111 @@ export function ExperimentDetailPage() {
               )}
             </CardContent>
           </Card>
-        </div>
+          </div>
+        </TabsContent>
 
-        {/* Sensory Evaluation */}
-        {(experiment.aroma_intensity ||
-          experiment.acidity_intensity ||
-          experiment.sweetness_intensity ||
-          experiment.bitterness_intensity ||
-          experiment.body_weight ||
-          experiment.aftertaste_duration ||
-          experiment.aftertaste_intensity ||
-          experiment.aroma_notes ||
-          experiment.flavor_notes ||
-          experiment.aftertaste_notes) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Sensory Evaluation</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {experiment.aroma_intensity && (
-                  <SensoryScore
-                    label="Aroma"
-                    value={experiment.aroma_intensity}
-                  />
-                )}
-                {experiment.acidity_intensity && (
-                  <SensoryScore
-                    label="Acidity"
-                    value={experiment.acidity_intensity}
-                  />
-                )}
-                {experiment.sweetness_intensity && (
-                  <SensoryScore
-                    label="Sweetness"
-                    value={experiment.sweetness_intensity}
-                  />
-                )}
-                {experiment.bitterness_intensity && (
-                  <SensoryScore
-                    label="Bitterness"
-                    value={experiment.bitterness_intensity}
-                  />
-                )}
-                {experiment.body_weight && (
-                  <SensoryScore label="Body" value={experiment.body_weight} />
-                )}
-                {experiment.aftertaste_duration && (
-                  <SensoryScore
-                    label="Aftertaste Duration"
-                    value={experiment.aftertaste_duration}
-                  />
-                )}
-                {experiment.aftertaste_intensity && (
-                  <SensoryScore
-                    label="Aftertaste Intensity"
-                    value={experiment.aftertaste_intensity}
-                  />
-                )}
-              </div>
-
-              {(experiment.aroma_notes ||
-                experiment.flavor_notes ||
-                experiment.aftertaste_notes) && (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-4 border-t">
-                  {experiment.aroma_notes && (
-                    <div>
-                      <h4 className="font-medium text-sm mb-1">Aroma Notes</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {experiment.aroma_notes}
-                      </p>
-                    </div>
+        <TabsContent value="outcomes" className="space-y-6">
+          {/* Sensory Evaluation */}
+          {(experiment.aroma_intensity ||
+            experiment.acidity_intensity ||
+            experiment.sweetness_intensity ||
+            experiment.bitterness_intensity ||
+            experiment.body_weight ||
+            experiment.aftertaste_duration ||
+            experiment.aftertaste_intensity ||
+            experiment.aroma_notes ||
+            experiment.flavor_notes ||
+            experiment.aftertaste_notes) ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Sensory Evaluation</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {experiment.aroma_intensity && (
+                    <SensoryScore
+                      label="Aroma"
+                      value={experiment.aroma_intensity}
+                    />
                   )}
-                  {experiment.flavor_notes && (
-                    <div>
-                      <h4 className="font-medium text-sm mb-1">Flavor Notes</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {experiment.flavor_notes}
-                      </p>
-                    </div>
+                  {experiment.acidity_intensity && (
+                    <SensoryScore
+                      label="Acidity"
+                      value={experiment.acidity_intensity}
+                    />
                   )}
-                  {experiment.aftertaste_notes && (
-                    <div>
-                      <h4 className="font-medium text-sm mb-1">Aftertaste Notes</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {experiment.aftertaste_notes}
-                      </p>
-                    </div>
+                  {experiment.sweetness_intensity && (
+                    <SensoryScore
+                      label="Sweetness"
+                      value={experiment.sweetness_intensity}
+                    />
+                  )}
+                  {experiment.bitterness_intensity && (
+                    <SensoryScore
+                      label="Bitterness"
+                      value={experiment.bitterness_intensity}
+                    />
+                  )}
+                  {experiment.body_weight && (
+                    <SensoryScore label="Body" value={experiment.body_weight} />
+                  )}
+                  {experiment.aftertaste_duration && (
+                    <SensoryScore
+                      label="Aftertaste Duration"
+                      value={experiment.aftertaste_duration}
+                    />
+                  )}
+                  {experiment.aftertaste_intensity && (
+                    <SensoryScore
+                      label="Aftertaste Intensity"
+                      value={experiment.aftertaste_intensity}
+                    />
                   )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
+
+                {(experiment.aroma_notes ||
+                  experiment.flavor_notes ||
+                  experiment.aftertaste_notes) && (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pt-4 border-t">
+                    {experiment.aroma_notes && (
+                      <div>
+                        <h4 className="font-medium text-sm mb-1">Aroma Notes</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {experiment.aroma_notes}
+                        </p>
+                      </div>
+                    )}
+                    {experiment.flavor_notes && (
+                      <div>
+                        <h4 className="font-medium text-sm mb-1">Flavor Notes</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {experiment.flavor_notes}
+                        </p>
+                      </div>
+                    )}
+                    {experiment.aftertaste_notes && (
+                      <div>
+                        <h4 className="font-medium text-sm mb-1">Aftertaste Notes</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {experiment.aftertaste_notes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              No sensory evaluation data recorded for this experiment.
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="optimization">
+          <OptimizationTab experimentId={id!} experiment={experiment} />
+        </TabsContent>
+      </Tabs>
     </RootLayout>
   )
 }

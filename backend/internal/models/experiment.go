@@ -62,6 +62,39 @@ type Experiment struct {
 	ImprovementNotes *string   `json:"improvement_notes,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
+
+	// Target profile for optimization
+	TargetAcidity    *int `json:"target_acidity,omitempty"`
+	TargetSweetness  *int `json:"target_sweetness,omitempty"`
+	TargetBitterness *int `json:"target_bitterness,omitempty"`
+	TargetBody       *int `json:"target_body,omitempty"`
+	TargetAroma      *int `json:"target_aroma,omitempty"`
+}
+
+// GapDirection indicates whether a sensory score needs to increase or decrease
+type GapDirection string
+
+const (
+	GapDirectionIncrease GapDirection = "increase"
+	GapDirectionDecrease GapDirection = "decrease"
+	GapDirectionOnTarget GapDirection = "on_target"
+)
+
+// SensoryGap represents the gap between current and target for a single sensory variable
+type SensoryGap struct {
+	Current   *int         `json:"current,omitempty"`
+	Target    *int         `json:"target,omitempty"`
+	Direction GapDirection `json:"direction"`
+	Amount    int          `json:"amount"`
+}
+
+// SensoryGaps contains gaps for all sensory variables
+type SensoryGaps struct {
+	Acidity    *SensoryGap `json:"acidity,omitempty"`
+	Sweetness  *SensoryGap `json:"sweetness,omitempty"`
+	Bitterness *SensoryGap `json:"bitterness,omitempty"`
+	Body       *SensoryGap `json:"body,omitempty"`
+	Aroma      *SensoryGap `json:"aroma,omitempty"`
 }
 
 type ExperimentResponse struct {
@@ -124,6 +157,16 @@ type ExperimentResponse struct {
 	DaysOffRoast    *int     `json:"days_off_roast,omitempty"`
 	CalculatedRatio *float64 `json:"calculated_ratio,omitempty"`
 
+	// Target profile
+	TargetAcidity    *int `json:"target_acidity,omitempty"`
+	TargetSweetness  *int `json:"target_sweetness,omitempty"`
+	TargetBitterness *int `json:"target_bitterness,omitempty"`
+	TargetBody       *int `json:"target_body,omitempty"`
+	TargetAroma      *int `json:"target_aroma,omitempty"`
+
+	// Computed gaps (only populated when targets are set)
+	Gaps *SensoryGaps `json:"gaps,omitempty"`
+
 	// Nested data
 	Coffee      *CoffeeResponse      `json:"coffee,omitempty"`
 	FilterPaper *FilterPaperResponse `json:"filter_paper,omitempty"`
@@ -171,6 +214,11 @@ func (e *Experiment) ToResponse(coffee *CoffeeResponse, filterPaper *FilterPaper
 		CreatedAt:           e.CreatedAt,
 		UpdatedAt:           e.UpdatedAt,
 		DaysOffRoast:        daysOffRoast,
+		TargetAcidity:       e.TargetAcidity,
+		TargetSweetness:     e.TargetSweetness,
+		TargetBitterness:    e.TargetBitterness,
+		TargetBody:          e.TargetBody,
+		TargetAroma:         e.TargetAroma,
 		Coffee:              coffee,
 		FilterPaper:         filterPaper,
 		IssueTags:           tags,
@@ -182,7 +230,65 @@ func (e *Experiment) ToResponse(coffee *CoffeeResponse, filterPaper *FilterPaper
 		resp.CalculatedRatio = &ratio
 	}
 
+	// Compute gaps if any targets are set
+	resp.Gaps = e.computeGaps()
+
 	return resp
+}
+
+// computeGaps calculates the gaps between current and target sensory scores
+func (e *Experiment) computeGaps() *SensoryGaps {
+	// Only compute if at least one target is set
+	if e.TargetAcidity == nil && e.TargetSweetness == nil && e.TargetBitterness == nil && e.TargetBody == nil && e.TargetAroma == nil {
+		return nil
+	}
+
+	gaps := &SensoryGaps{}
+
+	if e.TargetAcidity != nil {
+		gaps.Acidity = computeGap(e.AcidityIntensity, e.TargetAcidity)
+	}
+	if e.TargetSweetness != nil {
+		gaps.Sweetness = computeGap(e.SweetnessIntensity, e.TargetSweetness)
+	}
+	if e.TargetBitterness != nil {
+		gaps.Bitterness = computeGap(e.BitternessIntensity, e.TargetBitterness)
+	}
+	if e.TargetBody != nil {
+		gaps.Body = computeGap(e.BodyWeight, e.TargetBody)
+	}
+	if e.TargetAroma != nil {
+		gaps.Aroma = computeGap(e.AromaIntensity, e.TargetAroma)
+	}
+
+	return gaps
+}
+
+func computeGap(current, target *int) *SensoryGap {
+	gap := &SensoryGap{
+		Current: current,
+		Target:  target,
+	}
+
+	if current == nil || target == nil {
+		gap.Direction = GapDirectionOnTarget
+		gap.Amount = 0
+		return gap
+	}
+
+	diff := *target - *current
+	if diff > 0 {
+		gap.Direction = GapDirectionIncrease
+		gap.Amount = diff
+	} else if diff < 0 {
+		gap.Direction = GapDirectionDecrease
+		gap.Amount = -diff
+	} else {
+		gap.Direction = GapDirectionOnTarget
+		gap.Amount = 0
+	}
+
+	return gap
 }
 
 type CreateExperimentInput struct {
@@ -221,6 +327,12 @@ type CreateExperimentInput struct {
 	FlavorNotes         *string   `json:"flavor_notes"`
 	AftertasteNotes     *string   `json:"aftertaste_notes"`
 	ImprovementNotes    *string   `json:"improvement_notes"`
+	// Target profile
+	TargetAcidity    *int `json:"target_acidity" validate:"omitempty,min=1,max=10"`
+	TargetSweetness  *int `json:"target_sweetness" validate:"omitempty,min=1,max=10"`
+	TargetBitterness *int `json:"target_bitterness" validate:"omitempty,min=1,max=10"`
+	TargetBody       *int `json:"target_body" validate:"omitempty,min=1,max=10"`
+	TargetAroma      *int `json:"target_aroma" validate:"omitempty,min=1,max=10"`
 }
 
 type UpdateExperimentInput struct {
@@ -259,6 +371,12 @@ type UpdateExperimentInput struct {
 	FlavorNotes         *string   `json:"flavor_notes"`
 	AftertasteNotes     *string   `json:"aftertaste_notes"`
 	ImprovementNotes    *string   `json:"improvement_notes"`
+	// Target profile
+	TargetAcidity    *int `json:"target_acidity" validate:"omitempty,min=1,max=10"`
+	TargetSweetness  *int `json:"target_sweetness" validate:"omitempty,min=1,max=10"`
+	TargetBitterness *int `json:"target_bitterness" validate:"omitempty,min=1,max=10"`
+	TargetBody       *int `json:"target_body" validate:"omitempty,min=1,max=10"`
+	TargetAroma      *int `json:"target_aroma" validate:"omitempty,min=1,max=10"`
 }
 
 type ExperimentFilter struct {
@@ -276,4 +394,10 @@ type ExperimentListResponse struct {
 	Total       int                  `json:"total"`
 	Page        int                  `json:"page"`
 	PerPage     int                  `json:"per_page"`
+}
+
+// OptimizationResponse contains the experiment data with gaps and relevant mappings
+type OptimizationResponse struct {
+	Experiment       *ExperimentResponse       `json:"experiment"`
+	RelevantMappings []*EffectMappingResponse `json:"relevant_mappings"`
 }

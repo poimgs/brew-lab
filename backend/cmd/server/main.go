@@ -59,10 +59,10 @@ func main() {
 	coffeeSvc := coffeeservice.NewCoffeeService(coffeeRepo)
 	filterPaperSvc := filterpaper.NewFilterPaperService(filterPaperRepo)
 	mineralProfileSvc := mineralprofile.NewMineralProfileService(mineralProfileRepo)
-	experimentSvc := experiment.NewExperimentService(experimentRepo, experimentTagsRepo, issueTagsRepo, coffeeSvc, filterPaperSvc)
+	effectMappingSvc := effectmapping.NewEffectMappingService(effectMappingRepo)
+	experimentSvc := experiment.NewExperimentService(experimentRepo, experimentTagsRepo, issueTagsRepo, coffeeSvc, filterPaperSvc, effectMappingSvc)
 	defaultsSvc := defaults.NewDefaultsService(userDefaultsRepo)
 	tagsSvc := tags.NewTagsService(issueTagsRepo)
-	effectMappingSvc := effectmapping.NewEffectMappingService(effectMappingRepo)
 
 	// Middleware
 	authMiddleware := middleware.NewAuthMiddleware(jwtSvc)

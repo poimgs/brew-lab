@@ -140,12 +140,37 @@ export interface Experiment {
   // Computed
   days_off_roast?: number;
   calculated_ratio?: number;
+  // Target profile
+  target_acidity?: number;
+  target_sweetness?: number;
+  target_bitterness?: number;
+  target_body?: number;
+  target_aroma?: number;
+  // Computed gaps
+  gaps?: SensoryGaps;
   // Nested
   coffee?: Coffee;
   filter_paper?: FilterPaper;
   issue_tags?: IssueTag[];
   created_at: string;
   updated_at: string;
+}
+
+export type GapDirection = "increase" | "decrease" | "on_target";
+
+export interface SensoryGap {
+  current?: number;
+  target?: number;
+  direction: GapDirection;
+  amount: number;
+}
+
+export interface SensoryGaps {
+  acidity?: SensoryGap;
+  sweetness?: SensoryGap;
+  bitterness?: SensoryGap;
+  body?: SensoryGap;
+  aroma?: SensoryGap;
 }
 
 export interface ExperimentFormData {
@@ -183,6 +208,12 @@ export interface ExperimentFormData {
   aftertaste_notes?: string;
   improvement_notes?: string;
   tag_ids?: string[];
+  // Target profile
+  target_acidity?: number;
+  target_sweetness?: number;
+  target_bitterness?: number;
+  target_body?: number;
+  target_aroma?: number;
 }
 
 export interface ExperimentListParams {
@@ -207,6 +238,11 @@ export interface ExperimentListResponse {
 
 export interface ExperimentResponse {
   data: Experiment;
+}
+
+export interface OptimizationResponse {
+  experiment: Experiment;
+  relevant_mappings: EffectMapping[];
 }
 
 export interface TagListResponse {
@@ -573,6 +609,10 @@ class ApiClient {
     return this.request<void>(`/experiments/${experimentId}/tags/${tagId}`, {
       method: "DELETE",
     });
+  }
+
+  async getExperimentOptimization(id: string): Promise<OptimizationResponse> {
+    return this.request<OptimizationResponse>(`/experiments/${id}/optimization`);
   }
 
   // Tags methods

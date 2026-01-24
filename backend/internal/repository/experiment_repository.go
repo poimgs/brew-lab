@@ -30,7 +30,8 @@ var experimentColumns = `id, user_id, coffee_id, brew_date, overall_notes, overa
 	final_weight, tds, extraction_yield,
 	aroma_intensity, acidity_intensity, sweetness_intensity, bitterness_intensity, body_weight, aftertaste_duration, aftertaste_intensity,
 	aroma_notes, flavor_notes, aftertaste_notes,
-	improvement_notes, created_at, updated_at`
+	improvement_notes, created_at, updated_at,
+	target_acidity, target_sweetness, target_bitterness, target_body, target_aroma`
 
 func scanExperiment(row pgx.Row) (*models.Experiment, error) {
 	exp := &models.Experiment{}
@@ -43,6 +44,7 @@ func scanExperiment(row pgx.Row) (*models.Experiment, error) {
 		&exp.AromaIntensity, &exp.AcidityIntensity, &exp.SweetnessIntensity, &exp.BitternessIntensity, &exp.BodyWeight, &exp.AftertasteDuration, &exp.AftertasteIntensity,
 		&exp.AromaNotes, &exp.FlavorNotes, &exp.AftertasteNotes,
 		&exp.ImprovementNotes, &exp.CreatedAt, &exp.UpdatedAt,
+		&exp.TargetAcidity, &exp.TargetSweetness, &exp.TargetBitterness, &exp.TargetBody, &exp.TargetAroma,
 	)
 	return exp, err
 }
@@ -58,6 +60,7 @@ func scanExperimentRows(rows pgx.Rows) (*models.Experiment, error) {
 		&exp.AromaIntensity, &exp.AcidityIntensity, &exp.SweetnessIntensity, &exp.BitternessIntensity, &exp.BodyWeight, &exp.AftertasteDuration, &exp.AftertasteIntensity,
 		&exp.AromaNotes, &exp.FlavorNotes, &exp.AftertasteNotes,
 		&exp.ImprovementNotes, &exp.CreatedAt, &exp.UpdatedAt,
+		&exp.TargetAcidity, &exp.TargetSweetness, &exp.TargetBitterness, &exp.TargetBody, &exp.TargetAroma,
 	)
 	return exp, err
 }
@@ -77,9 +80,10 @@ func (r *ExperimentRepository) Create(ctx context.Context, userID uuid.UUID, inp
 			final_weight, tds, extraction_yield,
 			aroma_intensity, acidity_intensity, sweetness_intensity, bitterness_intensity, body_weight, aftertaste_duration, aftertaste_intensity,
 			aroma_notes, flavor_notes, aftertaste_notes,
-			improvement_notes
+			improvement_notes,
+			target_acidity, target_sweetness, target_bitterness, target_body, target_aroma
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41)
 		RETURNING %s
 	`, experimentColumns)
 
@@ -92,6 +96,7 @@ func (r *ExperimentRepository) Create(ctx context.Context, userID uuid.UUID, inp
 		input.AromaIntensity, input.AcidityIntensity, input.SweetnessIntensity, input.BitternessIntensity, input.BodyWeight, input.AftertasteDuration, input.AftertasteIntensity,
 		input.AromaNotes, input.FlavorNotes, input.AftertasteNotes,
 		input.ImprovementNotes,
+		input.TargetAcidity, input.TargetSweetness, input.TargetBitterness, input.TargetBody, input.TargetAroma,
 	))
 
 	if err != nil {
@@ -386,6 +391,21 @@ func (r *ExperimentRepository) Update(ctx context.Context, userID, experimentID 
 	if input.ImprovementNotes != nil {
 		existing.ImprovementNotes = input.ImprovementNotes
 	}
+	if input.TargetAcidity != nil {
+		existing.TargetAcidity = input.TargetAcidity
+	}
+	if input.TargetSweetness != nil {
+		existing.TargetSweetness = input.TargetSweetness
+	}
+	if input.TargetBitterness != nil {
+		existing.TargetBitterness = input.TargetBitterness
+	}
+	if input.TargetBody != nil {
+		existing.TargetBody = input.TargetBody
+	}
+	if input.TargetAroma != nil {
+		existing.TargetAroma = input.TargetAroma
+	}
 
 	query := fmt.Sprintf(`
 		UPDATE experiments SET
@@ -396,8 +416,10 @@ func (r *ExperimentRepository) Update(ctx context.Context, userID, experimentID 
 			final_weight = $22, tds = $23, extraction_yield = $24,
 			aroma_intensity = $25, acidity_intensity = $26, sweetness_intensity = $27, bitterness_intensity = $28, body_weight = $29, aftertaste_duration = $30, aftertaste_intensity = $31,
 			aroma_notes = $32, flavor_notes = $33, aftertaste_notes = $34,
-			improvement_notes = $35, updated_at = NOW()
-		WHERE id = $36 AND user_id = $37
+			improvement_notes = $35,
+			target_acidity = $36, target_sweetness = $37, target_bitterness = $38, target_body = $39, target_aroma = $40,
+			updated_at = NOW()
+		WHERE id = $41 AND user_id = $42
 		RETURNING %s
 	`, experimentColumns)
 
@@ -410,6 +432,7 @@ func (r *ExperimentRepository) Update(ctx context.Context, userID, experimentID 
 		existing.AromaIntensity, existing.AcidityIntensity, existing.SweetnessIntensity, existing.BitternessIntensity, existing.BodyWeight, existing.AftertasteDuration, existing.AftertasteIntensity,
 		existing.AromaNotes, existing.FlavorNotes, existing.AftertasteNotes,
 		existing.ImprovementNotes,
+		existing.TargetAcidity, existing.TargetSweetness, existing.TargetBitterness, existing.TargetBody, existing.TargetAroma,
 		experimentID, userID,
 	))
 
