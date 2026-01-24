@@ -44,12 +44,13 @@ Source: James Hoffmann
 | variable | string | Yes | Input variable name (see Input Variables below) |
 | direction | enum | Yes | "increase" or "decrease" |
 | tick_description | string | Yes | Human-readable tick unit (e.g., "5°C", "1 ratio step") |
-| effects | array[Effect] | Yes | Array of output effects (JSONB) |
 | source | string | No | Where knowledge came from (book, video, personal) |
 | notes | text | No | Additional context or caveats |
 | active | boolean | Yes | Whether mapping is used in reference (default: true) |
 | created_at | timestamp | Auto | Record creation time |
 | updated_at | timestamp | Auto | Last modification time |
+
+Effects are stored in a separate `effect_mapping_effects` table (see below).
 
 ### Input Variables
 
@@ -67,17 +68,23 @@ Standardized input variable names for consistency:
 | `pour_technique` | Categorical | Straight vs circular pour |
 | `filter_type` | Categorical | Filter paper type |
 
-### Effect Structure
+## Entity: Effect (Child Table)
 
-Each effect describes how one sensory outcome changes:
+Each effect describes how one sensory outcome changes. Effects are stored in a normalized child table with foreign key to `effect_mappings`.
+
+### Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| output_variable | string | Yes | Sensory variable affected |
+| id | UUID | Auto | Unique identifier |
+| effect_mapping_id | UUID | Auto | Parent mapping reference |
+| output_variable | string | Yes | Sensory variable affected (constrained) |
 | direction | enum | Yes | "increase", "decrease", or "none" |
 | range_min | decimal | No | Minimum expected change (e.g., 0.5) |
 | range_max | decimal | No | Maximum expected change (e.g., 1.5) |
 | confidence | enum | Yes | "low", "medium", or "high" |
+
+**Constraint:** Each `output_variable` can only appear once per mapping (unique on `effect_mapping_id` + `output_variable`).
 
 ### Output Variables
 
@@ -96,14 +103,18 @@ Sensory outcomes that can be affected:
 ### Database Schema
 
 ```sql
+-- Parent table: effect mappings
 CREATE TABLE effect_mappings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    variable VARCHAR(50) NOT NULL,
+    variable VARCHAR(50) NOT NULL CHECK (variable IN (
+        'temperature', 'ratio', 'grind_size', 'bloom_time',
+        'total_brew_time', 'coffee_weight', 'pour_count',
+        'pour_technique', 'filter_type'
+    )),
     direction VARCHAR(20) NOT NULL CHECK (direction IN ('increase', 'decrease')),
     tick_description VARCHAR(100) NOT NULL,
-    effects JSONB NOT NULL,
     source VARCHAR(255),
     notes TEXT,
     active BOOLEAN DEFAULT TRUE,
@@ -112,39 +123,39 @@ CREATE TABLE effect_mappings (
 );
 
 CREATE INDEX idx_effect_mappings_user_id ON effect_mappings(user_id);
-CREATE INDEX idx_effect_mappings_variable ON effect_mappings(variable);
-CREATE INDEX idx_effect_mappings_active ON effect_mappings(active) WHERE active = TRUE;
+CREATE INDEX idx_effect_mappings_variable ON effect_mappings(user_id, variable);
+CREATE INDEX idx_effect_mappings_active ON effect_mappings(user_id, active) WHERE active = TRUE;
+
+-- Child table: individual effects
+CREATE TABLE effect_mapping_effects (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    effect_mapping_id UUID NOT NULL REFERENCES effect_mappings(id) ON DELETE CASCADE,
+    output_variable VARCHAR(50) NOT NULL CHECK (output_variable IN (
+        'acidity', 'sweetness', 'bitterness', 'body',
+        'aroma', 'aftertaste', 'overall'
+    )),
+    direction VARCHAR(20) NOT NULL CHECK (direction IN ('increase', 'decrease', 'none')),
+    range_min DECIMAL(4,2),
+    range_max DECIMAL(4,2),
+    confidence VARCHAR(20) NOT NULL CHECK (confidence IN ('low', 'medium', 'high')),
+
+    -- Each output variable can only appear once per mapping
+    UNIQUE (effect_mapping_id, output_variable)
+);
+
+CREATE INDEX idx_effect_mapping_effects_mapping_id ON effect_mapping_effects(effect_mapping_id);
+CREATE INDEX idx_effect_mapping_effects_output ON effect_mapping_effects(output_variable);
 ```
 
-### JSONB Effects Structure
+### Schema Benefits
 
-```json
-{
-  "effects": [
-    {
-      "output_variable": "acidity",
-      "direction": "decrease",
-      "range_min": 1,
-      "range_max": 2,
-      "confidence": "high"
-    },
-    {
-      "output_variable": "sweetness",
-      "direction": "increase",
-      "range_min": 0,
-      "range_max": 1,
-      "confidence": "medium"
-    },
-    {
-      "output_variable": "body",
-      "direction": "none",
-      "range_min": null,
-      "range_max": null,
-      "confidence": "high"
-    }
-  ]
-}
-```
+Using normalized tables instead of JSONB provides:
+
+- **Database-level validation**: CHECK constraints enforce valid enum values
+- **Referential integrity**: CASCADE delete ensures no orphaned effects
+- **Unique constraint**: Prevents duplicate output variables per mapping
+- **Efficient queries**: Standard B-tree indexes, simple JOINs
+- **Easier migrations**: Standard ALTER TABLE for schema changes
 
 ---
 
@@ -341,13 +352,14 @@ Effects are defined per "tick" (standardized unit) because:
 - Avoids absolute value confusion
 - Enables "2 ticks lower" reasoning
 
-### JSONB for Effects
+### Normalized Effects Table
 
-Effects stored as JSONB array because:
-- Variable number of effects per mapping
-- Flexible structure for future additions
-- Efficient querying for specific outputs
-- Natural JSON API representation
+Effects stored in a separate table rather than JSONB because:
+- Database enforces valid enum values via CHECK constraints
+- Unique constraint prevents duplicate output variables per mapping
+- Standard indexing and querying patterns
+- Easier schema migrations with ALTER TABLE
+- API still returns nested JSON (repository handles JOIN)
 
 ### Separate Increase/Decrease Mappings
 
