@@ -66,10 +66,10 @@ Self-contained feature specifications. Each includes entity definitions, API end
 
 | Status | Count | Features |
 |--------|-------|----------|
-| ✅ Complete | 6 | authentication, coffee-library, brew-tracking, reference-data, effect-mappings, brew-optimization |
-| 🚧 Not Started | 2 | experiment-review, recommendations |
+| ✅ Complete | 7 | authentication, coffee-library, brew-tracking, reference-data, effect-mappings, brew-optimization, recommendations |
+| 🚧 Not Started | 1 | experiment-review |
 
-**Overall Progress: 6/8 features (75%)**
+**Overall Progress: 7/8 features (88%)**
 
 ### Feature Details
 
@@ -82,7 +82,7 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | [brew-optimization.md](features/brew-optimization.md) | ✅ Complete | brew-tracking | Target profiles, radar chart, gap analysis |
 | [experiment-review.md](features/experiment-review.md) | 🚧 Not Started | brew-tracking, effect-mappings | List/compare/analyze views, correlation analysis, effect mapping management |
 | [effect-mappings.md](features/effect-mappings.md) | ✅ Complete | authentication | Effect mapping entity + CRUD API |
-| [recommendations.md](features/recommendations.md) | 🚧 Not Started | brew-optimization, effect-mappings | Gap-based recommendations, mapping matching |
+| [recommendations.md](features/recommendations.md) | ✅ Complete | brew-optimization, effect-mappings | Gap-based recommendations, mapping matching |
 
 ### Dependency Graph
 
@@ -142,9 +142,9 @@ authentication (core)
 | Experiment API | ✅ Complete | `backend/internal/handlers/experiment/` | Full CRUD + analyze endpoints |
 | Reference Data API | ✅ Complete | `backend/internal/handlers/filterpaper/`, `mineralprofile/` | Filter papers CRUD + mineral profiles |
 | Effect Mappings API | ✅ Complete | `backend/internal/handlers/effectmapping/` | CRUD + relevance matching |
-| Recommendations API | 🚧 Not Started | — | Gap-based matching |
+| Recommendations API | ✅ Complete | `backend/internal/handlers/recommendation/` | Gap-based matching, dismiss/undo, try mapping |
 
-**Backend Progress: 6/7 components (86%)**
+**Backend Progress: 7/7 components (100%)**
 
 ### Frontend
 
@@ -157,15 +157,15 @@ authentication (core)
 | Brew Optimization | ✅ Complete | `frontend/src/features/experiments/components/optimization/` | Target inputs, radar chart, gap analysis |
 | Experiment Review | 🚧 Not Started | — | List, compare, analyze views, correlation matrix |
 | Effect Mappings UI | ✅ Complete | `frontend/src/features/effect-mappings/` | CRUD + filtering |
-| Recommendations | 🚧 Not Started | — | Gap-based suggestions panel |
+| Recommendations | ✅ Complete | `frontend/src/features/experiments/components/optimization/` | Gap-based suggestions, dismiss/try actions |
 
-**Frontend Progress: 6/8 components (75%)**
+**Frontend Progress: 7/8 components (88%)**
 
 ### Overall Project Progress
 
 | Layer | Complete | Total | Progress |
 |-------|----------|-------|----------|
 | Specs | 8 | 8 | 100% |
-| Backend | 6 | 7 | 86% |
-| Frontend | 6 | 8 | 75% |
-| **Total** | **20** | **23** | **87%** |
+| Backend | 7 | 7 | 100% |
+| Frontend | 7 | 8 | 88% |
+| **Total** | **22** | **23** | **96%** |

@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { SensoryRadarChart } from "./radar-chart"
 import { GapSummary } from "./gap-summary"
 import { RelevantMappingsPanel } from "./relevant-mappings-panel"
-import { api, type OptimizationResponse, type Experiment } from "@/lib/api"
+import type { Experiment } from "@/lib/api"
 import { Loader2 } from "lucide-react"
+import { useRecommendations, useRecommendationMutations } from "../../hooks"
 
 interface OptimizationTabProps {
   experimentId: string
@@ -12,29 +13,43 @@ interface OptimizationTabProps {
 }
 
 export function OptimizationTab({ experimentId, experiment }: OptimizationTabProps) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [data, setData] = useState<OptimizationResponse | null>(null)
+  const navigate = useNavigate()
+  const {
+    recommendations,
+    isLoading,
+    error,
+    refetch,
+  } = useRecommendations(experimentId)
 
-  useEffect(() => {
-    fetchOptimization()
-  }, [experimentId])
+  const {
+    dismissMapping,
+    undoDismissMapping,
+    tryMapping,
+    isDismissing,
+    isUndoing,
+    isTrying,
+  } = useRecommendationMutations()
 
-  async function fetchOptimization() {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await api.getExperimentOptimization(experimentId)
-      setData(response)
-    } catch (err) {
-      console.error("Failed to fetch optimization data:", err)
-      setError(err instanceof Error ? err.message : "Failed to load optimization data")
-    } finally {
-      setLoading(false)
-    }
+  const handleDismiss = async (mappingId: string) => {
+    await dismissMapping(experimentId, mappingId)
+    await refetch()
   }
 
-  if (loading) {
+  const handleUndoDismiss = async (mappingId: string) => {
+    await undoDismissMapping(experimentId, mappingId)
+    await refetch()
+  }
+
+  const handleTryMapping = async (mappingId: string, notes?: string) => {
+    const newExperiment = await tryMapping(experimentId, {
+      mapping_id: mappingId,
+      notes,
+    })
+    // Navigate to the new experiment
+    navigate(`/experiments/${newExperiment.id}`)
+  }
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -76,7 +91,7 @@ export function OptimizationTab({ experimentId, experiment }: OptimizationTabPro
           <CardTitle className="text-lg">Current vs Target Profile</CardTitle>
         </CardHeader>
         <CardContent>
-          <SensoryRadarChart experiment={data?.experiment ?? experiment} />
+          <SensoryRadarChart experiment={experiment} />
         </CardContent>
       </Card>
 
@@ -92,13 +107,16 @@ export function OptimizationTab({ experimentId, experiment }: OptimizationTabPro
         </Card>
       )}
 
-      {/* Relevant Mappings */}
-      {data && (
-        <RelevantMappingsPanel
-          mappings={data.relevant_mappings}
-          gaps={data.experiment.gaps}
-        />
-      )}
+      {/* Recommendations */}
+      <RelevantMappingsPanel
+        recommendations={recommendations}
+        onDismiss={handleDismiss}
+        onUndoDismiss={handleUndoDismiss}
+        onTryMapping={handleTryMapping}
+        isDismissing={isDismissing}
+        isUndoing={isUndoing}
+        isTrying={isTrying}
+      />
     </div>
   )
 }

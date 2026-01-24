@@ -415,6 +415,169 @@ export interface FindRelevantResponse {
   mappings: EffectMapping[];
 }
 
+// Recommendation types
+export interface RecommendationResponse {
+  id: string;
+  name: string;
+  variable: InputVariable;
+  direction: MappingDirection;
+  tick_description: string;
+  source?: string;
+  notes?: string;
+  active: boolean;
+  effects: Effect[];
+  created_at: string;
+  updated_at: string;
+  helps_count: number;
+  helps_gaps: string[];
+  has_conflict: boolean;
+  score: number;
+  is_dismissed: boolean;
+}
+
+export interface RecommendationsResponse {
+  recommendations: RecommendationResponse[];
+  experiment_id: string;
+  total_count: number;
+}
+
+export interface ExperimentWithGaps {
+  id: string;
+  coffee_id?: string;
+  brew_date: string;
+  overall_notes: string;
+  overall_score?: number;
+  coffee?: Coffee;
+  gaps?: SensoryGaps;
+  active_gap_count: number;
+  recommendation_count: number;
+  created_at: string;
+}
+
+export interface ExperimentsWithGapsResponse {
+  experiments: ExperimentWithGaps[];
+  total_count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface TryMappingInput {
+  mapping_id: string;
+  notes?: string;
+}
+
+export interface DismissMappingInput {
+  mapping_id: string;
+}
+
+export interface GetRecommendationsInput {
+  experiment_id: string;
+}
+
+export interface DismissedMappingsResponse {
+  mapping_ids: string[];
+}
+
+// Compare types
+export interface CompareExperimentsInput {
+  experiment_ids: string[];
+}
+
+export type DeltaTrend = "increasing" | "decreasing" | "stable" | "variable";
+
+export interface DeltaInfo {
+  min: number | string;
+  max: number | string;
+  trend: DeltaTrend;
+}
+
+export interface CompareExperimentsResponse {
+  experiments: Experiment[];
+  deltas: Record<string, DeltaInfo>;
+}
+
+// Analyze types
+export interface AnalyzeExperimentsInput {
+  experiment_ids: string[];
+  min_samples?: number;
+}
+
+export interface CorrelationResult {
+  r: number;
+  n: number;
+  p: number;
+}
+
+export type InsightType =
+  | "strong_positive"
+  | "strong_negative"
+  | "moderate_positive"
+  | "moderate_negative";
+
+export interface Insight {
+  type: InsightType;
+  input: string;
+  outcome: string;
+  r: number;
+  message: string;
+}
+
+export type WarningType = "low_samples" | "missing_data" | "insufficient_variance";
+
+export interface Warning {
+  type: WarningType;
+  field?: string;
+  n?: number;
+  message: string;
+}
+
+export interface AnalyzeExperimentsResponse {
+  correlations: Record<string, Record<string, CorrelationResult>>;
+  inputs: string[];
+  outcomes: string[];
+  experiment_count: number;
+  insights: Insight[];
+  warnings: Warning[];
+}
+
+// Analyze Detail types
+export interface AnalyzeDetailInput {
+  experiment_ids: string[];
+  input_variable: string;
+  outcome_variable: string;
+}
+
+export interface ScatterPoint {
+  x: number;
+  y: number;
+  experiment_id: string;
+}
+
+export interface ScatterExperiment {
+  id: string;
+  brew_date: string;
+  coffee_name?: string;
+  input_value: number;
+  outcome_value: number;
+}
+
+export interface CorrelationDetail {
+  r: number;
+  n: number;
+  p: number;
+  interpretation: string;
+}
+
+export interface AnalyzeDetailResponse {
+  input_variable: string;
+  outcome_variable: string;
+  correlation: CorrelationDetail;
+  scatter_data: ScatterPoint[];
+  insight: string;
+  experiments: ScatterExperiment[];
+}
+
 class ApiClient {
   private accessToken: string | null = null;
 
@@ -748,6 +911,141 @@ class ApiClient {
   // Mineral Profile methods
   async listMineralProfiles(): Promise<MineralProfileListResponse> {
     return this.request<MineralProfileListResponse>("/mineral-profiles");
+  }
+
+  // Recommendation methods
+  async getRecommendations(
+    experimentId: string
+  ): Promise<RecommendationsResponse> {
+    return this.request<RecommendationsResponse>("/recommendations", {
+      method: "POST",
+      body: JSON.stringify({ experiment_id: experimentId }),
+    });
+  }
+
+  async dismissMapping(
+    experimentId: string,
+    mappingId: string
+  ): Promise<void> {
+    return this.request<void>(`/experiments/${experimentId}/dismiss-mapping`, {
+      method: "POST",
+      body: JSON.stringify({ mapping_id: mappingId }),
+    });
+  }
+
+  async undoDismissMapping(
+    experimentId: string,
+    mappingId: string
+  ): Promise<void> {
+    return this.request<void>(
+      `/experiments/${experimentId}/dismiss-mapping/${mappingId}`,
+      {
+        method: "DELETE",
+      }
+    );
+  }
+
+  async getDismissedMappings(
+    experimentId: string
+  ): Promise<DismissedMappingsResponse> {
+    return this.request<DismissedMappingsResponse>(
+      `/experiments/${experimentId}/dismissed-mappings`
+    );
+  }
+
+  async tryMapping(
+    experimentId: string,
+    input: TryMappingInput
+  ): Promise<ExperimentResponse> {
+    return this.request<ExperimentResponse>(
+      `/experiments/${experimentId}/try-mapping`,
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      }
+    );
+  }
+
+  async getExperimentsWithGaps(
+    page?: number,
+    pageSize?: number
+  ): Promise<ExperimentsWithGapsResponse> {
+    const searchParams = new URLSearchParams();
+    if (page !== undefined) {
+      searchParams.append("page", String(page));
+    }
+    if (pageSize !== undefined) {
+      searchParams.append("page_size", String(pageSize));
+    }
+    const query = searchParams.toString();
+    return this.request<ExperimentsWithGapsResponse>(
+      `/experiments/with-gaps${query ? `?${query}` : ""}`
+    );
+  }
+
+  // Compare experiments
+  async compareExperiments(
+    experimentIds: string[]
+  ): Promise<CompareExperimentsResponse> {
+    return this.request<CompareExperimentsResponse>("/experiments/compare", {
+      method: "POST",
+      body: JSON.stringify({ experiment_ids: experimentIds }),
+    });
+  }
+
+  // Analyze experiments
+  async analyzeExperiments(
+    input: AnalyzeExperimentsInput
+  ): Promise<AnalyzeExperimentsResponse> {
+    return this.request<AnalyzeExperimentsResponse>("/experiments/analyze", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  // Analyze detail
+  async analyzeDetail(
+    input: AnalyzeDetailInput
+  ): Promise<AnalyzeDetailResponse> {
+    return this.request<AnalyzeDetailResponse>("/experiments/analyze/detail", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  // Export experiments
+  async exportExperiments(
+    params?: ExperimentListParams,
+    format: "csv" | "json" = "csv"
+  ): Promise<Blob> {
+    const searchParams = new URLSearchParams();
+    searchParams.append("format", format);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          searchParams.append(key, String(value));
+        }
+      });
+    }
+
+    const headers: HeadersInit = {};
+    if (this.accessToken) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(
+      `${API_BASE}/experiments/export?${searchParams.toString()}`,
+      {
+        headers,
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Export failed");
+    }
+
+    return response.blob();
   }
 }
 

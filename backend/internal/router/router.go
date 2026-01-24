@@ -13,6 +13,7 @@ import (
 	experimentshandlers "github.com/poimgs/coffee-tracker/backend/internal/handlers/experiments"
 	filterpaperhandlers "github.com/poimgs/coffee-tracker/backend/internal/handlers/filterpaper"
 	mineralprofilehandlers "github.com/poimgs/coffee-tracker/backend/internal/handlers/mineralprofile"
+	recommendationhandlers "github.com/poimgs/coffee-tracker/backend/internal/handlers/recommendation"
 	tagshandlers "github.com/poimgs/coffee-tracker/backend/internal/handlers/tags"
 	"github.com/poimgs/coffee-tracker/backend/internal/middleware"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/auth"
@@ -22,22 +23,24 @@ import (
 	"github.com/poimgs/coffee-tracker/backend/internal/services/experiment"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/filterpaper"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/mineralprofile"
+	"github.com/poimgs/coffee-tracker/backend/internal/services/recommendation"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/tags"
 )
 
 type Config struct {
-	AuthService           *auth.AuthService
-	CoffeeService         *coffeeservice.CoffeeService
-	ExperimentService     *experiment.ExperimentService
-	DefaultsService       *defaults.DefaultsService
-	TagsService           *tags.TagsService
-	EffectMappingService  *effectmapping.EffectMappingService
-	FilterPaperService    *filterpaper.FilterPaperService
-	MineralProfileService *mineralprofile.MineralProfileService
-	AuthMiddleware        *middleware.AuthMiddleware
-	CORSMiddleware        func(http.Handler) http.Handler
-	LoginRateLimiter      func(http.Handler) http.Handler
-	CookieSecure          bool
+	AuthService            *auth.AuthService
+	CoffeeService          *coffeeservice.CoffeeService
+	ExperimentService      *experiment.ExperimentService
+	DefaultsService        *defaults.DefaultsService
+	TagsService            *tags.TagsService
+	EffectMappingService   *effectmapping.EffectMappingService
+	FilterPaperService     *filterpaper.FilterPaperService
+	MineralProfileService  *mineralprofile.MineralProfileService
+	RecommendationService  *recommendation.RecommendationService
+	AuthMiddleware         *middleware.AuthMiddleware
+	CORSMiddleware         func(http.Handler) http.Handler
+	LoginRateLimiter       func(http.Handler) http.Handler
+	CookieSecure           bool
 }
 
 func New(cfg *Config) *chi.Mux {
@@ -83,6 +86,11 @@ func New(cfg *Config) *chi.Mux {
 			r.Use(cfg.AuthMiddleware.Authenticate)
 			r.Get("/", experimentshandlers.NewListHandler(cfg.ExperimentService).ServeHTTP)
 			r.Post("/", experimentshandlers.NewCreateHandler(cfg.ExperimentService, validate).ServeHTTP)
+			r.Post("/compare", experimentshandlers.NewCompareHandler(cfg.ExperimentService, validate).ServeHTTP)
+			r.Post("/analyze", experimentshandlers.NewAnalyzeHandler(cfg.ExperimentService, validate).ServeHTTP)
+			r.Post("/analyze/detail", experimentshandlers.NewAnalyzeDetailHandler(cfg.ExperimentService, validate).ServeHTTP)
+			r.Get("/export", experimentshandlers.NewExportHandler(cfg.ExperimentService).ServeHTTP)
+			r.Get("/with-gaps", recommendationhandlers.NewWithGapsHandler(cfg.RecommendationService).ServeHTTP)
 			r.Route("/{id}", func(r chi.Router) {
 				r.Get("/", experimentshandlers.NewGetHandler(cfg.ExperimentService).ServeHTTP)
 				r.Put("/", experimentshandlers.NewUpdateHandler(cfg.ExperimentService, validate).ServeHTTP)
@@ -91,7 +99,16 @@ func New(cfg *Config) *chi.Mux {
 				r.Post("/tags", experimentshandlers.NewAddTagsHandler(cfg.ExperimentService).ServeHTTP)
 				r.Delete("/tags/{tagID}", experimentshandlers.NewRemoveTagHandler(cfg.ExperimentService).ServeHTTP)
 				r.Get("/optimization", experimentshandlers.NewOptimizationHandler(cfg.ExperimentService).ServeHTTP)
+				r.Post("/dismiss-mapping", recommendationhandlers.NewDismissMappingHandler(cfg.RecommendationService, validate).ServeHTTP)
+				r.Get("/dismissed-mappings", recommendationhandlers.NewDismissedMappingsHandler(cfg.RecommendationService).ServeHTTP)
+				r.Delete("/dismiss-mapping/{mappingID}", recommendationhandlers.NewUndoDismissHandler(cfg.RecommendationService).ServeHTTP)
+				r.Post("/try-mapping", recommendationhandlers.NewTryMappingHandler(cfg.RecommendationService, validate).ServeHTTP)
 			})
+		})
+
+		r.Route("/recommendations", func(r chi.Router) {
+			r.Use(cfg.AuthMiddleware.Authenticate)
+			r.Post("/", recommendationhandlers.NewRecommendationsHandler(cfg.RecommendationService, validate).ServeHTTP)
 		})
 
 		r.Route("/defaults", func(r chi.Router) {

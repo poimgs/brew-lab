@@ -8,6 +8,7 @@ import {
   NewExperimentPage,
   ExperimentDetailPage,
   DefaultsPage,
+  RecommendationsOverviewPage,
 } from "@/features/experiments"
 import { EffectMappingsPage } from "@/features/effect-mappings"
 import { ReferenceDataPage } from "@/features/reference-data"
@@ -79,6 +80,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ReferenceDataPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recommendations"
+            element={
+              <ProtectedRoute>
+                <RecommendationsOverviewPage />
               </ProtectedRoute>
             }
           />

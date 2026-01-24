@@ -21,6 +21,7 @@ import (
 	"github.com/poimgs/coffee-tracker/backend/internal/services/experiment"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/filterpaper"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/mineralprofile"
+	"github.com/poimgs/coffee-tracker/backend/internal/services/recommendation"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/tags"
 )
 
@@ -49,6 +50,7 @@ func main() {
 	effectMappingRepo := repository.NewEffectMappingRepository(pool)
 	filterPaperRepo := repository.NewFilterPaperRepository(pool)
 	mineralProfileRepo := repository.NewMineralProfileRepository(pool)
+	dismissalRepo := repository.NewDismissalRepository(pool)
 
 	// Auth services
 	passwordSvc := auth.NewPasswordService(cfg.BcryptCost)
@@ -63,6 +65,7 @@ func main() {
 	experimentSvc := experiment.NewExperimentService(experimentRepo, experimentTagsRepo, issueTagsRepo, coffeeSvc, filterPaperSvc, effectMappingSvc)
 	defaultsSvc := defaults.NewDefaultsService(userDefaultsRepo)
 	tagsSvc := tags.NewTagsService(issueTagsRepo)
+	recommendationSvc := recommendation.NewRecommendationService(dismissalRepo, experimentRepo, effectMappingSvc, experimentSvc, experimentSvc)
 
 	// Middleware
 	authMiddleware := middleware.NewAuthMiddleware(jwtSvc)
@@ -78,6 +81,7 @@ func main() {
 		EffectMappingService:  effectMappingSvc,
 		FilterPaperService:    filterPaperSvc,
 		MineralProfileService: mineralProfileSvc,
+		RecommendationService: recommendationSvc,
 		AuthMiddleware:        authMiddleware,
 		CORSMiddleware:        corsMiddleware,
 		LoginRateLimiter:      loginRateLimiter,
