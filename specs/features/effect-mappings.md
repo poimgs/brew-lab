@@ -65,7 +65,7 @@ Standardized input variable names for consistency:
 | `coffee_weight` | 1 gram | Dose of coffee |
 | `pour_count` | 1 pour | Number of pours |
 | `pour_technique` | Categorical | Straight vs circular pour |
-| `filter_type` | Categorical | Filter paper type |
+| `filter_paper` | Categorical | Filter paper type (via FK) |
 
 ### Effect Structure
 

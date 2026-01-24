@@ -323,10 +323,10 @@ export function ExperimentDetailPage() {
                     <dd className="font-mono">{experiment.water_temperature}°C</dd>
                   </div>
                 )}
-                {experiment.filter_type && (
+                {experiment.filter_paper && (
                   <div>
-                    <dt className="text-muted-foreground">Filter</dt>
-                    <dd>{experiment.filter_type}</dd>
+                    <dt className="text-muted-foreground">Filter Paper</dt>
+                    <dd>{experiment.filter_paper.name}{experiment.filter_paper.brand ? ` (${experiment.filter_paper.brand})` : ""}</dd>
                   </div>
                 )}
               </dl>

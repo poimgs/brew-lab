@@ -106,7 +106,7 @@ export interface Experiment {
   ratio?: number;
   grind_size?: string;
   water_temperature?: number;
-  filter_type?: string;
+  filter_paper_id?: string;
   // Brew
   bloom_water?: number;
   bloom_time?: number;
@@ -142,6 +142,7 @@ export interface Experiment {
   calculated_ratio?: number;
   // Nested
   coffee?: Coffee;
+  filter_paper?: FilterPaper;
   issue_tags?: IssueTag[];
   created_at: string;
   updated_at: string;
@@ -156,7 +157,7 @@ export interface ExperimentFormData {
   water_weight?: number;
   grind_size?: string;
   water_temperature?: number;
-  filter_type?: string;
+  filter_paper_id?: string;
   bloom_water?: number;
   bloom_time?: number;
   pour_1?: string;
@@ -222,6 +223,160 @@ export interface UserDefaults {
 
 export interface DefaultsResponse {
   data: UserDefaults;
+}
+
+// Filter Paper types
+export interface FilterPaper {
+  id: string;
+  name: string;
+  brand?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FilterPaperFormData {
+  name: string;
+  brand?: string;
+  notes?: string;
+}
+
+export interface FilterPaperListResponse {
+  filter_papers: FilterPaper[];
+  total: number;
+}
+
+// Mineral Profile types
+export interface MineralProfile {
+  id: string;
+  name: string;
+  brand?: string;
+  hardness?: number;
+  alkalinity?: number;
+  magnesium?: number;
+  calcium?: number;
+  potassium?: number;
+  sodium?: number;
+  chloride?: number;
+  sulfate?: number;
+  bicarbonate?: number;
+  typical_dose?: string;
+  taste_effects?: string;
+  created_at: string;
+}
+
+export interface MineralProfileListResponse {
+  mineral_profiles: MineralProfile[];
+  total: number;
+}
+
+// Effect Mapping types
+export type InputVariable =
+  | "temperature"
+  | "ratio"
+  | "grind_size"
+  | "bloom_time"
+  | "total_brew_time"
+  | "coffee_weight"
+  | "pour_count"
+  | "pour_technique"
+  | "filter_type";
+
+export type OutputVariable =
+  | "acidity"
+  | "sweetness"
+  | "bitterness"
+  | "body"
+  | "aroma"
+  | "aftertaste"
+  | "overall";
+
+export type MappingDirection = "increase" | "decrease";
+export type EffectDirection = "increase" | "decrease" | "none";
+export type Confidence = "low" | "medium" | "high";
+
+export interface Effect {
+  id: string;
+  output_variable: OutputVariable;
+  direction: EffectDirection;
+  range_min?: number;
+  range_max?: number;
+  confidence: Confidence;
+}
+
+export interface EffectMapping {
+  id: string;
+  name: string;
+  variable: InputVariable;
+  direction: MappingDirection;
+  tick_description: string;
+  source?: string;
+  notes?: string;
+  active: boolean;
+  effects: Effect[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EffectInput {
+  output_variable: OutputVariable;
+  direction: EffectDirection;
+  range_min?: number;
+  range_max?: number;
+  confidence: Confidence;
+}
+
+export interface EffectMappingFormData {
+  name: string;
+  variable: InputVariable;
+  direction: MappingDirection;
+  tick_description: string;
+  source?: string;
+  notes?: string;
+  effects: EffectInput[];
+}
+
+export interface EffectMappingUpdateData {
+  name?: string;
+  variable?: InputVariable;
+  direction?: MappingDirection;
+  tick_description?: string;
+  source?: string;
+  notes?: string;
+  active?: boolean;
+  effects?: EffectInput[];
+}
+
+export interface EffectMappingListParams {
+  page?: number;
+  page_size?: number;
+  variable?: InputVariable;
+  active?: boolean;
+  search?: string;
+  sort_by?: "created_at" | "updated_at" | "name" | "variable";
+  sort_dir?: "asc" | "desc";
+}
+
+export interface EffectMappingListResponse {
+  mappings: EffectMapping[];
+  total_count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface GapInput {
+  output_variable: OutputVariable;
+  current_value: number;
+  target_value: number;
+}
+
+export interface FindRelevantInput {
+  gaps: GapInput[];
+}
+
+export interface FindRelevantResponse {
+  mappings: EffectMapping[];
 }
 
 class ApiClient {
@@ -454,6 +609,105 @@ class ApiClient {
     return this.request<void>(`/defaults/${field}`, {
       method: "DELETE",
     });
+  }
+
+  // Effect Mapping methods
+  async listEffectMappings(
+    params?: EffectMappingListParams
+  ): Promise<EffectMappingListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          searchParams.append(key, String(value));
+        }
+      });
+    }
+    const query = searchParams.toString();
+    return this.request<EffectMappingListResponse>(
+      `/effect-mappings${query ? `?${query}` : ""}`
+    );
+  }
+
+  async getEffectMapping(id: string): Promise<EffectMapping> {
+    return this.request<EffectMapping>(`/effect-mappings/${id}`);
+  }
+
+  async createEffectMapping(
+    data: EffectMappingFormData
+  ): Promise<EffectMapping> {
+    return this.request<EffectMapping>("/effect-mappings", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateEffectMapping(
+    id: string,
+    data: EffectMappingUpdateData
+  ): Promise<EffectMapping> {
+    return this.request<EffectMapping>(`/effect-mappings/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteEffectMapping(id: string): Promise<void> {
+    return this.request<void>(`/effect-mappings/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async toggleEffectMapping(id: string): Promise<EffectMapping> {
+    return this.request<EffectMapping>(`/effect-mappings/${id}/toggle`, {
+      method: "PATCH",
+    });
+  }
+
+  async findRelevantMappings(
+    input: FindRelevantInput
+  ): Promise<FindRelevantResponse> {
+    return this.request<FindRelevantResponse>("/effect-mappings/relevant", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  // Filter Paper methods
+  async listFilterPapers(): Promise<FilterPaperListResponse> {
+    return this.request<FilterPaperListResponse>("/filter-papers");
+  }
+
+  async getFilterPaper(id: string): Promise<FilterPaper> {
+    return this.request<FilterPaper>(`/filter-papers/${id}`);
+  }
+
+  async createFilterPaper(data: FilterPaperFormData): Promise<FilterPaper> {
+    return this.request<FilterPaper>("/filter-papers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateFilterPaper(
+    id: string,
+    data: FilterPaperFormData
+  ): Promise<FilterPaper> {
+    return this.request<FilterPaper>(`/filter-papers/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteFilterPaper(id: string): Promise<void> {
+    return this.request<void>(`/filter-papers/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  // Mineral Profile methods
+  async listMineralProfiles(): Promise<MineralProfileListResponse> {
+    return this.request<MineralProfileListResponse>("/mineral-profiles");
   }
 }
 

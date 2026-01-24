@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import type { ExperimentFormData } from "@/lib/api"
+import { useFilterPapers } from "@/features/reference-data/hooks/use-filter-papers"
 
 interface PreBrewSectionProps {
   data: Partial<ExperimentFormData>
@@ -17,19 +18,13 @@ interface PreBrewSectionProps {
   calculatedRatio?: number
 }
 
-const FILTER_TYPES = [
-  "Paper (bleached)",
-  "Paper (unbleached)",
-  "Metal",
-  "Cloth",
-  "Other",
-]
-
 export function PreBrewSection({
   data,
   onChange,
   calculatedRatio,
 }: PreBrewSectionProps) {
+  const { filterPapers, isLoading: isLoadingFilterPapers } = useFilterPapers()
+
   return (
     <FormSection
       title="Pre-Brew Parameters"
@@ -103,20 +98,21 @@ export function PreBrewSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="filter_type">Filter Type</Label>
+          <Label htmlFor="filter_paper_id">Filter Paper</Label>
           <Select
-            value={data.filter_type ?? ""}
+            value={data.filter_paper_id ?? ""}
             onValueChange={(value) =>
-              onChange({ filter_type: value || undefined })
+              onChange({ filter_paper_id: value || undefined })
             }
+            disabled={isLoadingFilterPapers}
           >
-            <SelectTrigger id="filter_type">
-              <SelectValue placeholder="Select filter" />
+            <SelectTrigger id="filter_paper_id">
+              <SelectValue placeholder={isLoadingFilterPapers ? "Loading..." : "Select filter paper"} />
             </SelectTrigger>
             <SelectContent>
-              {FILTER_TYPES.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {type}
+              {filterPapers.map((paper) => (
+                <SelectItem key={paper.id} value={paper.id}>
+                  {paper.name}{paper.brand ? ` (${paper.brand})` : ""}
                 </SelectItem>
               ))}
             </SelectContent>

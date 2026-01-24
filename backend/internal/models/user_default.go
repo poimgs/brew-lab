@@ -38,7 +38,7 @@ type SetUserDefaultsInput struct {
 var ValidDefaultFields = map[string]bool{
 	"grind_size":        true,
 	"water_temperature": true,
-	"filter_type":       true,
+	"filter_paper_id":   true,
 	"coffee_weight":     true,
 	"water_weight":      true,
 	"ratio":             true,

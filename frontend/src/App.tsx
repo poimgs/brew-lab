@@ -9,6 +9,8 @@ import {
   ExperimentDetailPage,
   DefaultsPage,
 } from "@/features/experiments"
+import { EffectMappingsPage } from "@/features/effect-mappings"
+import { ReferenceDataPage } from "@/features/reference-data"
 
 function App() {
   return (
@@ -61,6 +63,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <DefaultsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/effect-mappings"
+            element={
+              <ProtectedRoute>
+                <EffectMappingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings/reference-data"
+            element={
+              <ProtectedRoute>
+                <ReferenceDataPage />
               </ProtectedRoute>
             }
           />

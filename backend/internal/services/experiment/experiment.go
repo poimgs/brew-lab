@@ -21,11 +21,17 @@ type CoffeeGetter interface {
 	GetByID(ctx context.Context, userID, coffeeID uuid.UUID) (*models.CoffeeResponse, error)
 }
 
+// FilterPaperGetter interface for filter paper service dependency
+type FilterPaperGetter interface {
+	GetByID(ctx context.Context, userID, filterPaperID uuid.UUID) (*models.FilterPaperResponse, error)
+}
+
 type ExperimentService struct {
 	experimentRepo     *repository.ExperimentRepository
 	experimentTagsRepo *repository.ExperimentTagsRepository
 	issueTagsRepo      *repository.IssueTagsRepository
 	coffeeGetter       CoffeeGetter
+	filterPaperGetter  FilterPaperGetter
 }
 
 func NewExperimentService(
@@ -33,12 +39,14 @@ func NewExperimentService(
 	experimentTagsRepo *repository.ExperimentTagsRepository,
 	issueTagsRepo *repository.IssueTagsRepository,
 	coffeeGetter CoffeeGetter,
+	filterPaperGetter FilterPaperGetter,
 ) *ExperimentService {
 	return &ExperimentService{
 		experimentRepo:     experimentRepo,
 		experimentTagsRepo: experimentTagsRepo,
 		issueTagsRepo:      issueTagsRepo,
 		coffeeGetter:       coffeeGetter,
+		filterPaperGetter:  filterPaperGetter,
 	}
 }
 
@@ -74,7 +82,7 @@ func (s *ExperimentService) Create(ctx context.Context, userID uuid.UUID, input 
 	}
 
 	// Build response
-	return s.buildResponse(ctx, exp, coffeeResp)
+	return s.buildResponse(ctx, exp, userID, coffeeResp)
 }
 
 func (s *ExperimentService) GetByID(ctx context.Context, userID, experimentID uuid.UUID) (*models.ExperimentResponse, error) {
@@ -89,7 +97,7 @@ func (s *ExperimentService) GetByID(ctx context.Context, userID, experimentID uu
 		coffeeResp, _ = s.coffeeGetter.GetByID(ctx, userID, *exp.CoffeeID)
 	}
 
-	return s.buildResponse(ctx, exp, coffeeResp)
+	return s.buildResponse(ctx, exp, userID, coffeeResp)
 }
 
 type ListExperimentsInput struct {
@@ -140,12 +148,36 @@ func (s *ExperimentService) List(ctx context.Context, userID uuid.UUID, input *L
 		}
 	}
 
+	// Collect filter paper IDs
+	filterPaperIDs := make(map[uuid.UUID]bool)
+	for _, exp := range result.Experiments {
+		if exp.FilterPaperID != nil {
+			filterPaperIDs[*exp.FilterPaperID] = true
+		}
+	}
+
+	// Batch fetch filter papers
+	filterPapersMap := make(map[uuid.UUID]*models.FilterPaperResponse)
+	if s.filterPaperGetter != nil {
+		for fpID := range filterPaperIDs {
+			fp, err := s.filterPaperGetter.GetByID(ctx, userID, fpID)
+			if err == nil {
+				filterPapersMap[fpID] = fp
+			}
+		}
+	}
+
 	// Build responses
 	responses := make([]models.ExperimentResponse, len(result.Experiments))
 	for i, exp := range result.Experiments {
 		var coffeeResp *models.CoffeeResponse
 		if exp.CoffeeID != nil {
 			coffeeResp = coffeesMap[*exp.CoffeeID]
+		}
+
+		var filterPaperResp *models.FilterPaperResponse
+		if exp.FilterPaperID != nil {
+			filterPaperResp = filterPapersMap[*exp.FilterPaperID]
 		}
 
 		tags := tagsMap[exp.ID]
@@ -155,7 +187,7 @@ func (s *ExperimentService) List(ctx context.Context, userID uuid.UUID, input *L
 		}
 
 		daysOffRoast := s.calculateDaysOffRoast(coffeeResp, exp)
-		resp := exp.ToResponse(coffeeResp, tagResponses, daysOffRoast)
+		resp := exp.ToResponse(coffeeResp, filterPaperResp, tagResponses, daysOffRoast)
 		responses[i] = *resp
 	}
 
@@ -198,7 +230,7 @@ func (s *ExperimentService) Update(ctx context.Context, userID, experimentID uui
 		coffeeResp, _ = s.coffeeGetter.GetByID(ctx, userID, *exp.CoffeeID)
 	}
 
-	return s.buildResponse(ctx, exp, coffeeResp)
+	return s.buildResponse(ctx, exp, userID, coffeeResp)
 }
 
 func (s *ExperimentService) Delete(ctx context.Context, userID, experimentID uuid.UUID) error {
@@ -217,7 +249,7 @@ func (s *ExperimentService) Copy(ctx context.Context, userID, experimentID uuid.
 		coffeeResp, _ = s.coffeeGetter.GetByID(ctx, userID, *exp.CoffeeID)
 	}
 
-	return s.buildResponse(ctx, exp, coffeeResp)
+	return s.buildResponse(ctx, exp, userID, coffeeResp)
 }
 
 func (s *ExperimentService) AddTags(ctx context.Context, userID, experimentID uuid.UUID, tagIDs []uuid.UUID) (*models.ExperimentResponse, error) {
@@ -253,7 +285,7 @@ func (s *ExperimentService) AddTags(ctx context.Context, userID, experimentID uu
 		coffeeResp, _ = s.coffeeGetter.GetByID(ctx, userID, *exp.CoffeeID)
 	}
 
-	return s.buildResponse(ctx, exp, coffeeResp)
+	return s.buildResponse(ctx, exp, userID, coffeeResp)
 }
 
 func (s *ExperimentService) RemoveTag(ctx context.Context, userID, experimentID, tagID uuid.UUID) (*models.ExperimentResponse, error) {
@@ -274,10 +306,10 @@ func (s *ExperimentService) RemoveTag(ctx context.Context, userID, experimentID,
 		coffeeResp, _ = s.coffeeGetter.GetByID(ctx, userID, *exp.CoffeeID)
 	}
 
-	return s.buildResponse(ctx, exp, coffeeResp)
+	return s.buildResponse(ctx, exp, userID, coffeeResp)
 }
 
-func (s *ExperimentService) buildResponse(ctx context.Context, exp *models.Experiment, coffeeResp *models.CoffeeResponse) (*models.ExperimentResponse, error) {
+func (s *ExperimentService) buildResponse(ctx context.Context, exp *models.Experiment, userID uuid.UUID, coffeeResp *models.CoffeeResponse) (*models.ExperimentResponse, error) {
 	// Get tags
 	tags, err := s.experimentTagsRepo.GetTagsForExperiment(ctx, exp.ID)
 	if err != nil {
@@ -289,10 +321,16 @@ func (s *ExperimentService) buildResponse(ctx context.Context, exp *models.Exper
 		tagResponses[i] = *tag.ToResponse()
 	}
 
+	// Get filter paper if present
+	var filterPaperResp *models.FilterPaperResponse
+	if exp.FilterPaperID != nil && s.filterPaperGetter != nil {
+		filterPaperResp, _ = s.filterPaperGetter.GetByID(ctx, userID, *exp.FilterPaperID)
+	}
+
 	// Calculate days off roast
 	daysOffRoast := s.calculateDaysOffRoast(coffeeResp, exp)
 
-	return exp.ToResponse(coffeeResp, tagResponses, daysOffRoast), nil
+	return exp.ToResponse(coffeeResp, filterPaperResp, tagResponses, daysOffRoast), nil
 }
 
 func (s *ExperimentService) calculateDaysOffRoast(coffee *models.CoffeeResponse, exp *models.Experiment) *int {

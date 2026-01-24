@@ -17,7 +17,10 @@ import (
 	"github.com/poimgs/coffee-tracker/backend/internal/services/auth"
 	coffeeservice "github.com/poimgs/coffee-tracker/backend/internal/services/coffee"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/defaults"
+	"github.com/poimgs/coffee-tracker/backend/internal/services/effectmapping"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/experiment"
+	"github.com/poimgs/coffee-tracker/backend/internal/services/filterpaper"
+	"github.com/poimgs/coffee-tracker/backend/internal/services/mineralprofile"
 	"github.com/poimgs/coffee-tracker/backend/internal/services/tags"
 )
 
@@ -43,6 +46,9 @@ func main() {
 	experimentTagsRepo := repository.NewExperimentTagsRepository(pool)
 	issueTagsRepo := repository.NewIssueTagsRepository(pool)
 	userDefaultsRepo := repository.NewUserDefaultsRepository(pool)
+	effectMappingRepo := repository.NewEffectMappingRepository(pool)
+	filterPaperRepo := repository.NewFilterPaperRepository(pool)
+	mineralProfileRepo := repository.NewMineralProfileRepository(pool)
 
 	// Auth services
 	passwordSvc := auth.NewPasswordService(cfg.BcryptCost)
@@ -51,9 +57,12 @@ func main() {
 
 	// Domain services
 	coffeeSvc := coffeeservice.NewCoffeeService(coffeeRepo)
-	experimentSvc := experiment.NewExperimentService(experimentRepo, experimentTagsRepo, issueTagsRepo, coffeeSvc)
+	filterPaperSvc := filterpaper.NewFilterPaperService(filterPaperRepo)
+	mineralProfileSvc := mineralprofile.NewMineralProfileService(mineralProfileRepo)
+	experimentSvc := experiment.NewExperimentService(experimentRepo, experimentTagsRepo, issueTagsRepo, coffeeSvc, filterPaperSvc)
 	defaultsSvc := defaults.NewDefaultsService(userDefaultsRepo)
 	tagsSvc := tags.NewTagsService(issueTagsRepo)
+	effectMappingSvc := effectmapping.NewEffectMappingService(effectMappingRepo)
 
 	// Middleware
 	authMiddleware := middleware.NewAuthMiddleware(jwtSvc)
@@ -61,15 +70,18 @@ func main() {
 	loginRateLimiter := middleware.NewLoginRateLimiter(cfg.RateLimitLoginPerIP)
 
 	r := router.New(&router.Config{
-		AuthService:       authSvc,
-		CoffeeService:     coffeeSvc,
-		ExperimentService: experimentSvc,
-		DefaultsService:   defaultsSvc,
-		TagsService:       tagsSvc,
-		AuthMiddleware:    authMiddleware,
-		CORSMiddleware:    corsMiddleware,
-		LoginRateLimiter:  loginRateLimiter,
-		CookieSecure:      cfg.CookieSecure,
+		AuthService:           authSvc,
+		CoffeeService:         coffeeSvc,
+		ExperimentService:     experimentSvc,
+		DefaultsService:       defaultsSvc,
+		TagsService:           tagsSvc,
+		EffectMappingService:  effectMappingSvc,
+		FilterPaperService:    filterPaperSvc,
+		MineralProfileService: mineralProfileSvc,
+		AuthMiddleware:        authMiddleware,
+		CORSMiddleware:        corsMiddleware,
+		LoginRateLimiter:      loginRateLimiter,
+		CookieSecure:          cfg.CookieSecure,
 	})
 
 	server := &http.Server{

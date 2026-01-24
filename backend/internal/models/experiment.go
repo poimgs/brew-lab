@@ -17,12 +17,12 @@ type Experiment struct {
 	OverallScore *int      `json:"overall_score,omitempty"`
 
 	// Pre-brew parameters
-	CoffeeWeight     *float64 `json:"coffee_weight,omitempty"`
-	WaterWeight      *float64 `json:"water_weight,omitempty"`
-	Ratio            *float64 `json:"ratio,omitempty"`
-	GrindSize        *string  `json:"grind_size,omitempty"`
-	WaterTemperature *float64 `json:"water_temperature,omitempty"`
-	FilterType       *string  `json:"filter_type,omitempty"`
+	CoffeeWeight     *float64   `json:"coffee_weight,omitempty"`
+	WaterWeight      *float64   `json:"water_weight,omitempty"`
+	Ratio            *float64   `json:"ratio,omitempty"`
+	GrindSize        *string    `json:"grind_size,omitempty"`
+	WaterTemperature *float64   `json:"water_temperature,omitempty"`
+	FilterPaperID    *uuid.UUID `json:"filter_paper_id,omitempty"`
 
 	// Brew parameters
 	BloomWater     *float64 `json:"bloom_water,omitempty"`
@@ -74,12 +74,12 @@ type ExperimentResponse struct {
 	OverallScore *int      `json:"overall_score,omitempty"`
 
 	// Pre-brew parameters
-	CoffeeWeight     *float64 `json:"coffee_weight,omitempty"`
-	WaterWeight      *float64 `json:"water_weight,omitempty"`
-	Ratio            *float64 `json:"ratio,omitempty"`
-	GrindSize        *string  `json:"grind_size,omitempty"`
-	WaterTemperature *float64 `json:"water_temperature,omitempty"`
-	FilterType       *string  `json:"filter_type,omitempty"`
+	CoffeeWeight     *float64   `json:"coffee_weight,omitempty"`
+	WaterWeight      *float64   `json:"water_weight,omitempty"`
+	Ratio            *float64   `json:"ratio,omitempty"`
+	GrindSize        *string    `json:"grind_size,omitempty"`
+	WaterTemperature *float64   `json:"water_temperature,omitempty"`
+	FilterPaperID    *uuid.UUID `json:"filter_paper_id,omitempty"`
 
 	// Brew parameters
 	BloomWater     *float64 `json:"bloom_water,omitempty"`
@@ -125,11 +125,12 @@ type ExperimentResponse struct {
 	CalculatedRatio *float64 `json:"calculated_ratio,omitempty"`
 
 	// Nested data
-	Coffee    *CoffeeResponse     `json:"coffee,omitempty"`
-	IssueTags []IssueTagResponse  `json:"issue_tags"`
+	Coffee      *CoffeeResponse      `json:"coffee,omitempty"`
+	FilterPaper *FilterPaperResponse `json:"filter_paper,omitempty"`
+	IssueTags   []IssueTagResponse   `json:"issue_tags"`
 }
 
-func (e *Experiment) ToResponse(coffee *CoffeeResponse, tags []IssueTagResponse, daysOffRoast *int) *ExperimentResponse {
+func (e *Experiment) ToResponse(coffee *CoffeeResponse, filterPaper *FilterPaperResponse, tags []IssueTagResponse, daysOffRoast *int) *ExperimentResponse {
 	resp := &ExperimentResponse{
 		ID:                  e.ID,
 		CoffeeID:            e.CoffeeID,
@@ -141,7 +142,7 @@ func (e *Experiment) ToResponse(coffee *CoffeeResponse, tags []IssueTagResponse,
 		Ratio:               e.Ratio,
 		GrindSize:           e.GrindSize,
 		WaterTemperature:    e.WaterTemperature,
-		FilterType:          e.FilterType,
+		FilterPaperID:       e.FilterPaperID,
 		BloomWater:          e.BloomWater,
 		BloomTime:           e.BloomTime,
 		Pour1:               e.Pour1,
@@ -171,6 +172,7 @@ func (e *Experiment) ToResponse(coffee *CoffeeResponse, tags []IssueTagResponse,
 		UpdatedAt:           e.UpdatedAt,
 		DaysOffRoast:        daysOffRoast,
 		Coffee:              coffee,
+		FilterPaper:         filterPaper,
 		IssueTags:           tags,
 	}
 
@@ -192,71 +194,71 @@ type CreateExperimentInput struct {
 	WaterWeight      *float64   `json:"water_weight" validate:"omitempty,gt=0"`
 	Ratio            *float64   `json:"ratio" validate:"omitempty,gt=0"`
 	GrindSize        *string    `json:"grind_size" validate:"omitempty,max=50"`
-	WaterTemperature *float64   `json:"water_temperature" validate:"omitempty,gt=0,lt=100"`
-	FilterType       *string    `json:"filter_type" validate:"omitempty,max=50"`
-	BloomWater       *float64   `json:"bloom_water" validate:"omitempty,gt=0"`
-	BloomTime        *int       `json:"bloom_time" validate:"omitempty,gt=0"`
-	Pour1            *string    `json:"pour_1" validate:"omitempty,max=100"`
-	Pour2            *string    `json:"pour_2" validate:"omitempty,max=100"`
-	Pour3            *string    `json:"pour_3" validate:"omitempty,max=100"`
-	TotalBrewTime    *int       `json:"total_brew_time" validate:"omitempty,gt=0"`
-	DrawdownTime     *int       `json:"drawdown_time" validate:"omitempty,gt=0"`
-	TechniqueNotes   *string    `json:"technique_notes"`
-	ServingTemperature *float64 `json:"serving_temperature" validate:"omitempty,gt=0"`
-	WaterBypass        *float64 `json:"water_bypass" validate:"omitempty,gte=0"`
-	MineralAdditions   *string  `json:"mineral_additions" validate:"omitempty,max=100"`
-	FinalWeight        *float64 `json:"final_weight" validate:"omitempty,gt=0"`
-	TDS                *float64 `json:"tds" validate:"omitempty,gt=0,lt=100"`
-	ExtractionYield    *float64 `json:"extraction_yield" validate:"omitempty,gt=0,lt=100"`
-	AromaIntensity      *int    `json:"aroma_intensity" validate:"omitempty,min=1,max=10"`
-	AcidityIntensity    *int    `json:"acidity_intensity" validate:"omitempty,min=1,max=10"`
-	SweetnessIntensity  *int    `json:"sweetness_intensity" validate:"omitempty,min=1,max=10"`
-	BitternessIntensity *int    `json:"bitterness_intensity" validate:"omitempty,min=1,max=10"`
-	BodyWeight          *int    `json:"body_weight" validate:"omitempty,min=1,max=10"`
-	AftertasteDuration  *int    `json:"aftertaste_duration" validate:"omitempty,min=1,max=10"`
-	AftertasteIntensity *int    `json:"aftertaste_intensity" validate:"omitempty,min=1,max=10"`
-	AromaNotes          *string `json:"aroma_notes"`
-	FlavorNotes         *string `json:"flavor_notes"`
-	AftertasteNotes     *string `json:"aftertaste_notes"`
-	ImprovementNotes    *string `json:"improvement_notes"`
+	WaterTemperature   *float64   `json:"water_temperature" validate:"omitempty,gt=0,lt=100"`
+	FilterPaperID      *uuid.UUID `json:"filter_paper_id"`
+	BloomWater         *float64   `json:"bloom_water" validate:"omitempty,gt=0"`
+	BloomTime          *int       `json:"bloom_time" validate:"omitempty,gt=0"`
+	Pour1              *string    `json:"pour_1" validate:"omitempty,max=100"`
+	Pour2              *string    `json:"pour_2" validate:"omitempty,max=100"`
+	Pour3              *string    `json:"pour_3" validate:"omitempty,max=100"`
+	TotalBrewTime      *int       `json:"total_brew_time" validate:"omitempty,gt=0"`
+	DrawdownTime       *int       `json:"drawdown_time" validate:"omitempty,gt=0"`
+	TechniqueNotes     *string    `json:"technique_notes"`
+	ServingTemperature *float64   `json:"serving_temperature" validate:"omitempty,gt=0"`
+	WaterBypass        *float64   `json:"water_bypass" validate:"omitempty,gte=0"`
+	MineralAdditions   *string    `json:"mineral_additions" validate:"omitempty,max=100"`
+	FinalWeight        *float64   `json:"final_weight" validate:"omitempty,gt=0"`
+	TDS                *float64   `json:"tds" validate:"omitempty,gt=0,lt=100"`
+	ExtractionYield    *float64   `json:"extraction_yield" validate:"omitempty,gt=0,lt=100"`
+	AromaIntensity     *int       `json:"aroma_intensity" validate:"omitempty,min=1,max=10"`
+	AcidityIntensity   *int       `json:"acidity_intensity" validate:"omitempty,min=1,max=10"`
+	SweetnessIntensity *int       `json:"sweetness_intensity" validate:"omitempty,min=1,max=10"`
+	BitternessIntensity *int      `json:"bitterness_intensity" validate:"omitempty,min=1,max=10"`
+	BodyWeight          *int      `json:"body_weight" validate:"omitempty,min=1,max=10"`
+	AftertasteDuration  *int      `json:"aftertaste_duration" validate:"omitempty,min=1,max=10"`
+	AftertasteIntensity *int      `json:"aftertaste_intensity" validate:"omitempty,min=1,max=10"`
+	AromaNotes          *string   `json:"aroma_notes"`
+	FlavorNotes         *string   `json:"flavor_notes"`
+	AftertasteNotes     *string   `json:"aftertaste_notes"`
+	ImprovementNotes    *string   `json:"improvement_notes"`
 }
 
 type UpdateExperimentInput struct {
-	CoffeeID         *uuid.UUID `json:"coffee_id"`
-	BrewDate         *time.Time `json:"brew_date"`
-	OverallNotes     *string    `json:"overall_notes" validate:"omitempty,min=10"`
-	OverallScore     *int       `json:"overall_score" validate:"omitempty,min=1,max=10"`
-	CoffeeWeight     *float64   `json:"coffee_weight" validate:"omitempty,gt=0"`
-	WaterWeight      *float64   `json:"water_weight" validate:"omitempty,gt=0"`
-	Ratio            *float64   `json:"ratio" validate:"omitempty,gt=0"`
-	GrindSize        *string    `json:"grind_size" validate:"omitempty,max=50"`
-	WaterTemperature *float64   `json:"water_temperature" validate:"omitempty,gt=0,lt=100"`
-	FilterType       *string    `json:"filter_type" validate:"omitempty,max=50"`
-	BloomWater       *float64   `json:"bloom_water" validate:"omitempty,gt=0"`
-	BloomTime        *int       `json:"bloom_time" validate:"omitempty,gt=0"`
-	Pour1            *string    `json:"pour_1" validate:"omitempty,max=100"`
-	Pour2            *string    `json:"pour_2" validate:"omitempty,max=100"`
-	Pour3            *string    `json:"pour_3" validate:"omitempty,max=100"`
-	TotalBrewTime    *int       `json:"total_brew_time" validate:"omitempty,gt=0"`
-	DrawdownTime     *int       `json:"drawdown_time" validate:"omitempty,gt=0"`
-	TechniqueNotes   *string    `json:"technique_notes"`
-	ServingTemperature *float64 `json:"serving_temperature" validate:"omitempty,gt=0"`
-	WaterBypass        *float64 `json:"water_bypass" validate:"omitempty,gte=0"`
-	MineralAdditions   *string  `json:"mineral_additions" validate:"omitempty,max=100"`
-	FinalWeight        *float64 `json:"final_weight" validate:"omitempty,gt=0"`
-	TDS                *float64 `json:"tds" validate:"omitempty,gt=0,lt=100"`
-	ExtractionYield    *float64 `json:"extraction_yield" validate:"omitempty,gt=0,lt=100"`
-	AromaIntensity      *int    `json:"aroma_intensity" validate:"omitempty,min=1,max=10"`
-	AcidityIntensity    *int    `json:"acidity_intensity" validate:"omitempty,min=1,max=10"`
-	SweetnessIntensity  *int    `json:"sweetness_intensity" validate:"omitempty,min=1,max=10"`
-	BitternessIntensity *int    `json:"bitterness_intensity" validate:"omitempty,min=1,max=10"`
-	BodyWeight          *int    `json:"body_weight" validate:"omitempty,min=1,max=10"`
-	AftertasteDuration  *int    `json:"aftertaste_duration" validate:"omitempty,min=1,max=10"`
-	AftertasteIntensity *int    `json:"aftertaste_intensity" validate:"omitempty,min=1,max=10"`
-	AromaNotes          *string `json:"aroma_notes"`
-	FlavorNotes         *string `json:"flavor_notes"`
-	AftertasteNotes     *string `json:"aftertaste_notes"`
-	ImprovementNotes    *string `json:"improvement_notes"`
+	CoffeeID           *uuid.UUID `json:"coffee_id"`
+	BrewDate           *time.Time `json:"brew_date"`
+	OverallNotes       *string    `json:"overall_notes" validate:"omitempty,min=10"`
+	OverallScore       *int       `json:"overall_score" validate:"omitempty,min=1,max=10"`
+	CoffeeWeight       *float64   `json:"coffee_weight" validate:"omitempty,gt=0"`
+	WaterWeight        *float64   `json:"water_weight" validate:"omitempty,gt=0"`
+	Ratio              *float64   `json:"ratio" validate:"omitempty,gt=0"`
+	GrindSize          *string    `json:"grind_size" validate:"omitempty,max=50"`
+	WaterTemperature   *float64   `json:"water_temperature" validate:"omitempty,gt=0,lt=100"`
+	FilterPaperID      *uuid.UUID `json:"filter_paper_id"`
+	BloomWater         *float64   `json:"bloom_water" validate:"omitempty,gt=0"`
+	BloomTime          *int       `json:"bloom_time" validate:"omitempty,gt=0"`
+	Pour1              *string    `json:"pour_1" validate:"omitempty,max=100"`
+	Pour2              *string    `json:"pour_2" validate:"omitempty,max=100"`
+	Pour3              *string    `json:"pour_3" validate:"omitempty,max=100"`
+	TotalBrewTime      *int       `json:"total_brew_time" validate:"omitempty,gt=0"`
+	DrawdownTime       *int       `json:"drawdown_time" validate:"omitempty,gt=0"`
+	TechniqueNotes     *string    `json:"technique_notes"`
+	ServingTemperature *float64   `json:"serving_temperature" validate:"omitempty,gt=0"`
+	WaterBypass        *float64   `json:"water_bypass" validate:"omitempty,gte=0"`
+	MineralAdditions   *string    `json:"mineral_additions" validate:"omitempty,max=100"`
+	FinalWeight        *float64   `json:"final_weight" validate:"omitempty,gt=0"`
+	TDS                *float64   `json:"tds" validate:"omitempty,gt=0,lt=100"`
+	ExtractionYield    *float64   `json:"extraction_yield" validate:"omitempty,gt=0,lt=100"`
+	AromaIntensity     *int       `json:"aroma_intensity" validate:"omitempty,min=1,max=10"`
+	AcidityIntensity   *int       `json:"acidity_intensity" validate:"omitempty,min=1,max=10"`
+	SweetnessIntensity *int       `json:"sweetness_intensity" validate:"omitempty,min=1,max=10"`
+	BitternessIntensity *int      `json:"bitterness_intensity" validate:"omitempty,min=1,max=10"`
+	BodyWeight          *int      `json:"body_weight" validate:"omitempty,min=1,max=10"`
+	AftertasteDuration  *int      `json:"aftertaste_duration" validate:"omitempty,min=1,max=10"`
+	AftertasteIntensity *int      `json:"aftertaste_intensity" validate:"omitempty,min=1,max=10"`
+	AromaNotes          *string   `json:"aroma_notes"`
+	FlavorNotes         *string   `json:"flavor_notes"`
+	AftertasteNotes     *string   `json:"aftertaste_notes"`
+	ImprovementNotes    *string   `json:"improvement_notes"`
 }
 
 type ExperimentFilter struct {

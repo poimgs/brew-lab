@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
-import { Coffee, LogOut, Library, FlaskConical, Settings } from "lucide-react"
+import { Coffee, LogOut, Library, FlaskConical, Settings, GitBranch, Database } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { PageContainer } from "./page-container"
@@ -60,10 +60,34 @@ export function RootLayout({ children }: RootLayoutProps) {
                     <span className="hidden sm:inline">Library</span>
                   </Link>
                   <Link
+                    to="/effect-mappings"
+                    className={cn(
+                      "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                      isActive("/effect-mappings")
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    <GitBranch className="h-4 w-4" />
+                    <span className="hidden sm:inline">Effects</span>
+                  </Link>
+                  <Link
+                    to="/settings/reference-data"
+                    className={cn(
+                      "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                      isActive("/settings/reference-data")
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    <Database className="h-4 w-4" />
+                    <span className="hidden sm:inline">Reference</span>
+                  </Link>
+                  <Link
                     to="/settings/defaults"
                     className={cn(
                       "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                      isActive("/settings")
+                      isActive("/settings/defaults")
                         ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground"
                     )}

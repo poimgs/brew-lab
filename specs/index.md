@@ -66,10 +66,10 @@ Self-contained feature specifications. Each includes entity definitions, API end
 
 | Status | Count | Features |
 |--------|-------|----------|
-| ✅ Complete | 3 | authentication, coffee-library, brew-tracking |
-| 🚧 Not Started | 6 | reference-data, brew-optimization, experiment-review, effect-mappings, recommendations, correlations |
+| ✅ Complete | 4 | authentication, coffee-library, brew-tracking, reference-data |
+| 🚧 Not Started | 5 | brew-optimization, experiment-review, effect-mappings, recommendations, correlations |
 
-**Overall Progress: 3/9 features (33%)**
+**Overall Progress: 4/9 features (44%)**
 
 ### Feature Details
 
@@ -78,7 +78,7 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | [authentication.md](features/authentication.md) | ✅ Complete | — | User entity, login/signup, JWT, session handling |
 | [coffee-library.md](features/coffee-library.md) | ✅ Complete | authentication | Coffee entity + CRUD API + library UI |
 | [brew-tracking.md](features/brew-tracking.md) | ✅ Complete | authentication, coffee-library | Experiment entity + logging API + entry forms |
-| [reference-data.md](features/reference-data.md) | 🚧 Not Started | authentication | Filter papers (CRUD) + mineral profiles (read-only) |
+| [reference-data.md](features/reference-data.md) | ✅ Complete | authentication | Filter papers (CRUD) + mineral profiles (read-only) |
 | [brew-optimization.md](features/brew-optimization.md) | 🚧 Not Started | brew-tracking | Target profiles, radar chart, gap analysis |
 | [experiment-review.md](features/experiment-review.md) | 🚧 Not Started | brew-tracking, effect-mappings | List/detail views, comparison, effect mapping management |
 | [effect-mappings.md](features/effect-mappings.md) | 🚧 Not Started | authentication | Effect mapping entity + CRUD API |
@@ -143,11 +143,12 @@ authentication (core)
 | Database Schema | ✅ Complete | `backend/migrations/` | Core tables created |
 | Coffee API | ✅ Complete | `backend/internal/handlers/coffee/` | Full CRUD |
 | Experiment API | ✅ Complete | `backend/internal/handlers/experiment/` | Full CRUD |
+| Reference Data API | ✅ Complete | `backend/internal/handlers/filterpaper/`, `mineralprofile/` | Filter papers CRUD + mineral profiles |
 | Effect Mappings API | 🚧 Not Started | — | CRUD + relevance matching |
 | Recommendations API | 🚧 Not Started | — | Gap-based matching |
 | Correlations API | 🚧 Not Started | — | Statistical analysis |
 
-**Backend Progress: 4/7 components (57%)**
+**Backend Progress: 5/8 components (63%)**
 
 ### Frontend
 
@@ -156,19 +157,20 @@ authentication (core)
 | Authentication | ✅ Complete | `frontend/src/features/auth/` | Login/signup flow |
 | Coffee Library | ✅ Complete | `frontend/src/features/library/` | List + CRUD forms |
 | Brew Tracking | ✅ Complete | `frontend/src/features/experiments/` | Entry forms |
+| Reference Data | ✅ Complete | `frontend/src/features/reference-data/` | Filter papers CRUD + mineral profiles |
 | Brew Optimization | 🚧 Not Started | — | Target inputs, radar chart |
 | Experiment Review | 🚧 Not Started | — | List, detail, comparison views |
 | Effect Mappings UI | 🚧 Not Started | — | Part of experiment-review |
 | Recommendations | 🚧 Not Started | — | Gap-based suggestions panel |
 | Correlations | 🚧 Not Started | — | Matrix/heatmap visualization |
 
-**Frontend Progress: 3/8 components (38%)**
+**Frontend Progress: 4/9 components (44%)**
 
 ### Overall Project Progress
 
 | Layer | Complete | Total | Progress |
 |-------|----------|-------|----------|
 | Specs | 9 | 9 | 100% |
-| Backend | 4 | 7 | 57% |
-| Frontend | 3 | 8 | 38% |
-| **Total** | **16** | **24** | **67%** |
+| Backend | 5 | 8 | 63% |
+| Frontend | 4 | 9 | 44% |
+| **Total** | **18** | **26** | **69%** |

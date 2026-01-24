@@ -48,7 +48,7 @@ export function ExperimentForm({
         water_weight: experiment.water_weight,
         grind_size: experiment.grind_size,
         water_temperature: experiment.water_temperature,
-        filter_type: experiment.filter_type,
+        filter_paper_id: experiment.filter_paper_id,
         bloom_water: experiment.bloom_water,
         bloom_time: experiment.bloom_time,
         pour_1: experiment.pour_1,
@@ -96,7 +96,7 @@ export function ExperimentForm({
       if (defaults.water_weight) newData.water_weight = parseFloat(defaults.water_weight)
       if (defaults.water_temperature) newData.water_temperature = parseFloat(defaults.water_temperature)
       if (defaults.grind_size) newData.grind_size = defaults.grind_size
-      if (defaults.filter_type) newData.filter_type = defaults.filter_type
+      if (defaults.filter_paper_id) newData.filter_paper_id = defaults.filter_paper_id
       if (defaults.bloom_water) newData.bloom_water = parseFloat(defaults.bloom_water)
       if (defaults.bloom_time) newData.bloom_time = parseFloat(defaults.bloom_time)
 

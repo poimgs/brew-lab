@@ -167,7 +167,7 @@ r = Σ((xi - x̄)(yi - ȳ)) / √(Σ(xi - x̄)² × Σ(yi - ȳ)²)
 | bloom_time | numeric | In seconds |
 | total_brew_time | numeric | In seconds |
 | days_off_roast | numeric | Calculated |
-| filter_type | categorical | One-hot encoded |
+| filter_paper | categorical | One-hot encoded (via FK) |
 | mineral_additions | categorical | Presence/absence |
 
 *Grind size is text; analysis requires user mapping or inference.

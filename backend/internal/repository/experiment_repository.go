@@ -24,7 +24,7 @@ func NewExperimentRepository(pool *pgxpool.Pool) *ExperimentRepository {
 }
 
 var experimentColumns = `id, user_id, coffee_id, brew_date, overall_notes, overall_score,
-	coffee_weight, water_weight, ratio, grind_size, water_temperature, filter_type,
+	coffee_weight, water_weight, ratio, grind_size, water_temperature, filter_paper_id,
 	bloom_water, bloom_time, pour_1, pour_2, pour_3, total_brew_time, drawdown_time, technique_notes,
 	serving_temperature, water_bypass, mineral_additions,
 	final_weight, tds, extraction_yield,
@@ -36,7 +36,7 @@ func scanExperiment(row pgx.Row) (*models.Experiment, error) {
 	exp := &models.Experiment{}
 	err := row.Scan(
 		&exp.ID, &exp.UserID, &exp.CoffeeID, &exp.BrewDate, &exp.OverallNotes, &exp.OverallScore,
-		&exp.CoffeeWeight, &exp.WaterWeight, &exp.Ratio, &exp.GrindSize, &exp.WaterTemperature, &exp.FilterType,
+		&exp.CoffeeWeight, &exp.WaterWeight, &exp.Ratio, &exp.GrindSize, &exp.WaterTemperature, &exp.FilterPaperID,
 		&exp.BloomWater, &exp.BloomTime, &exp.Pour1, &exp.Pour2, &exp.Pour3, &exp.TotalBrewTime, &exp.DrawdownTime, &exp.TechniqueNotes,
 		&exp.ServingTemperature, &exp.WaterBypass, &exp.MineralAdditions,
 		&exp.FinalWeight, &exp.TDS, &exp.ExtractionYield,
@@ -51,7 +51,7 @@ func scanExperimentRows(rows pgx.Rows) (*models.Experiment, error) {
 	exp := &models.Experiment{}
 	err := rows.Scan(
 		&exp.ID, &exp.UserID, &exp.CoffeeID, &exp.BrewDate, &exp.OverallNotes, &exp.OverallScore,
-		&exp.CoffeeWeight, &exp.WaterWeight, &exp.Ratio, &exp.GrindSize, &exp.WaterTemperature, &exp.FilterType,
+		&exp.CoffeeWeight, &exp.WaterWeight, &exp.Ratio, &exp.GrindSize, &exp.WaterTemperature, &exp.FilterPaperID,
 		&exp.BloomWater, &exp.BloomTime, &exp.Pour1, &exp.Pour2, &exp.Pour3, &exp.TotalBrewTime, &exp.DrawdownTime, &exp.TechniqueNotes,
 		&exp.ServingTemperature, &exp.WaterBypass, &exp.MineralAdditions,
 		&exp.FinalWeight, &exp.TDS, &exp.ExtractionYield,
@@ -71,7 +71,7 @@ func (r *ExperimentRepository) Create(ctx context.Context, userID uuid.UUID, inp
 	query := fmt.Sprintf(`
 		INSERT INTO experiments (
 			user_id, coffee_id, brew_date, overall_notes, overall_score,
-			coffee_weight, water_weight, ratio, grind_size, water_temperature, filter_type,
+			coffee_weight, water_weight, ratio, grind_size, water_temperature, filter_paper_id,
 			bloom_water, bloom_time, pour_1, pour_2, pour_3, total_brew_time, drawdown_time, technique_notes,
 			serving_temperature, water_bypass, mineral_additions,
 			final_weight, tds, extraction_yield,
@@ -85,7 +85,7 @@ func (r *ExperimentRepository) Create(ctx context.Context, userID uuid.UUID, inp
 
 	exp, err := scanExperiment(r.pool.QueryRow(ctx, query,
 		userID, input.CoffeeID, brewDate, input.OverallNotes, input.OverallScore,
-		input.CoffeeWeight, input.WaterWeight, input.Ratio, input.GrindSize, input.WaterTemperature, input.FilterType,
+		input.CoffeeWeight, input.WaterWeight, input.Ratio, input.GrindSize, input.WaterTemperature, input.FilterPaperID,
 		input.BloomWater, input.BloomTime, input.Pour1, input.Pour2, input.Pour3, input.TotalBrewTime, input.DrawdownTime, input.TechniqueNotes,
 		input.ServingTemperature, input.WaterBypass, input.MineralAdditions,
 		input.FinalWeight, input.TDS, input.ExtractionYield,
@@ -308,8 +308,8 @@ func (r *ExperimentRepository) Update(ctx context.Context, userID, experimentID 
 	if input.WaterTemperature != nil {
 		existing.WaterTemperature = input.WaterTemperature
 	}
-	if input.FilterType != nil {
-		existing.FilterType = input.FilterType
+	if input.FilterPaperID != nil {
+		existing.FilterPaperID = input.FilterPaperID
 	}
 	if input.BloomWater != nil {
 		existing.BloomWater = input.BloomWater
@@ -390,7 +390,7 @@ func (r *ExperimentRepository) Update(ctx context.Context, userID, experimentID 
 	query := fmt.Sprintf(`
 		UPDATE experiments SET
 			coffee_id = $1, brew_date = $2, overall_notes = $3, overall_score = $4,
-			coffee_weight = $5, water_weight = $6, ratio = $7, grind_size = $8, water_temperature = $9, filter_type = $10,
+			coffee_weight = $5, water_weight = $6, ratio = $7, grind_size = $8, water_temperature = $9, filter_paper_id = $10,
 			bloom_water = $11, bloom_time = $12, pour_1 = $13, pour_2 = $14, pour_3 = $15, total_brew_time = $16, drawdown_time = $17, technique_notes = $18,
 			serving_temperature = $19, water_bypass = $20, mineral_additions = $21,
 			final_weight = $22, tds = $23, extraction_yield = $24,
@@ -403,7 +403,7 @@ func (r *ExperimentRepository) Update(ctx context.Context, userID, experimentID 
 
 	exp, err := scanExperiment(r.pool.QueryRow(ctx, query,
 		existing.CoffeeID, existing.BrewDate, existing.OverallNotes, existing.OverallScore,
-		existing.CoffeeWeight, existing.WaterWeight, existing.Ratio, existing.GrindSize, existing.WaterTemperature, existing.FilterType,
+		existing.CoffeeWeight, existing.WaterWeight, existing.Ratio, existing.GrindSize, existing.WaterTemperature, existing.FilterPaperID,
 		existing.BloomWater, existing.BloomTime, existing.Pour1, existing.Pour2, existing.Pour3, existing.TotalBrewTime, existing.DrawdownTime, existing.TechniqueNotes,
 		existing.ServingTemperature, existing.WaterBypass, existing.MineralAdditions,
 		existing.FinalWeight, existing.TDS, existing.ExtractionYield,
@@ -451,7 +451,7 @@ func (r *ExperimentRepository) Copy(ctx context.Context, userID, experimentID uu
 	query := fmt.Sprintf(`
 		INSERT INTO experiments (
 			user_id, coffee_id, brew_date, overall_notes, overall_score,
-			coffee_weight, water_weight, ratio, grind_size, water_temperature, filter_type,
+			coffee_weight, water_weight, ratio, grind_size, water_temperature, filter_paper_id,
 			bloom_water, bloom_time, pour_1, pour_2, pour_3, total_brew_time, drawdown_time, technique_notes,
 			serving_temperature, water_bypass, mineral_additions,
 			final_weight, tds, extraction_yield,
@@ -465,7 +465,7 @@ func (r *ExperimentRepository) Copy(ctx context.Context, userID, experimentID uu
 
 	exp, err := scanExperiment(r.pool.QueryRow(ctx, query,
 		userID, source.CoffeeID, time.Now(), "",
-		source.CoffeeWeight, source.WaterWeight, source.Ratio, source.GrindSize, source.WaterTemperature, source.FilterType,
+		source.CoffeeWeight, source.WaterWeight, source.Ratio, source.GrindSize, source.WaterTemperature, source.FilterPaperID,
 		source.BloomWater, source.BloomTime, source.Pour1, source.Pour2, source.Pour3, source.TotalBrewTime, source.DrawdownTime, source.TechniqueNotes,
 		source.ServingTemperature, source.WaterBypass, source.MineralAdditions,
 	))
