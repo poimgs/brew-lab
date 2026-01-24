@@ -8,8 +8,8 @@
 - **Experiment Tracking**: Capture brewing parameters and taste outcomes
 - **Coffee Library**: Maintain bean metadata independent from experiments
 - **Pattern Discovery**: Reveal relationships between variables and outcomes
-- **Knowledge Codification**: Record brewing rules and heuristics
-- **Actionable Recommendations**: Suggest improvements based on issues and rules
+- **Knowledge Codification**: Record effect mappings (cause→effect relationships)
+- **Actionable Recommendations**: Suggest improvements based on score gaps and effect mappings
 
 ### Tech Stack
 - **Frontend**: React + TypeScript
@@ -22,15 +22,15 @@
 - Progressive detail: Only coffee reference and notes required; others optional
 - Calculated fields: Derive values where possible (days off roast, etc.)
 - User defaults: Allow setting defaults for optional fields
-- Manual rules only: No automated inference; users define rules explicitly
+- Manual mappings only: No automated inference; users define effect mappings explicitly
 
 ### Data Model
 ```
-Coffee (metadata) 1:N ← Experiment (brew record)
-                              ↓ N:M
-                        Issue Tags
-                              ↓ matched against
-                            Rules
+Coffee (metadata) 1:N ← Experiment (brew record + target profile)
+                              ↓ gaps computed
+                        Effect Mappings (cause→effect)
+                              ↓ matched by
+                        Recommendations
 ```
 
 ---
@@ -62,16 +62,59 @@ Conventions and patterns used across all features. Read these first.
 
 Self-contained feature specifications. Each includes entity definitions, API endpoints, and UI specs.
 
-| Spec | Status | Purpose |
-|------|--------|---------|
-| [authentication.md](features/authentication.md) | Complete | User entity, login/signup, JWT, session handling |
-| [coffee-library.md](features/coffee-library.md) | Complete | Coffee entity + CRUD API + library UI |
-| [brew-tracking.md](features/brew-tracking.md) | Complete | Experiment entity + logging API + entry forms |
-| [experiment-review.md](features/experiment-review.md) | Not Started | List/detail views, comparison, filtering |
-| [rules-engine.md](features/rules-engine.md) | Not Started | Rules entity + issue tags + rule management UI |
-| [recommendations.md](features/recommendations.md) | Not Started | Rule matching, suggestion display, try/dismiss flow |
-| [correlations.md](features/correlations.md) | Not Started | Correlation analysis + matrix/heatmap visualization |
-| [mineral-profiles.md](features/mineral-profiles.md) | Not Started | Mineral profile reference data |
+### Completion Summary
+
+| Status | Count | Features |
+|--------|-------|----------|
+| ✅ Complete | 3 | authentication, coffee-library, brew-tracking |
+| 🚧 Not Started | 6 | brew-optimization, experiment-review, effect-mappings, recommendations, correlations, mineral-profiles |
+
+**Overall Progress: 3/9 features (33%)**
+
+### Feature Details
+
+| Spec | Status | Dependencies | Purpose |
+|------|--------|--------------|---------|
+| [authentication.md](features/authentication.md) | ✅ Complete | — | User entity, login/signup, JWT, session handling |
+| [coffee-library.md](features/coffee-library.md) | ✅ Complete | authentication | Coffee entity + CRUD API + library UI |
+| [brew-tracking.md](features/brew-tracking.md) | ✅ Complete | authentication, coffee-library | Experiment entity + logging API + entry forms |
+| [brew-optimization.md](features/brew-optimization.md) | 🚧 Not Started | brew-tracking | Target profiles, radar chart, gap analysis |
+| [experiment-review.md](features/experiment-review.md) | 🚧 Not Started | brew-tracking, effect-mappings | List/detail views, comparison, effect mapping management |
+| [effect-mappings.md](features/effect-mappings.md) | 🚧 Not Started | authentication | Effect mapping entity + CRUD API |
+| [recommendations.md](features/recommendations.md) | 🚧 Not Started | brew-optimization, effect-mappings | Gap-based recommendations, mapping matching |
+| [correlations.md](features/correlations.md) | 🚧 Not Started | brew-tracking | Correlation analysis + matrix/heatmap visualization |
+| [mineral-profiles.md](features/mineral-profiles.md) | 🚧 Not Started | authentication | Mineral profile reference data |
+
+### Dependency Graph
+
+```
+authentication (core)
+    │
+    ├── coffee-library
+    │       │
+    │       └── brew-tracking
+    │               │
+    │               ├── brew-optimization
+    │               │       │
+    │               │       └── recommendations ←── effect-mappings
+    │               │
+    │               ├── experiment-review ←── effect-mappings
+    │               │
+    │               └── correlations
+    │
+    ├── effect-mappings
+    │
+    └── mineral-profiles
+```
+
+### Recommended Implementation Order
+
+1. **effect-mappings** — Independent entity, needed by recommendations and experiment-review
+2. **brew-optimization** — Adds target profiles to experiments, enables gap analysis
+3. **experiment-review** — List/compare experiments, manage effect mappings
+4. **recommendations** — Connect gaps to effect mappings for suggestions
+5. **correlations** — Pattern discovery (independent workflow)
+6. **mineral-profiles** — Reference data (can be done anytime)
 
 ---
 
@@ -80,7 +123,8 @@ Self-contained feature specifications. Each includes entity definitions, API end
 **For implementing a feature:**
 1. Read the relevant foundations specs (api-conventions, database-conventions, design-system)
 2. Read the feature spec for full context (entity, API, UI in one place)
-3. Implement
+3. Check dependencies and ensure prerequisite features are complete
+4. Implement
 
 **For AI agents:**
 - Each feature spec is self-contained
@@ -91,16 +135,40 @@ Self-contained feature specifications. Each includes entity definitions, API end
 
 ## Implementation Status
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Authentication | Complete | `backend/internal/services/auth/` |
-| Database Schema | Complete | `backend/migrations/` |
-| Coffee API | Complete | `backend/internal/handlers/coffee/` |
-| Experiment API | Complete | `backend/internal/handlers/experiment/` |
-| Rules API | Not Started | — |
-| Frontend Coffee Library | Complete | `frontend/src/features/library/` |
-| Frontend Brew Tracking | Complete | `frontend/src/features/experiments/` |
-| Frontend Review | Not Started | — |
-| Frontend Rules | Not Started | — |
-| Frontend Recommendations | Not Started | — |
-| Frontend Correlations | Not Started | — |
+### Backend
+
+| Component | Status | Location | Notes |
+|-----------|--------|----------|-------|
+| Authentication | ✅ Complete | `backend/internal/services/auth/` | JWT + session handling |
+| Database Schema | ✅ Complete | `backend/migrations/` | Core tables created |
+| Coffee API | ✅ Complete | `backend/internal/handlers/coffee/` | Full CRUD |
+| Experiment API | ✅ Complete | `backend/internal/handlers/experiment/` | Full CRUD |
+| Effect Mappings API | 🚧 Not Started | — | CRUD + relevance matching |
+| Recommendations API | 🚧 Not Started | — | Gap-based matching |
+| Correlations API | 🚧 Not Started | — | Statistical analysis |
+
+**Backend Progress: 4/7 components (57%)**
+
+### Frontend
+
+| Component | Status | Location | Notes |
+|-----------|--------|----------|-------|
+| Authentication | ✅ Complete | `frontend/src/features/auth/` | Login/signup flow |
+| Coffee Library | ✅ Complete | `frontend/src/features/library/` | List + CRUD forms |
+| Brew Tracking | ✅ Complete | `frontend/src/features/experiments/` | Entry forms |
+| Brew Optimization | 🚧 Not Started | — | Target inputs, radar chart |
+| Experiment Review | 🚧 Not Started | — | List, detail, comparison views |
+| Effect Mappings UI | 🚧 Not Started | — | Part of experiment-review |
+| Recommendations | 🚧 Not Started | — | Gap-based suggestions panel |
+| Correlations | 🚧 Not Started | — | Matrix/heatmap visualization |
+
+**Frontend Progress: 3/8 components (38%)**
+
+### Overall Project Progress
+
+| Layer | Complete | Total | Progress |
+|-------|----------|-------|----------|
+| Specs | 9 | 9 | 100% |
+| Backend | 4 | 7 | 57% |
+| Frontend | 3 | 8 | 38% |
+| **Total** | **16** | **24** | **67%** |

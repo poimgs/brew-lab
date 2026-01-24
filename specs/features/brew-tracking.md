@@ -11,6 +11,9 @@ The design prioritizes:
 - User-configurable defaults
 - Low-friction entry that scales with user sophistication
 
+**Related features:**
+- [Brew Optimization](brew-optimization.md): Set target scores, view gaps via radar chart, consult effect mappings
+
 ---
 
 ## Entity: Experiment
@@ -90,11 +93,23 @@ All intensity fields are 1-10 scale.
 | aftertaste_intensity | integer | Strength of aftertaste |
 | aftertaste_notes | text | Aftertaste descriptors |
 
+### Target Profile
+
+Optional target scores for brew optimization (see [brew-optimization.md](brew-optimization.md)):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| target_acidity | integer | Target acidity intensity (1-10) |
+| target_sweetness | integer | Target sweetness intensity (1-10) |
+| target_bitterness | integer | Target bitterness intensity (1-10) |
+| target_body | integer | Target body weight (1-10) |
+| target_aroma | integer | Target aroma intensity (1-10) |
+
 ### Issue Tags
 
 | Field | Type | Description |
 |-------|------|-------------|
-| issue_tags | array[string] | Selected issues with this brew (see rules-engine.md) |
+| issue_tags | array[string] | Selected issues with this brew |
 | improvement_notes | text | Ideas for next attempt |
 
 ### Computed Properties
@@ -156,6 +171,13 @@ CREATE TABLE experiments (
     overall_score INTEGER CHECK (overall_score BETWEEN 1 AND 10),
     overall_notes TEXT NOT NULL,
     improvement_notes TEXT,
+
+    -- Target profile (for optimization)
+    target_acidity INTEGER CHECK (target_acidity BETWEEN 1 AND 10),
+    target_sweetness INTEGER CHECK (target_sweetness BETWEEN 1 AND 10),
+    target_bitterness INTEGER CHECK (target_bitterness BETWEEN 1 AND 10),
+    target_body INTEGER CHECK (target_body BETWEEN 1 AND 10),
+    target_aroma INTEGER CHECK (target_aroma BETWEEN 1 AND 10),
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -465,10 +487,14 @@ CREATE TABLE user_defaults (
 - Aftertaste Intensity (1-10)
 - Aftertaste Notes (text)
 
+**Target Profile:**
+- Set target scores for optimization (see [brew-optimization.md](brew-optimization.md))
+- View radar chart comparing current vs target
+- Consult effect mappings for improvement guidance
+
 **Issue Tags:**
 - Multi-select from predefined tags
 - Add custom tags inline
-- See rules-engine.md for tag list
 
 ### Defaults System
 

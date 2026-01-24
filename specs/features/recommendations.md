@@ -2,217 +2,192 @@
 
 ## Overview
 
-Recommendations connect user-identified brew issues to actionable suggestions via the rules engine. When a user tags issues on an experiment, matching rules surface their suggestions. This closes the loop between tracking problems and learning solutions.
+Recommendations help users understand what to change to improve their brews. The system connects:
+- **Issue tags**: Problems identified in a brew
+- **Score gaps**: Difference between actual and target sensory scores
+- **Effect mappings**: User-defined cause→effect relationships
+
+This closes the loop between identifying problems and understanding solutions.
+
+**Key shift from rules-based approach:**
+- Old: Issue tag → text suggestion
+- New: Score gap → relevant effect mappings → quantified expected changes
+
+---
 
 ## Requirements
 
 ### User Stories
 
-1. **Get Suggestions**: As a user, after tagging issues, I see relevant suggestions
-2. **Understand Matches**: As a user, I can see why a rule was suggested
-3. **Dismiss Suggestions**: As a user, I can dismiss unhelpful suggestions
-4. **Track Application**: As a user, I can note when I tried a suggestion
-5. **Quick Access**: As a user, I can get recommendations from an experiment
+1. **See Relevant Mappings**: As a user, after identifying gaps, I see mappings that could help
+2. **Understand Effects**: As a user, I can see expected changes from each mapping
+3. **Prioritize Changes**: As a user, I can see which mappings help most with my gaps
+4. **Dismiss Suggestions**: As a user, I can dismiss unhelpful suggestions
+5. **Track Application**: As a user, I can note when I tried a suggestion
 
 ### Issue Tagging Flow
 
 **During Experiment Entry:**
 ```
-┌─────────────────────────────────────────────────────────┐
-│ ─── Issue Tags ───                            [expand]  │
-│                                                         │
-│ What issues did you notice?                             │
-│                                                         │
-│ Extraction:  [☐ Under] [☐ Over] [☐ Channeling]         │
-│ Taste:       [☑ Too Acidic] [☐ Too Bitter]             │
-│              [☑ Lacks Sweetness] [☐ Lacks Body]        │
-│ Other:       [☐ Muted] [☐ Off-flavors] [☐ Vegetal]     │
-│                                                         │
-│ [+ Custom tag]                                          │
-│                                                         │
-│ ──────────────────────────────────────────────────────  │
-│                                                         │
-│ 💡 2 rules match your issues                            │
-│    [View Suggestions]                                   │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ ─── Issue Tags ───                            [expand]      │
+│                                                             │
+│ What issues did you notice?                                 │
+│                                                             │
+│ Extraction:  [☐ Under] [☐ Over] [☐ Channeling]             │
+│ Taste:       [☑ Too Acidic] [☐ Too Bitter]                 │
+│              [☑ Lacks Sweetness] [☐ Lacks Body]            │
+│ Other:       [☐ Muted] [☐ Off-flavors] [☐ Vegetal]         │
+│                                                             │
+│ [+ Custom tag]                                              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Real-time Matching:**
-- As tags are selected, rules are matched in background
-- Count shown immediately
-- User can view before saving experiment
+Issue tags help categorize problems but are secondary to score-based gap analysis.
 
-### Recommendations Panel
+### Gap-Based Recommendations
 
-**Triggered From:**
-- "View Suggestions" during entry
-- "Get Recommendations" on experiment detail
-- Dedicated recommendations page (all unresolved)
+The primary recommendation flow uses score gaps (see [brew-optimization.md](brew-optimization.md)):
 
-**Panel Layout:**
 ```
-┌─────────────────────────────────────────────────────────┐
-│ Recommendations                                  [Close]│
-│ For: Kiamaina · Jan 19 · Issues: too_acidic, lacks_sweetness │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│ ┌─────────────────────────────────────────────────────┐ │
-│ │ 🎯 Reduce Acidity by Lowering Temperature           │ │
-│ │    Confidence: High · Source: Hoffmann              │ │
-│ ├─────────────────────────────────────────────────────┤ │
-│ │ Matched: too_acidic                                 │ │
-│ │                                                     │ │
-│ │ Suggestion:                                         │ │
-│ │ Lower water temperature by 2-3°C. This reduces     │ │
-│ │ acid extraction while maintaining body.            │ │
-│ │                                                     │ │
-│ │ Expected: acidity ↓, sweetness may ↑               │ │
-│ │                                                     │ │
-│ │ [Try This →]  [Dismiss]  [View Rule]               │ │
-│ └─────────────────────────────────────────────────────┘ │
-│                                                         │
-│ ┌─────────────────────────────────────────────────────┐ │
-│ │ 🎯 Increase Sweetness with Longer Bloom            │ │
-│ │    Confidence: Medium                               │ │
-│ ├─────────────────────────────────────────────────────┤ │
-│ │ Matched: lacks_sweetness                            │ │
-│ │                                                     │ │
-│ │ Suggestion:                                         │ │
-│ │ Extend bloom time to 90 seconds to allow more      │ │
-│ │ even saturation and sweetness extraction.          │ │
-│ │                                                     │ │
-│ │ [Try This →]  [Dismiss]  [View Rule]               │ │
-│ └─────────────────────────────────────────────────────┘ │
-│                                                         │
-│ No more matching rules.                                 │
-│ [Create Rule for These Issues]                          │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ Recommendations                                      [Close]│
+│ For: Kiamaina · Jan 19                                      │
+│ Gaps: Acidity ↓2, Sweetness ↑3, Body ↓1                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ 🎯 Lower Temperature (-5°C)                             │ │
+│ │    Source: James Hoffmann                               │ │
+│ ├─────────────────────────────────────────────────────────┤ │
+│ │ Expected effects:                                       │ │
+│ │ • Acidity ↓ 1-2 pts (High confidence)    ✓ Helps gap   │ │
+│ │ • Sweetness ↑ 0-1 pts (Medium)           ✓ Helps gap   │ │
+│ │ • Body — no change (High)                              │ │
+│ │                                                         │ │
+│ │ [Try This →]  [Dismiss]  [View Mapping]                │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ 🎯 Higher Ratio (+1 step to 1:16)                       │ │
+│ │    Source: Personal observation                         │ │
+│ ├─────────────────────────────────────────────────────────┤ │
+│ │ Expected effects:                                       │ │
+│ │ • Body ↓ 0-1 pts (Medium)                ✓ Helps gap   │ │
+│ │ • Sweetness ↑ 0-1 pts (Low)              ✓ Helps gap   │ │
+│ │                                                         │ │
+│ │ [Try This →]  [Dismiss]  [View Mapping]                │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ No more matching mappings.                                  │
+│ [Create Mapping for These Gaps]                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Recommendation Ranking
+
+Mappings are ranked by relevance to gaps:
+
+1. **Helps count**: How many gaps does this mapping address?
+2. **Confidence**: Higher confidence mappings rank higher
+3. **No conflicts**: Mappings that don't worsen other gaps rank higher
+
+**Ranking example:**
+```
+Gap: Acidity ↓2, Sweetness ↑3
+
+Mapping A: Acidity ↓, Sweetness ↑ (High confidence)
+→ Rank 1: Helps 2 gaps, high confidence
+
+Mapping B: Acidity ↓ (Medium confidence)
+→ Rank 2: Helps 1 gap
+
+Mapping C: Acidity ↓, Body ↑ (High confidence)
+→ Rank 3: Helps 1 gap, neutral on sweetness, but body wasn't a gap
 ```
 
 ### Recommendation Actions
 
 **"Try This" Action:**
-1. Opens new experiment form
+1. Opens new experiment form (copy as template)
 2. Pre-selects same coffee
-3. Adds note: "Trying: [suggestion summary]"
-4. User adjusts parameters per suggestion
-5. Links experiments for comparison later
+3. Adds note: "Trying: [mapping name] - expected effects: [summary]"
+4. Links experiments for comparison later
 
 **"Dismiss" Action:**
-- Hides suggestion for this experiment
-- Dismissal is specific to experiment-rule pair
-- Rule still appears for other experiments
+- Hides mapping for this experiment's gaps
+- Dismissal is specific to experiment-mapping pair
+- Mapping still appears for other experiments
 - Can be undone
 
-**"View Rule" Action:**
-- Opens rule detail/edit view
-- User can modify rule if suggestion is off
+**"View Mapping" Action:**
+- Opens mapping detail view
+- User can modify if suggested effect is off
+- Links to Experiment Review for full management
 
-### Rule Matching Logic
+### No Matching Mappings
 
-**Match Algorithm:**
-1. Collect all issue tags from experiment
-2. For each active rule:
-   - Check if all conditions are satisfied
-   - Issue tag conditions: tag must be in experiment's tags
-   - Variable conditions: compare experiment's field values
-3. Return rules where all conditions match
-4. Sort by: confidence (High→Medium→Low), then alphabetically
-
-**Example:**
+When no mappings match the identified gaps:
 ```
-Experiment tags: [too_acidic, lacks_sweetness]
-Experiment data: { acidity_intensity: 8, sweetness_intensity: 3 }
-
-Rule 1: Conditions = [issue:too_acidic]
-        → MATCHES (too_acidic in tags)
-
-Rule 2: Conditions = [issue:too_bitter, acidity > 6]
-        → NO MATCH (too_bitter not in tags)
-
-Rule 3: Conditions = [issue:lacks_sweetness, sweetness < 5]
-        → MATCHES (tag present AND sweetness 3 < 5)
+┌─────────────────────────────────────────────────────────────┐
+│ No matching effect mappings for these gaps.                 │
+│                                                             │
+│ You can:                                                    │
+│ • [Create a Mapping] for these effects                      │
+│ • [Browse Correlations] to find patterns                    │
+│ • [Review Similar Experiments] to see what worked           │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Multiple Matching Rules
+### Recommendations Overview Page
 
-When multiple rules match:
-- All are displayed
-- Ordered by confidence
-- User decides which to try
-- Can try multiple suggestions on different brews
-
-### Recommendation History
-
-**Experiment Detail Shows:**
+**Dedicated page showing experiments with optimization opportunities:**
 ```
-─── Recommendations Applied ───
-• Jan 19: Tried "Lower temperature" → See Experiment #48
-• Jan 20: Tried "Longer bloom" → See Experiment #49
-```
-
-**Links enable:**
-- Seeing if suggestion helped
-- Comparing before/after
-- Building evidence for rule confidence
-
-### No Matching Rules
-
-When no rules match selected issues:
-```
-┌─────────────────────────────────────────────────────────┐
-│ No matching rules for these issues.                     │
-│                                                         │
-│ You can:                                                │
-│ • [Create a Rule] for these issues                      │
-│ • [Browse Correlations] to find patterns                │
-│ • [Search Web] for "too_acidic coffee brewing"          │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Recommendations Page
-
-**Dedicated page showing all experiments with unresolved issues:**
-```
-┌─────────────────────────────────────────────────────────┐
-│ Recommendations Overview                                │
-├─────────────────────────────────────────────────────────┤
-│ Experiments with unresolved issues: 5                   │
-│                                                         │
-│ ┌─────────────────────────────────────────────────────┐ │
-│ │ Kiamaina · Jan 19                                   │ │
-│ │ Issues: too_acidic, lacks_sweetness                 │ │
-│ │ 2 suggestions available            [View]           │ │
-│ └─────────────────────────────────────────────────────┘ │
-│                                                         │
-│ ┌─────────────────────────────────────────────────────┐ │
-│ │ El Calagual · Jan 18                                │ │
-│ │ Issues: lacks_body, muted_flavors                   │ │
-│ │ 1 suggestion available             [View]           │ │
-│ └─────────────────────────────────────────────────────┘ │
-│                                                         │
-│ ...                                                     │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ Recommendations Overview                                    │
+├─────────────────────────────────────────────────────────────┤
+│ Experiments with target gaps: 5                             │
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ Kiamaina · Jan 19                                       │ │
+│ │ Gaps: Acidity ↓2, Sweetness ↑3                         │ │
+│ │ 2 relevant mappings                      [View]         │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ El Calagual · Jan 18                                    │ │
+│ │ Gaps: Body ↓1, Aroma ↑2                                │ │
+│ │ 1 relevant mapping                       [View]         │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ ...                                                         │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## API Endpoints
 
-### Get Recommendations
+### Get Recommendations for Experiment
+
 ```
-POST /api/v1/analysis/recommendations
+POST /api/v1/recommendations
 ```
 
-Get rule-based recommendations for given issue tags.
+Get effect mappings relevant to an experiment's gaps.
 
 **Request:**
 ```json
 {
-  "issue_tags": ["too_acidic", "lacks_sweetness"],
-  "experiment_id": "uuid"  // optional, for context and variable comparisons
+  "experiment_id": "uuid",
+  "gaps": [
+    {"variable": "acidity", "direction": "decrease", "amount": 2},
+    {"variable": "sweetness", "direction": "increase", "amount": 3}
+  ]
 }
 ```
+
+If `gaps` is omitted, computed from experiment's scores vs targets.
 
 **Response:**
 ```json
@@ -220,98 +195,115 @@ Get rule-based recommendations for given issue tags.
   "data": {
     "recommendations": [
       {
-        "rule_id": "uuid",
-        "rule_name": "Reduce Acidity by Lowering Temperature",
-        "suggestion": "Lower water temperature by 2-3°C. This reduces acid extraction while maintaining body.",
-        "confidence": "High",
-        "source": "James Hoffmann video",
-        "matched_conditions": ["too_acidic"],
-        "expected_effects": [
-          {"variable": "acidity_intensity", "direction": "decrease", "magnitude": "moderate"}
-        ]
-      },
-      {
-        "rule_id": "uuid",
-        "rule_name": "Increase Sweetness with Longer Bloom",
-        "suggestion": "Extend bloom time to 90 seconds...",
-        "confidence": "Medium",
-        "matched_conditions": ["lacks_sweetness"],
-        "expected_effects": [...]
+        "mapping_id": "uuid",
+        "mapping_name": "Lower Temperature Effect",
+        "variable": "temperature",
+        "direction": "decrease",
+        "tick_description": "5°C",
+        "effects": [
+          {
+            "output_variable": "acidity",
+            "direction": "decrease",
+            "range_min": 1,
+            "range_max": 2,
+            "confidence": "high",
+            "helps_gap": true
+          },
+          {
+            "output_variable": "sweetness",
+            "direction": "increase",
+            "range_min": 0,
+            "range_max": 1,
+            "confidence": "medium",
+            "helps_gap": true
+          }
+        ],
+        "source": "James Hoffmann",
+        "relevance_score": 0.85,
+        "helps_count": 2,
+        "conflicts_count": 0
       }
     ],
-    "unmatched_tags": []
+    "unaddressed_gaps": []
   }
 }
 ```
 
 ### Dismiss Recommendation
+
 ```
-POST /api/v1/experiments/:id/dismiss-recommendation
+POST /api/v1/experiments/:id/dismiss-mapping
 ```
 
-Dismiss a recommendation for a specific experiment.
+Dismiss a mapping for a specific experiment.
 
 **Request:**
 ```json
 {
-  "rule_id": "uuid"
+  "mapping_id": "uuid"
 }
 ```
 
 **Response:** `204 No Content`
 
-### Get Dismissed Recommendations
+### Get Dismissed Mappings
+
 ```
-GET /api/v1/experiments/:id/dismissed-recommendations
+GET /api/v1/experiments/:id/dismissed-mappings
 ```
 
 **Response:**
 ```json
 {
   "data": {
-    "dismissed_rule_ids": ["uuid1", "uuid2"]
+    "dismissed_mapping_ids": ["uuid1", "uuid2"]
   }
 }
 ```
 
 ### Undo Dismiss
+
 ```
-DELETE /api/v1/experiments/:id/dismiss-recommendation/:rule_id
+DELETE /api/v1/experiments/:id/dismiss-mapping/:mapping_id
 ```
 
 **Response:** `204 No Content`
 
 ### Try Recommendation
+
 ```
-POST /api/v1/experiments/:id/try-recommendation
+POST /api/v1/experiments/:id/try-mapping
 ```
 
-Creates a new experiment linked to the original, with a note about the suggestion being tried.
+Creates a new experiment linked to the original, with a note about the mapping being tried.
 
 **Request:**
 ```json
 {
-  "rule_id": "uuid",
-  "coffee_id": "uuid"  // optional, defaults to same coffee
+  "mapping_id": "uuid",
+  "coffee_id": "uuid"
 }
 ```
+
+If `coffee_id` is omitted, uses same coffee as original experiment.
 
 **Response:** `201 Created` with new experiment template
 
 The new experiment includes:
-- `improvement_notes`: "Trying: [suggestion summary]"
+- `improvement_notes`: "Trying: [mapping name] - expected: [effects summary]"
 - Link back to original experiment for comparison
 
-### Get Experiments with Unresolved Issues
+### Get Experiments with Gaps
+
 ```
-GET /api/v1/experiments/with-issues
+GET /api/v1/experiments/with-gaps
 ```
 
-Returns experiments that have issue tags but haven't been marked as resolved.
+Returns experiments that have target profiles with unmet gaps.
 
 **Query Parameters:**
 - `page`, `per_page`: Pagination
-- `has_recommendations`: Filter to only experiments with matching rules
+- `has_recommendations`: Filter to only experiments with matching mappings
 
 **Response:**
 ```json
@@ -321,7 +313,10 @@ Returns experiments that have issue tags but haven't been marked as resolved.
       "id": "uuid",
       "brew_date": "2026-01-19T10:30:00Z",
       "coffee_name": "Kiamaina",
-      "issue_tags": ["too_acidic", "lacks_sweetness"],
+      "gaps": [
+        {"variable": "acidity", "direction": "decrease", "amount": 2},
+        {"variable": "sweetness", "direction": "increase", "amount": 3}
+      ],
       "recommendation_count": 2
     }
   ],
@@ -331,35 +326,57 @@ Returns experiments that have issue tags but haven't been marked as resolved.
 
 ---
 
+## Issue Tags Reference
+
+Issue tags remain useful for categorizing problems. They map to sensory outcomes:
+
+| Tag | Related Variables | Implied Gap |
+|-----|-------------------|-------------|
+| `too_acidic` | acidity | acidity ↓ |
+| `lacks_acidity` | acidity | acidity ↑ |
+| `too_bitter` | bitterness | bitterness ↓ |
+| `lacks_sweetness` | sweetness | sweetness ↑ |
+| `lacks_body` | body | body ↑ |
+| `too_heavy` | body | body ↓ |
+| `muted_flavors` | aroma, overall | aroma ↑ |
+| `under_extracted` | overall | — (process issue) |
+| `over_extracted` | overall | — (process issue) |
+
+When an experiment has issue tags but no target profile, the system can infer implied gaps.
+
+---
+
 ## Design Decisions
 
-### Real-Time Matching
+### Gap-Based over Issue-Based
 
-Rules matched as tags are selected:
-- Immediate feedback encourages tagging
-- Shows value of rule system
-- User doesn't need separate step
+Primary trigger is score gaps rather than issue tags because:
+- More precise (quantified)
+- Directly actionable
+- Matches effect mapping structure
+- Issue tags are fuzzy categories
 
-### Suggestions, Not Prescriptions
+### Effect Mappings over Rules
 
-Recommendations are suggestions to consider:
-- User decides what to try
-- Coffee is complex—rules are heuristics
-- Empowers learning over following blindly
+Effect mappings replace the rules engine because:
+- Quantified effects (not just text suggestions)
+- Multi-output per mapping
+- Confidence per effect
+- Better mental model for optimization
 
-### Link Experiments
+### Relevance Ranking
 
-"Try This" creates a link between experiments:
-- Tracks that suggestion was attempted
-- Enables before/after comparison
-- Builds evidence for rule effectiveness
+Mappings ranked by relevance rather than alphabetically:
+- Shows most helpful first
+- Reduces cognitive load
+- Encourages trying best options first
 
 ### Dismiss is Scoped
 
-Dismissing a suggestion is per-experiment:
-- Doesn't disable the rule globally
-- Rule may be right for other situations
-- Respects that context matters
+Dismissing a mapping is per-experiment:
+- Doesn't disable globally
+- Mapping may be right for other situations
+- Respects context-dependence
 
 ### No Auto-Application
 
@@ -368,9 +385,21 @@ System suggests but never auto-applies changes:
 - Brewing requires human judgment
 - Prevents automation of potentially wrong advice
 
+---
+
+## Future Enhancements
+
+1. **Auto-rank by gap magnitude**: Prioritize mappings that address largest gaps
+2. **Conflict resolution**: When mappings have opposing effects, help user decide
+3. **Effectiveness tracking**: Did following the mapping actually improve scores?
+4. **Suggestion combinations**: "Try temperature -5°C AND ratio +1 step"
+5. **Learning from dismissals**: Frequent dismissals could lower mapping relevance
+
+---
+
 ## Open Questions
 
-1. **Effectiveness Tracking**: Auto-calculate if suggestions improved scores?
-2. **Suggestion Priority**: When rules conflict, how to guide user?
+1. **Issue Tag → Gap Inference**: How reliably can tags imply gaps?
+2. **Multiple Mappings**: Guide user on combining multiple suggestions?
 3. **Bulk Recommendations**: Apply same suggestion to multiple experiments?
-4. **Learning from Dismissals**: Should frequent dismissals lower rule confidence?
+4. **Mapping Accuracy**: Track predicted vs actual outcomes over time?
