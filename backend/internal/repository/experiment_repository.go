@@ -547,3 +547,38 @@ func (r *ExperimentRepository) GetLastBrewedForCoffee(ctx context.Context, coffe
 
 	return &lastBrewed, nil
 }
+
+// GetByIDs retrieves multiple experiments by their IDs, ordered by brew_date
+func (r *ExperimentRepository) GetByIDs(ctx context.Context, userID uuid.UUID, experimentIDs []uuid.UUID) ([]*models.Experiment, error) {
+	if len(experimentIDs) == 0 {
+		return []*models.Experiment{}, nil
+	}
+
+	query := fmt.Sprintf(`
+		SELECT %s
+		FROM experiments
+		WHERE user_id = $1 AND id = ANY($2)
+		ORDER BY brew_date ASC
+	`, experimentColumns)
+
+	rows, err := r.pool.Query(ctx, query, userID, experimentIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	experiments := make([]*models.Experiment, 0, len(experimentIDs))
+	for rows.Next() {
+		exp, err := scanExperimentRows(rows)
+		if err != nil {
+			return nil, err
+		}
+		experiments = append(experiments, exp)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return experiments, nil
+}

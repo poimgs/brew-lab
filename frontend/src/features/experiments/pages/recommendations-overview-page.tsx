@@ -15,7 +15,7 @@ export function RecommendationsOverviewPage() {
     <RootLayout>
       <PageHeader
         title="Recommendations"
-        subtitle="Experiments with target profiles that have improvement opportunities"
+        description="Experiments with target profiles that have improvement opportunities"
       />
       <div className="space-y-6">
         {/* Header */}

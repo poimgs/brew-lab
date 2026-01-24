@@ -28,6 +28,9 @@ import {
 } from "@/components/ui/dialog"
 import { ExperimentForm } from "../components/experiment-form"
 import { OptimizationTab } from "../components/optimization"
+import { PrevNextNav } from "../components/detail/prev-next-nav"
+import { EffectMappingsTab } from "../components/detail/effect-mappings-tab"
+import { useAdjacentExperiments, useKeyboardNavigation } from "../hooks"
 import { api, type Experiment, type ExperimentFormData } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +45,14 @@ export function ExperimentDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Navigation hooks
+  const adjacentExperiments = useAdjacentExperiments(id || "")
+  useKeyboardNavigation({
+    prevId: adjacentExperiments.prevId,
+    nextId: adjacentExperiments.nextId,
+    enabled: !isEditing && !showDeleteDialog,
+  })
 
   useEffect(() => {
     if (!id) return
@@ -297,6 +308,7 @@ export function ExperimentDetailPage() {
           <TabsTrigger value="parameters">Parameters</TabsTrigger>
           <TabsTrigger value="outcomes">Outcomes</TabsTrigger>
           <TabsTrigger value="optimization">Optimization</TabsTrigger>
+          <TabsTrigger value="effect-mappings">Effect Mappings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="parameters" className="space-y-6">
@@ -511,7 +523,22 @@ export function ExperimentDetailPage() {
         <TabsContent value="optimization">
           <OptimizationTab experimentId={id!} experiment={experiment} />
         </TabsContent>
+
+        <TabsContent value="effect-mappings">
+          <EffectMappingsTab experimentId={id!} />
+        </TabsContent>
       </Tabs>
+
+      {/* Prev/Next Navigation */}
+      <PrevNextNav
+        prevId={adjacentExperiments.prevId}
+        nextId={adjacentExperiments.nextId}
+        prevDate={adjacentExperiments.prevDate}
+        nextDate={adjacentExperiments.nextDate}
+        currentIndex={adjacentExperiments.currentIndex}
+        totalCount={adjacentExperiments.totalCount}
+        isLoading={adjacentExperiments.isLoading}
+      />
     </RootLayout>
   )
 }

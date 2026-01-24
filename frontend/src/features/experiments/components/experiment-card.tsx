@@ -3,14 +3,23 @@ import { format } from "date-fns"
 import { Coffee, Star, Calendar, Clock, Droplets } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import type { Experiment } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 interface ExperimentCardProps {
   experiment: Experiment
+  selectable?: boolean
+  selected?: boolean
+  onToggleSelect?: (id: string) => void
 }
 
-export function ExperimentCard({ experiment }: ExperimentCardProps) {
+export function ExperimentCard({
+  experiment,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+}: ExperimentCardProps) {
   const formatBrewDate = (dateStr: string) => {
     try {
       return format(new Date(dateStr), "MMM d, yyyy")
@@ -26,13 +35,37 @@ export function ExperimentCard({ experiment }: ExperimentCardProps) {
     return `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
-  return (
-    <Link to={`/experiments/${experiment.id}`}>
-      <Card className="hover:bg-accent/50 transition-colors">
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              {experiment.coffee ? (
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    onToggleSelect?.(experiment.id)
+  }
+
+  const cardContent = (
+    <Card
+      className={cn(
+        "hover:bg-accent/50 transition-colors relative",
+        selected && "ring-2 ring-primary bg-primary/5"
+      )}
+    >
+      {selectable && (
+        <div
+          className="absolute top-3 left-3 z-10"
+          onClick={handleCheckboxClick}
+        >
+          <Checkbox
+            checked={selected}
+            className={cn(
+              "h-5 w-5 border-2",
+              selected && "bg-primary border-primary"
+            )}
+          />
+        </div>
+      )}
+      <CardHeader className={cn("pb-2", selectable && "pl-12")}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            {experiment.coffee ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Coffee className="h-4 w-4 shrink-0" />
                   <span className="truncate">
@@ -109,7 +142,12 @@ export function ExperimentCard({ experiment }: ExperimentCardProps) {
             </div>
           )}
         </CardContent>
-      </Card>
+    </Card>
+  )
+
+  return (
+    <Link to={`/experiments/${experiment.id}`}>
+      {cardContent}
     </Link>
   )
 }

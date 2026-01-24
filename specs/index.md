@@ -66,10 +66,9 @@ Self-contained feature specifications. Each includes entity definitions, API end
 
 | Status | Count | Features |
 |--------|-------|----------|
-| ✅ Complete | 7 | authentication, coffee-library, brew-tracking, reference-data, effect-mappings, brew-optimization, recommendations |
-| 🚧 Not Started | 1 | experiment-review |
+| ✅ Complete | 8 | authentication, coffee-library, brew-tracking, reference-data, effect-mappings, brew-optimization, recommendations, experiment-review |
 
-**Overall Progress: 7/8 features (88%)**
+**Overall Progress: 8/8 features (100%)**
 
 ### Feature Details
 
@@ -80,7 +79,7 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | [brew-tracking.md](features/brew-tracking.md) | ✅ Complete | authentication, coffee-library | Experiment entity + logging API + entry forms |
 | [reference-data.md](features/reference-data.md) | ✅ Complete | authentication | Filter papers (CRUD) + mineral profiles (read-only) |
 | [brew-optimization.md](features/brew-optimization.md) | ✅ Complete | brew-tracking | Target profiles, radar chart, gap analysis |
-| [experiment-review.md](features/experiment-review.md) | 🚧 Not Started | brew-tracking, effect-mappings | List/compare/analyze views, correlation analysis, effect mapping management |
+| [experiment-review.md](features/experiment-review.md) | ✅ Complete | brew-tracking, effect-mappings | List/compare/analyze views, correlation analysis, effect mapping management |
 | [effect-mappings.md](features/effect-mappings.md) | ✅ Complete | authentication | Effect mapping entity + CRUD API |
 | [recommendations.md](features/recommendations.md) | ✅ Complete | brew-optimization, effect-mappings | Gap-based recommendations, mapping matching |
 
@@ -155,11 +154,11 @@ authentication (core)
 | Brew Tracking | ✅ Complete | `frontend/src/features/experiments/` | Entry forms |
 | Reference Data | ✅ Complete | `frontend/src/features/reference-data/` | Filter papers CRUD + mineral profiles |
 | Brew Optimization | ✅ Complete | `frontend/src/features/experiments/components/optimization/` | Target inputs, radar chart, gap analysis |
-| Experiment Review | 🚧 Not Started | — | List, compare, analyze views, correlation matrix |
+| Experiment Review | ✅ Complete | `frontend/src/features/experiments/` | List, compare, analyze views, correlation matrix |
 | Effect Mappings UI | ✅ Complete | `frontend/src/features/effect-mappings/` | CRUD + filtering |
 | Recommendations | ✅ Complete | `frontend/src/features/experiments/components/optimization/` | Gap-based suggestions, dismiss/try actions |
 
-**Frontend Progress: 7/8 components (88%)**
+**Frontend Progress: 8/8 components (100%)**
 
 ### Overall Project Progress
 
@@ -167,5 +166,5 @@ authentication (core)
 |-------|----------|-------|----------|
 | Specs | 8 | 8 | 100% |
 | Backend | 7 | 7 | 100% |
-| Frontend | 7 | 8 | 88% |
-| **Total** | **22** | **23** | **96%** |
+| Frontend | 8 | 8 | 100% |
+| **Total** | **23** | **23** | **100%** |

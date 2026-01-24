@@ -13,6 +13,9 @@ interface ExperimentListProps {
     total_pages: number
   }
   onPageChange: (page: number) => void
+  selectable?: boolean
+  selectedIds?: string[]
+  onToggleSelect?: (id: string) => void
 }
 
 export function ExperimentList({
@@ -20,6 +23,9 @@ export function ExperimentList({
   loading,
   pagination,
   onPageChange,
+  selectable = false,
+  selectedIds = [],
+  onToggleSelect,
 }: ExperimentListProps) {
   if (loading) {
     return (
@@ -50,7 +56,13 @@ export function ExperimentList({
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {experiments.map((experiment) => (
-          <ExperimentCard key={experiment.id} experiment={experiment} />
+          <ExperimentCard
+            key={experiment.id}
+            experiment={experiment}
+            selectable={selectable}
+            selected={selectedIds.includes(experiment.id)}
+            onToggleSelect={onToggleSelect}
+          />
         ))}
       </div>
 

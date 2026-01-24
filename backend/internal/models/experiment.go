@@ -237,6 +237,11 @@ func (e *Experiment) ToResponse(coffee *CoffeeResponse, filterPaper *FilterPaper
 }
 
 // computeGaps calculates the gaps between current and target sensory scores
+// ComputeGaps calculates the gaps between current and target sensory scores (exported version)
+func (e *Experiment) ComputeGaps() *SensoryGaps {
+	return e.computeGaps()
+}
+
 func (e *Experiment) computeGaps() *SensoryGaps {
 	// Only compute if at least one target is set
 	if e.TargetAcidity == nil && e.TargetSweetness == nil && e.TargetBitterness == nil && e.TargetBody == nil && e.TargetAroma == nil {
@@ -400,4 +405,32 @@ type ExperimentListResponse struct {
 type OptimizationResponse struct {
 	Experiment       *ExperimentResponse       `json:"experiment"`
 	RelevantMappings []*EffectMappingResponse `json:"relevant_mappings"`
+}
+
+// CompareExperimentsInput is the input for comparing 2-4 experiments
+type CompareExperimentsInput struct {
+	ExperimentIDs []uuid.UUID `json:"experiment_ids" validate:"required,min=2,max=4"`
+}
+
+// DeltaTrend indicates the trend direction across experiments
+type DeltaTrend string
+
+const (
+	DeltaTrendIncreasing DeltaTrend = "increasing"
+	DeltaTrendDecreasing DeltaTrend = "decreasing"
+	DeltaTrendStable     DeltaTrend = "stable"
+	DeltaTrendVariable   DeltaTrend = "variable"
+)
+
+// DeltaInfo contains min, max, and trend information for a field
+type DeltaInfo struct {
+	Min   interface{} `json:"min"`
+	Max   interface{} `json:"max"`
+	Trend DeltaTrend  `json:"trend"`
+}
+
+// CompareExperimentsResponse contains the comparison results
+type CompareExperimentsResponse struct {
+	Experiments []ExperimentResponse   `json:"experiments"`
+	Deltas      map[string]*DeltaInfo  `json:"deltas"`
 }

@@ -5,6 +5,10 @@ import { RootLayout, PageHeader } from "@/components/layout"
 import { Button } from "@/components/ui/button"
 import { ExperimentFilters } from "../components/experiment-filters"
 import { ExperimentList } from "../components/experiment-list"
+import { SelectionToolbar } from "../components/selection/selection-toolbar"
+import { ComparisonView } from "../components/comparison/comparison-view"
+import { AnalyzeView } from "../components/analyze/analyze-view"
+import { useExperimentSelection } from "../hooks/use-experiment-selection"
 import { api, type Experiment, type ExperimentListParams } from "@/lib/api"
 
 export function ExperimentsListPage() {
@@ -19,6 +23,17 @@ export function ExperimentsListPage() {
     total: 0,
     total_pages: 0,
   })
+
+  const {
+    selectedIds,
+    mode,
+    toggleSelection,
+    selectAll,
+    clearSelection,
+    setMode,
+    canCompare,
+    canAnalyze,
+  } = useExperimentSelection()
 
   // Parse filters from URL
   const getFiltersFromUrl = useCallback((): ExperimentListParams => {
@@ -82,6 +97,10 @@ export function ExperimentsListPage() {
     updateFilters({ ...filters, page })
   }
 
+  const handleSelectAllFiltered = () => {
+    selectAll(experiments.map((e) => e.id))
+  }
+
   return (
     <RootLayout>
       <PageHeader
@@ -98,12 +117,43 @@ export function ExperimentsListPage() {
       <div className="space-y-6">
         <ExperimentFilters filters={filters} onChange={updateFilters} />
 
-        <ExperimentList
-          experiments={experiments}
-          loading={loading}
-          pagination={pagination}
-          onPageChange={handlePageChange}
+        <SelectionToolbar
+          selectedCount={selectedIds.length}
+          totalCount={experiments.length}
+          canCompare={canCompare}
+          canAnalyze={canAnalyze}
+          mode={mode}
+          onClear={clearSelection}
+          onSelectAllFiltered={handleSelectAllFiltered}
+          onSetMode={setMode}
+          filters={filters}
         />
+
+        {mode === "compare" && selectedIds.length >= 2 && selectedIds.length <= 4 && (
+          <ComparisonView
+            experimentIds={selectedIds}
+            onClose={() => setMode(null)}
+          />
+        )}
+
+        {mode === "analyze" && selectedIds.length >= 5 && (
+          <AnalyzeView
+            experimentIds={selectedIds}
+            onClose={() => setMode(null)}
+          />
+        )}
+
+        {!mode && (
+          <ExperimentList
+            experiments={experiments}
+            loading={loading}
+            pagination={pagination}
+            onPageChange={handlePageChange}
+            selectable={true}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelection}
+          />
+        )}
       </div>
     </RootLayout>
   )

@@ -1,3 +1,8 @@
 export { useRecommendations } from "./use-recommendations"
 export { useRecommendationMutations } from "./use-recommendation-mutations"
 export { useExperimentsWithGaps } from "./use-experiments-with-gaps"
+export { useExperimentSelection } from "./use-experiment-selection"
+export { useCompareExperiments } from "./use-compare-experiments"
+export { useAnalyzeExperiments, useAnalyzeDetail } from "./use-analyze-experiments"
+export { useAdjacentExperiments } from "./use-adjacent-experiments"
+export { useKeyboardNavigation } from "./use-keyboard-navigation"
