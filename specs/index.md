@@ -67,7 +67,7 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | Status | Count | Features |
 |--------|-------|----------|
 | ✅ Complete | 3 | authentication, coffee-library, brew-tracking |
-| 🚧 Not Started | 6 | brew-optimization, experiment-review, effect-mappings, recommendations, correlations, mineral-profiles |
+| 🚧 Not Started | 6 | reference-data, brew-optimization, experiment-review, effect-mappings, recommendations, correlations |
 
 **Overall Progress: 3/9 features (33%)**
 
@@ -78,12 +78,12 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | [authentication.md](features/authentication.md) | ✅ Complete | — | User entity, login/signup, JWT, session handling |
 | [coffee-library.md](features/coffee-library.md) | ✅ Complete | authentication | Coffee entity + CRUD API + library UI |
 | [brew-tracking.md](features/brew-tracking.md) | ✅ Complete | authentication, coffee-library | Experiment entity + logging API + entry forms |
+| [reference-data.md](features/reference-data.md) | 🚧 Not Started | authentication | Filter papers (CRUD) + mineral profiles (read-only) |
 | [brew-optimization.md](features/brew-optimization.md) | 🚧 Not Started | brew-tracking | Target profiles, radar chart, gap analysis |
 | [experiment-review.md](features/experiment-review.md) | 🚧 Not Started | brew-tracking, effect-mappings | List/detail views, comparison, effect mapping management |
 | [effect-mappings.md](features/effect-mappings.md) | 🚧 Not Started | authentication | Effect mapping entity + CRUD API |
 | [recommendations.md](features/recommendations.md) | 🚧 Not Started | brew-optimization, effect-mappings | Gap-based recommendations, mapping matching |
 | [correlations.md](features/correlations.md) | 🚧 Not Started | brew-tracking | Correlation analysis + matrix/heatmap visualization |
-| [mineral-profiles.md](features/mineral-profiles.md) | 🚧 Not Started | authentication | Mineral profile reference data |
 
 ### Dependency Graph
 
@@ -92,7 +92,7 @@ authentication (core)
     │
     ├── coffee-library
     │       │
-    │       └── brew-tracking
+    │       └── brew-tracking ←── reference-data
     │               │
     │               ├── brew-optimization
     │               │       │
@@ -102,19 +102,19 @@ authentication (core)
     │               │
     │               └── correlations
     │
-    ├── effect-mappings
+    ├── reference-data (filter papers + mineral profiles)
     │
-    └── mineral-profiles
+    └── effect-mappings
 ```
 
 ### Recommended Implementation Order
 
-1. **effect-mappings** — Independent entity, needed by recommendations and experiment-review
-2. **brew-optimization** — Adds target profiles to experiments, enables gap analysis
-3. **experiment-review** — List/compare experiments, manage effect mappings
-4. **recommendations** — Connect gaps to effect mappings for suggestions
-5. **correlations** — Pattern discovery (independent workflow)
-6. **mineral-profiles** — Reference data (can be done anytime)
+1. **reference-data** — Filter papers + mineral profiles, needed by brew-tracking form
+2. **effect-mappings** — Independent entity, needed by recommendations and experiment-review
+3. **brew-optimization** — Adds target profiles to experiments, enables gap analysis
+4. **experiment-review** — List/compare experiments, manage effect mappings
+5. **recommendations** — Connect gaps to effect mappings for suggestions
+6. **correlations** — Pattern discovery (independent workflow)
 
 ---
 

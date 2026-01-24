@@ -41,7 +41,7 @@ These are set before brewing begins.
 | ratio | string | — | Shorthand like "1:15" (can be calculated or entered) |
 | grind_size | string | — | Grinder-specific (e.g., "8 clicks", "3.5 on Ode") |
 | water_temperature | decimal | °C | Water temperature at pour |
-| filter_type | string | — | Filter paper brand/type |
+| filter_paper_id | UUID | — | Reference to filter paper (see [Reference Data](reference-data.md)) |
 
 ### Brew Variables
 
@@ -133,7 +133,7 @@ CREATE TABLE experiments (
     ratio VARCHAR(20),
     grind_size VARCHAR(100),
     water_temperature DECIMAL(4,1),
-    filter_type VARCHAR(100),
+    filter_paper_id UUID REFERENCES filter_papers(id) ON DELETE SET NULL,
 
     -- Brew variables
     bloom_water DECIMAL(5,2),
@@ -227,6 +227,12 @@ GET /api/v1/experiments
         "name": "Kiamaina",
         "roast_date": "2025-11-19"
       },
+      "filter_paper_id": "uuid",
+      "filter_paper": {
+        "id": "uuid",
+        "name": "Abaca",
+        "brand": "Cafec"
+      },
       "brew_date": "2026-01-19T10:30:00Z",
       "days_off_roast": 61,
       "coffee_weight": 15.0,
@@ -255,7 +261,7 @@ POST /api/v1/experiments
   "water_weight": 225.0,
   "grind_size": "8 clicks",
   "water_temperature": 90.0,
-  "filter_type": "Hario V60",
+  "filter_paper_id": "uuid",
   "bloom_water": 45.0,
   "bloom_time": 75,
   "pour_1": "90g, circular motion",
@@ -338,7 +344,7 @@ GET /api/v1/defaults
     "ratio": "1:15",
     "grind_size": "8 clicks",
     "water_temperature": "90",
-    "filter_type": "Hario V60",
+    "filter_paper_id": "uuid",
     "bloom_water": "45",
     "bloom_time": "75"
   }
@@ -443,7 +449,7 @@ CREATE TABLE user_defaults (
 │ Ratio            [1:15  ]               │
 │ Grind Size       [8 clicks         ]    │
 │ Temperature      [90    ] °C            │
-│ Filter           [Hario V60        ▼]   │
+│ Filter           [Select filter... ▼]   │
 ```
 
 ### Field Sections
@@ -454,7 +460,7 @@ CREATE TABLE user_defaults (
 - Ratio (calculated or entered)
 - Grind Size (free text)
 - Water Temperature (°C)
-- Filter Type (autocomplete)
+- Filter Paper (dropdown, see [Reference Data](reference-data.md))
 
 **Brew Variables:**
 - Bloom Water (g)
