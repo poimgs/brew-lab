@@ -134,7 +134,7 @@ When no mappings match the identified gaps:
 │                                                             │
 │ You can:                                                    │
 │ • [Create a Mapping] for these effects                      │
-│ • [Browse Correlations] to find patterns                    │
+│ • [Analyze Experiments] to find patterns                    │
 │ • [Review Similar Experiments] to see what worked           │
 └─────────────────────────────────────────────────────────────┘
 ```

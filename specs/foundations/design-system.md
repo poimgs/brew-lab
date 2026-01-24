@@ -844,7 +844,7 @@ Side-by-side experiment comparison.
 
 ### Correlation Heatmap
 
-Color-coded matrix with clickable cells.
+Color-coded matrix with clickable cells. Used in Experiment Review's Analyze mode.
 
 ```tsx
 <div className="overflow-x-auto">

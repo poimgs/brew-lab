@@ -378,7 +378,7 @@ Mappings can be deactivated without deletion:
 
 1. **Tick Unit Normalization**: Should grind size ticks be normalized across grinders?
 2. **Mapping Validation**: Should mappings with contradictory effects be flagged?
-3. **Auto-Suggest from Correlations**: Can correlation data suggest new mappings?
+3. **Auto-Suggest from Analyze Mode**: Can Experiment Review's Analyze mode suggest new mappings based on observed correlations?
 4. **Mapping Effectiveness**: Track accuracy of predicted effects vs actual outcomes?
 5. **Community Mappings**: Share mappings between users (future)?
 6. **Filter Paper Profiles**: Define flow rate, clarity, body impact dimensions?
