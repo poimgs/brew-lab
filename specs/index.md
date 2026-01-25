@@ -77,7 +77,7 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | [authentication.md](features/authentication.md) | ✅ Complete | — | User entity, login/signup, JWT, session handling |
 | [coffee-library.md](features/coffee-library.md) | ✅ Complete | authentication | Coffee entity + CRUD API + library UI |
 | [brew-tracking.md](features/brew-tracking.md) | ✅ Complete | authentication, coffee-library | Experiment entity + logging API + entry forms |
-| [reference-data.md](features/reference-data.md) | ✅ Complete | authentication | Filter papers (CRUD) + mineral profiles (read-only) |
+| [reference-data.md](features/reference-data.md) | ✅ Complete | authentication | Filter papers (CRUD) + mineral profiles (read-only) + brew defaults |
 | [brew-optimization.md](features/brew-optimization.md) | ✅ Complete | brew-tracking | Target profiles, radar chart, gap analysis |
 | [experiment-review.md](features/experiment-review.md) | ✅ Complete | brew-tracking, effect-mappings | List/compare/analyze views, correlation analysis, effect mapping management |
 | [effect-mappings.md](features/effect-mappings.md) | ✅ Complete | authentication | Effect mapping entity + CRUD API |
@@ -152,7 +152,7 @@ authentication (core)
 | Authentication | ✅ Complete | `frontend/src/features/auth/` | Login/signup flow |
 | Coffee Library | ✅ Complete | `frontend/src/features/library/` | List + CRUD forms |
 | Brew Tracking | ✅ Complete | `frontend/src/features/experiments/` | Entry forms |
-| Reference Data | ✅ Complete | `frontend/src/features/reference-data/` | Filter papers CRUD + mineral profiles |
+| Reference Data | ✅ Complete | `frontend/src/features/reference-data/` | Filter papers CRUD + mineral profiles + brew defaults |
 | Brew Optimization | ✅ Complete | `frontend/src/features/experiments/components/optimization/` | Target inputs, radar chart, gap analysis |
 | Experiment Review | ✅ Complete | `frontend/src/features/experiments/` | List, compare, analyze views, correlation matrix |
 | Effect Mappings UI | ✅ Complete | `frontend/src/features/effect-mappings/` | CRUD + filtering |

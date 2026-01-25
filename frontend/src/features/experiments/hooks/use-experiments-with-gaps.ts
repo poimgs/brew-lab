@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { api, type ExperimentWithGaps } from "@/lib/api"
 
 interface UseExperimentsWithGapsResult {
@@ -29,33 +29,42 @@ export function useExperimentsWithGaps(
     totalPages: 0,
   })
 
-  const fetchExperiments = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await api.getExperimentsWithGaps(page, pageSize)
-      setExperiments(response.experiments)
-      setPagination({
-        page: response.page,
-        pageSize: response.page_size,
-        total: response.total_count,
-        totalPages: response.total_pages,
-      })
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to fetch experiments with gaps"
-      )
-      setExperiments([])
-    } finally {
-      setIsLoading(false)
+  // Use ref to store refetch function for external use
+  const refetchRef = useRef<() => Promise<void>>(() => Promise.resolve())
+
+  // Fetch experiments when page/pageSize change
+  useEffect(() => {
+    async function fetchExperiments() {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const response = await api.getExperimentsWithGaps(page, pageSize)
+        setExperiments(response.experiments)
+        setPagination({
+          page: response.page,
+          pageSize: response.page_size,
+          total: response.total_count,
+          totalPages: response.total_pages,
+        })
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to fetch experiments with gaps"
+        )
+        setExperiments([])
+      } finally {
+        setIsLoading(false)
+      }
     }
+
+    // Store current fetch function for refetch capability
+    refetchRef.current = fetchExperiments
+    fetchExperiments()
   }, [page, pageSize])
 
-  useEffect(() => {
-    fetchExperiments()
-  }, [fetchExperiments])
+  // Stable refetch function
+  const refetch = useCallback(() => refetchRef.current(), [])
 
   return {
     experiments,
@@ -63,6 +72,6 @@ export function useExperimentsWithGaps(
     error,
     pagination,
     setPage,
-    refetch: fetchExperiments,
+    refetch,
   }
 }

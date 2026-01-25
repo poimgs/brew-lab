@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { Plus } from "lucide-react"
 import { RootLayout, PageHeader } from "@/components/layout"
@@ -35,8 +35,8 @@ export function ExperimentsListPage() {
     canAnalyze,
   } = useExperimentSelection()
 
-  // Parse filters from URL
-  const getFiltersFromUrl = useCallback((): ExperimentListParams => {
+  // Parse filters from URL - memoized to prevent unnecessary re-renders
+  const filters = useMemo((): ExperimentListParams => {
     return {
       page: parseInt(searchParams.get("page") ?? "1"),
       page_size: 12,
@@ -59,29 +59,27 @@ export function ExperimentsListPage() {
     }
   }, [searchParams])
 
-  const filters = getFiltersFromUrl()
-
-  const fetchExperiments = useCallback(async () => {
-    setLoading(true)
-    try {
-      const response = await api.listExperiments(filters)
-      setExperiments(response.experiments)
-      setPagination({
-        page: response.page,
-        page_size: response.per_page,
-        total: response.total,
-        total_pages: Math.ceil(response.total / response.per_page),
-      })
-    } catch (err) {
-      console.error("Failed to fetch experiments:", err)
-    } finally {
-      setLoading(false)
-    }
-  }, [filters])
-
+  // Fetch experiments when searchParams change
   useEffect(() => {
+    async function fetchExperiments() {
+      setLoading(true)
+      try {
+        const response = await api.listExperiments(filters)
+        setExperiments(response.experiments)
+        setPagination({
+          page: response.page,
+          page_size: response.per_page,
+          total: response.total,
+          total_pages: Math.ceil(response.total / response.per_page),
+        })
+      } catch (err) {
+        console.error("Failed to fetch experiments:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
     fetchExperiments()
-  }, [fetchExperiments])
+  }, [filters])
 
   const updateFilters = (newFilters: ExperimentListParams) => {
     const params = new URLSearchParams()

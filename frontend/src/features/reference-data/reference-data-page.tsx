@@ -10,6 +10,7 @@ import { FilterPaperFormModal } from "./components/filter-paper-form-modal";
 import { MineralProfileCard } from "./components/mineral-profile-card";
 import { MineralProfileDetailModal } from "./components/mineral-profile-detail-modal";
 import { DeleteConfirmModal } from "./components/delete-confirm-modal";
+import { BrewDefaultsSection } from "./components/brew-defaults-section";
 import { useFilterPapers } from "./hooks/use-filter-papers";
 import { useFilterPaperMutations } from "./hooks/use-filter-paper-mutations";
 import { useMineralProfiles } from "./hooks/use-mineral-profiles";
@@ -106,11 +107,14 @@ export function ReferenceDataPage() {
   return (
     <RootLayout>
       <PageHeader
-        title="Reference Data"
-        description="Manage filter papers and view mineral profiles"
+        title="Reference Data & Settings"
+        description="Manage filter papers, mineral profiles, and brew defaults"
       />
 
       <div className="space-y-8">
+        {/* Brew Defaults Section */}
+        <BrewDefaultsSection />
+
         {/* Filter Papers Section */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">

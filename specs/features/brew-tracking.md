@@ -505,25 +505,10 @@ CREATE TABLE user_defaults (
 ### Defaults System
 
 **Setting Defaults:**
-```
-Settings → Brew Defaults
 
-┌─────────────────────────────────────────┐
-│ Default Values                          │
-├─────────────────────────────────────────┤
-│ These values pre-fill new experiments   │
-│                                         │
-│ Coffee Weight    [15    ] g   [Clear]   │
-│ Ratio            [1:15  ]     [Clear]   │
-│ Grind Size       [8 clicks ]  [Clear]   │
-│ Temperature      [90    ] °C  [Clear]   │
-│ Filter           [Hario V60]  [Clear]   │
-│ Bloom Water      [45    ] g   [Clear]   │
-│ Bloom Time       [75    ] sec [Clear]   │
-│                                         │
-│                     [Save Defaults]     │
-└─────────────────────────────────────────┘
-```
+Brew defaults are now managed under the Reference Data & Settings page (see [reference-data.md](reference-data.md) for UI wireframe).
+
+Navigate to: Settings (nav) → Reference Data & Settings → Brew Defaults section
 
 **Default Behavior:**
 - Defaults pre-populate fields when expanding sections

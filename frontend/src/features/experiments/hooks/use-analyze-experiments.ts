@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import {
   api,
   type AnalyzeExperimentsResponse,
@@ -28,34 +28,46 @@ export function useAnalyzeExperiments(
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<AnalyzeExperimentsResponse | null>(null)
 
-  const fetchAnalysis = useCallback(async () => {
-    if (experimentIds.length < 5) {
-      setError("Select at least 5 experiments to analyze")
-      setLoading(false)
-      return
-    }
+  // Use ref to store refetch function for external use
+  const refetchRef = useRef<() => void>(() => {})
 
-    setLoading(true)
-    setError(null)
-
-    try {
-      const response = await api.analyzeExperiments({
-        experiment_ids: experimentIds,
-        min_samples: minSamples,
-      })
-      setData(response)
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to analyze experiments"
-      )
-    } finally {
-      setLoading(false)
-    }
-  }, [experimentIds, minSamples])
+  // Stringify experimentIds for stable dependency comparison
+  const experimentIdsKey = JSON.stringify(experimentIds)
 
   useEffect(() => {
+    async function fetchAnalysis() {
+      if (experimentIds.length < 5) {
+        setError("Select at least 5 experiments to analyze")
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const response = await api.analyzeExperiments({
+          experiment_ids: experimentIds,
+          min_samples: minSamples,
+        })
+        setData(response)
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to analyze experiments"
+        )
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Store current fetch function for refresh capability
+    refetchRef.current = fetchAnalysis
     fetchAnalysis()
-  }, [fetchAnalysis])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [experimentIdsKey, minSamples])
+
+  // Stable refresh function
+  const refresh = useCallback(() => refetchRef.current(), [])
 
   return {
     loading,
@@ -66,7 +78,7 @@ export function useAnalyzeExperiments(
     experimentCount: data?.experiment_count ?? 0,
     insights: data?.insights ?? [],
     warnings: data?.warnings ?? [],
-    refresh: fetchAnalysis,
+    refresh,
   }
 }
 
@@ -86,42 +98,51 @@ export function useAnalyzeDetail(
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<AnalyzeDetailResponse | null>(null)
 
-  const fetchDetail = useCallback(async () => {
-    if (!inputVariable || !outcomeVariable) {
-      return
-    }
+  // Use ref to store fetch function for external use
+  const fetchRef = useRef<() => void>(() => {})
 
-    setLoading(true)
-    setError(null)
-
-    try {
-      const response = await api.analyzeDetail({
-        experiment_ids: experimentIds,
-        input_variable: inputVariable,
-        outcome_variable: outcomeVariable,
-      })
-      setData(response)
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to get correlation details"
-      )
-    } finally {
-      setLoading(false)
-    }
-  }, [experimentIds, inputVariable, outcomeVariable])
+  // Stringify experimentIds for stable dependency comparison
+  const experimentIdsKey = JSON.stringify(experimentIds)
 
   useEffect(() => {
-    if (inputVariable && outcomeVariable) {
-      fetchDetail()
-    } else {
-      setData(null)
+    async function fetchDetail() {
+      if (!inputVariable || !outcomeVariable) {
+        setData(null)
+        return
+      }
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const response = await api.analyzeDetail({
+          experiment_ids: experimentIds,
+          input_variable: inputVariable,
+          outcome_variable: outcomeVariable,
+        })
+        setData(response)
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to get correlation details"
+        )
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [fetchDetail, inputVariable, outcomeVariable])
+
+    // Store current fetch function
+    fetchRef.current = fetchDetail
+    fetchDetail()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [experimentIdsKey, inputVariable, outcomeVariable])
+
+  // Stable fetch function
+  const fetchFn = useCallback(() => fetchRef.current(), [])
 
   return {
     loading,
     error,
     data,
-    fetch: fetchDetail,
+    fetch: fetchFn,
   }
 }

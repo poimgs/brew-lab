@@ -1,10 +1,11 @@
-# Reference Data
+# Reference Data & Settings
 
 ## Overview
 
-Reference data consists of reusable brewing inputs that users configure once and select during experiment entry. This reduces repetitive typing and enables consistent data for analysis.
+Reference data and settings consists of reusable brewing inputs and user preferences that users configure once and use during experiment entry. This reduces repetitive typing and enables consistent data for analysis.
 
 **Includes:**
+- **Brew Defaults** - User-configurable default values for new experiments (see [brew-tracking.md](brew-tracking.md) for API details)
 - **Filter Papers** - User-managed list of filter paper types (CRUD)
 - **Mineral Profiles** - Predefined mineral concentrate profiles (read-only)
 
@@ -228,14 +229,27 @@ The UI provides dropdowns to assist selection, but the field stores the combined
 
 ## User Interface
 
-### Reference Data Page
+### Reference Data & Settings Page
 
-Accessed from Settings menu.
+Accessed from Settings nav link. Consolidates brew defaults with reference data.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Reference Data                                              │
+│ Reference Data & Settings                                   │
 ├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ ┌─ Brew Defaults ───────────────────────────────────[Save]┐ │
+│ │ These values will be pre-filled when creating a new     │ │
+│ │ experiment.                                             │ │
+│ │                                                         │ │
+│ │ Coffee Weight [15    ] g  [×]                           │ │
+│ │ Water Weight  [250   ] g  [×]                           │ │
+│ │ Temperature   [93    ] °C [×]                           │ │
+│ │ Grind Size    [24 clicks ] [×]                          │ │
+│ │ Filter Type   [Paper (bleached) ▼] [×]                  │ │
+│ │ Bloom Water   [45    ] g  [×]                           │ │
+│ │ Bloom Time    [45    ] s  [×]                           │ │
+│ └─────────────────────────────────────────────────────────┘ │
 │                                                             │
 │ ┌─ Filter Papers ─────────────────────────────────────────┐ │
 │ │                                            [Add Filter] │ │

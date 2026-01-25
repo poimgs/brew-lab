@@ -7,7 +7,6 @@ import {
   ExperimentsListPage,
   NewExperimentPage,
   ExperimentDetailPage,
-  DefaultsPage,
   RecommendationsOverviewPage,
 } from "@/features/experiments"
 import { EffectMappingsPage } from "@/features/effect-mappings"
@@ -61,11 +60,7 @@ function App() {
           />
           <Route
             path="/settings/defaults"
-            element={
-              <ProtectedRoute>
-                <DefaultsPage />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/settings/reference-data" replace />}
           />
           <Route
             path="/effect-mappings"
