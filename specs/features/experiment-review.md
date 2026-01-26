@@ -15,7 +15,6 @@ Experiment Review is how users browse, filter, and analyze their brewing history
 - Comparing multiple experiments side-by-side
 - Analyzing correlations across curated experiment sets
 - Detailed examination of individual brews
-- Managing effect mappings (cause→effect relationships)
 
 ---
 
@@ -397,7 +396,7 @@ Generated for strongest correlations in the selection:
 4. **Analyze**: Click "Analyze Selected" with 12 experiments
 5. **Discover**: Correlation matrix shows Temperature→Acidity is +0.65
 6. **Drill Down**: Click cell to see scatter plot and contributing experiments
-7. **Act**: Create effect mapping from observed pattern, or note insight for future brews
+7. **Act**: Note insight for future brews
 
 ### Delete Experiment
 

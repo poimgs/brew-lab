@@ -26,11 +26,7 @@
 
 ### Data Model
 ```
-Coffee (metadata) 1:N ← Experiment (brew record + target profile)
-                              ↓ gaps computed
-                        Effect Mappings (cause→effect)
-                              ↓ matched by
-                        Recommendations
+Coffee (metadata) 1:N ← Experiment (brew record)
 ```
 
 ---
@@ -64,16 +60,13 @@ Self-contained feature specifications. Each includes entity definitions, API end
 
 ### Feature Details
 
-| Spec | Status | Dependencies | Purpose |
-|------|--------|--------------|---------|
-| [authentication.md](features/authentication.md) | ✅ Complete | — | User entity, login/signup, JWT, session handling |
-| [coffee-library.md](features/coffee-library.md) | ✅ Complete | authentication | Coffee entity + CRUD API + library UI |
-| [brew-tracking.md](features/brew-tracking.md) | ✅ Complete | authentication, coffee-library | Experiment entity + logging API + entry forms |
-| [reference-data.md](features/reference-data.md) | ✅ Complete | authentication | Filter papers (CRUD) + mineral profiles (read-only) + brew defaults |
-| [brew-optimization.md](features/brew-optimization.md) | ✅ Complete | brew-tracking | Target profiles, radar chart, gap analysis |
-| [experiment-review.md](features/experiment-review.md) | ✅ Complete | brew-tracking, effect-mappings | List/compare/analyze views, correlation analysis, effect mapping management |
-| [effect-mappings.md](features/effect-mappings.md) | ✅ Complete | authentication | Effect mapping entity + CRUD API |
-| [recommendations.md](features/recommendations.md) | ✅ Complete | brew-optimization, effect-mappings | Gap-based recommendations, mapping matching |
+| Spec | Dependencies | Purpose |
+|------|--------------|---------|
+| [authentication.md](features/authentication.md) | — | User entity, login/signup, JWT, session handling |
+| [coffee-library.md](features/coffee-library.md) | authentication | Coffee entity + CRUD API + library UI |
+| [reference-data.md](features/reference-data.md) | authentication | Filter papers (CRUD) + mineral profiles (read-only) + brew defaults |
+| [brew-tracking.md](features/brew-tracking.md) | authentication, coffee-library | Experiment entity + logging API + entry forms |
+| [experiment-review.md](features/experiment-review.md) | brew-tracking | List/compare/analyze views, correlation analysis |
 
 ### Dependency Graph
 
@@ -84,16 +77,10 @@ authentication (core)
     │       │
     │       └── brew-tracking ←── reference-data
     │               │
-    │               ├── brew-optimization
-    │               │       │
-    │               │       └── recommendations ←── effect-mappings
-    │               │
-    │               └── experiment-review ←── effect-mappings
+    │               └── experiment-review
     │                       (includes correlation analysis)
     │
-    ├── reference-data (filter papers + mineral profiles)
-    │
-    └── effect-mappings
+    └── reference-data (filter papers + mineral profiles)
 ```
 
 ## Reading Guide
