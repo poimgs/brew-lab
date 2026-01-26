@@ -493,7 +493,6 @@ CREATE TABLE user_defaults (
 **Target Profile:**
 - Set target scores for optimization (see [brew-optimization.md](brew-optimization.md))
 - View radar chart comparing current vs target
-- Consult effect mappings for improvement guidance
 
 **Issue Tags:**
 - Multi-select from predefined tags

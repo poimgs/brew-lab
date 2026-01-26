@@ -67,6 +67,7 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | [reference-data.md](features/reference-data.md) | authentication | Filter papers (CRUD) + mineral profiles (read-only) + brew defaults |
 | [brew-tracking.md](features/brew-tracking.md) | authentication, coffee-library | Experiment entity + logging API + entry forms |
 | [experiment-review.md](features/experiment-review.md) | brew-tracking | List/compare/analyze views, correlation analysis |
+| [dashboard.md](features/dashboard.md) | coffee-library, brew-tracking | Home landing page with at-a-glance performance data |
 
 ### Dependency Graph
 
@@ -77,11 +78,23 @@ authentication (core)
     │       │
     │       └── brew-tracking ←── reference-data
     │               │
-    │               └── experiment-review
-    │                       (includes correlation analysis)
+    │               ├── experiment-review
+    │               │       (includes correlation analysis)
+    │               │
+    │               └── dashboard
+    │                       (home landing page)
     │
     └── reference-data (filter papers + mineral profiles)
 ```
+
+### Navigation Structure
+
+| Item | Route | Feature |
+|------|-------|---------|
+| Dashboard | `/` | dashboard (home landing page) |
+| Experiments | `/experiments` | experiment-review (brew list and review) |
+| Library | `/library` | coffee-library + reference-data (combined) |
+| Settings | `/settings` | authentication (user preferences) |
 
 ## Reading Guide
 
