@@ -58,19 +58,6 @@ user_id UUID NOT NULL REFERENCES users(id)
 - Row-level security possible
 - Clean data isolation
 
-### System vs User Data
-
-Tables with both system and user data use an `is_system` flag:
-
-```sql
-is_system BOOLEAN DEFAULT FALSE
-```
-
-**Usage:**
-- Predefined issue tags and mineral profiles
-- System records cannot be deleted by users
-- Provides starting point for new users
-
 ### Naming Conventions
 
 | Element | Convention | Example |

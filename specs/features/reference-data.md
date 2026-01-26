@@ -44,24 +44,6 @@ CREATE INDEX idx_filter_papers_user_id ON filter_papers(user_id);
 CREATE UNIQUE INDEX idx_filter_papers_user_name ON filter_papers(user_id, name);
 ```
 
-### Integration with Experiments
-
-Experiments reference filter papers via foreign key:
-
-```sql
--- Add to experiments table
-ALTER TABLE experiments
-    ADD COLUMN filter_paper_id UUID REFERENCES filter_papers(id) ON DELETE SET NULL;
-
--- Migration: Convert existing filter_type strings to filter_paper_id
--- For each unique filter_type value per user:
--- 1. Create a filter_paper record
--- 2. Update experiments to reference the new filter_paper_id
--- 3. Drop the old filter_type column
-
-ALTER TABLE experiments DROP COLUMN filter_type;
-```
-
 ---
 
 ## Entity: Mineral Profile
@@ -89,7 +71,7 @@ Predefined read-only profiles for mineral water additives. Users cannot create, 
 
 ### Predefined Profiles
 
-**Catalyst** (Lotus Coffee Products)
+**Catalyst** (Valence Coffee Studio)
 | Property | Value |
 |----------|-------|
 | Hardness | 70.9 ppm |
@@ -103,7 +85,7 @@ Predefined read-only profiles for mineral water additives. Users cannot create, 
 | Typical Dose | 2 drops per cup |
 | Taste Effects | Increased body, enhanced sweetness |
 
-**Affinity** (Lotus Coffee Products)
+**Affinity** (Valence Coffee Studio)
 | Property | Value |
 |----------|-------|
 | Hardness | 50.45 ppm |
@@ -140,8 +122,8 @@ CREATE TABLE mineral_profiles (
 -- Seed predefined profiles
 INSERT INTO mineral_profiles (name, brand, hardness, alkalinity, magnesium, calcium, potassium, sodium, chloride, sulfate, bicarbonate, typical_dose, taste_effects)
 VALUES
-('Catalyst', 'Lotus Coffee Products', 70.9, 15.0, 12.2, 8.2, 14.3, 3.9, 58.7, NULL, 18.3, '2 drops per cup', 'Increased body, enhanced sweetness'),
-('Affinity', 'Lotus Coffee Products', 50.45, 12.18, 12.25, NULL, NULL, 16.51, 46.55, 8.15, 14.86, '2 drops per cup', 'Clarity, balanced acidity');
+('Catalyst', 'Valence Coffee Studio', 70.9, 15.0, 12.2, 8.2, 14.3, 3.9, 58.7, NULL, 18.3, '2 drops per cup', 'Increased body, enhanced sweetness'),
+('Affinity', 'Valence Coffee Studio', 50.45, 12.18, 12.25, NULL, NULL, 16.51, 46.55, 8.15, 14.86, '2 drops per cup', 'Clarity, balanced acidity');
 ```
 
 ### Integration with Experiments
@@ -209,7 +191,7 @@ The UI provides dropdowns to assist selection, but the field stores the combined
     {
       "id": "uuid",
       "name": "Catalyst",
-      "brand": "Lotus Coffee Products",
+      "brand": "Valence Coffee Studio",
       "hardness": 70.9,
       "alkalinity": 15.0,
       "magnesium": 12.2,
@@ -276,14 +258,14 @@ Accessed from Settings nav link. Consolidates brew defaults with reference data.
 │ │                                                         │ │
 │ │ ┌─────────────────────────────────────────────────────┐ │ │
 │ │ │ Catalyst                              [View Details] │ │ │
-│ │ │ Lotus Coffee Products                               │ │ │
+│ │ │ Valence Coffee Studio                               │ │ │
 │ │ │ Hardness: 70.9 ppm · Mg: 12.2 mg/L                  │ │ │
 │ │ │ → Increased body, enhanced sweetness                │ │ │
 │ │ └─────────────────────────────────────────────────────┘ │ │
 │ │                                                         │ │
 │ │ ┌─────────────────────────────────────────────────────┐ │ │
 │ │ │ Affinity                              [View Details] │ │ │
-│ │ │ Lotus Coffee Products                               │ │ │
+│ │ │ Valence Coffee Studio                               │ │ │
 │ │ │ Hardness: 50.45 ppm · Mg: 12.25 mg/L                │ │ │
 │ │ │ → Clarity, balanced acidity                         │ │ │
 │ │ └─────────────────────────────────────────────────────┘ │ │
@@ -315,7 +297,7 @@ Accessed from Settings nav link. Consolidates brew defaults with reference data.
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Catalyst                                                    │
-│ Lotus Coffee Products                                       │
+│ Valence Coffee Studio                                       │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │ ─── Chemical Composition ───                                │
@@ -369,74 +351,6 @@ Accessed from Settings nav link. Consolidates brew defaults with reference data.
 ```
 - Combined into string like "Catalyst, 2 drops post-brew"
 - Stored in `mineral_additions` field
-
----
-
-## Design Decisions
-
-### Foreign Key for Filter Papers
-
-Using `filter_paper_id` FK instead of string because:
-- Enables accurate analytics (no string matching issues)
-- User can update filter paper name without breaking links
-- Cleaner data model for future features
-- Worth the migration effort for data integrity
-
-### String for Mineral Additions
-
-Keeping as string because:
-- Includes dose and timing info alongside profile name
-- More natural: "Catalyst, 2 drops post-brew"
-- Less critical for analytics than filter type
-- Simpler implementation
-
-### User-Owned Filter Papers
-
-Each user manages their own filter papers:
-- Personal preferences and observations
-- No shared/system filters needed
-- Simple access control (user_id scoping)
-
-### Read-Only Mineral Profiles
-
-Profiles are predefined and immutable:
-- Chemical data is standardized (manufacturer specs)
-- Users don't need to modify chemistry values
-- Simplifies data model
-- Can add user profiles later if needed
-
----
-
-## Migration Strategy
-
-### Existing Data Migration
-
-```sql
--- Step 1: Create filter_papers table
-CREATE TABLE filter_papers (...);
-
--- Step 2: Create unique filter papers from existing experiment data
-INSERT INTO filter_papers (user_id, name, brand, notes)
-SELECT DISTINCT
-    e.user_id,
-    e.filter_type,
-    NULL,  -- no brand in old data
-    NULL   -- no notes in old data
-FROM experiments e
-WHERE e.filter_type IS NOT NULL AND e.filter_type != '';
-
--- Step 3: Add filter_paper_id column to experiments
-ALTER TABLE experiments ADD COLUMN filter_paper_id UUID REFERENCES filter_papers(id) ON DELETE SET NULL;
-
--- Step 4: Update experiments to reference filter_papers
-UPDATE experiments e
-SET filter_paper_id = fp.id
-FROM filter_papers fp
-WHERE fp.user_id = e.user_id AND fp.name = e.filter_type;
-
--- Step 5: Drop old filter_type column
-ALTER TABLE experiments DROP COLUMN filter_type;
-```
 
 ---
 

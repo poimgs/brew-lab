@@ -62,14 +62,6 @@ Conventions and patterns used across all features. Read these first.
 
 Self-contained feature specifications. Each includes entity definitions, API endpoints, and UI specs.
 
-### Completion Summary
-
-| Status | Count | Features |
-|--------|-------|----------|
-| ✅ Complete | 8 | authentication, coffee-library, brew-tracking, reference-data, effect-mappings, brew-optimization, recommendations, experiment-review |
-
-**Overall Progress: 8/8 features (100%)**
-
 ### Feature Details
 
 | Spec | Status | Dependencies | Purpose |
@@ -104,16 +96,6 @@ authentication (core)
     └── effect-mappings
 ```
 
-### Recommended Implementation Order
-
-1. **reference-data** — Filter papers + mineral profiles, needed by brew-tracking form
-2. **effect-mappings** — Independent entity, needed by recommendations and experiment-review
-3. **brew-optimization** — Adds target profiles to experiments, enables gap analysis
-4. **experiment-review** — List/compare/analyze experiments, manage effect mappings, correlation analysis
-5. **recommendations** — Connect gaps to effect mappings for suggestions
-
----
-
 ## Reading Guide
 
 **For implementing a feature:**
@@ -126,45 +108,3 @@ authentication (core)
 - Each feature spec is self-contained
 - No need to read domain/ or system/ directories (they no longer exist)
 - Foundations provide shared conventions referenced by all features
-
----
-
-## Implementation Status
-
-### Backend
-
-| Component | Status | Location | Notes |
-|-----------|--------|----------|-------|
-| Authentication | ✅ Complete | `backend/internal/services/auth/` | JWT + session handling |
-| Database Schema | ✅ Complete | `backend/migrations/` | Core tables created |
-| Coffee API | ✅ Complete | `backend/internal/handlers/coffee/` | Full CRUD |
-| Experiment API | ✅ Complete | `backend/internal/handlers/experiment/` | Full CRUD + analyze endpoints |
-| Reference Data API | ✅ Complete | `backend/internal/handlers/filterpaper/`, `mineralprofile/` | Filter papers CRUD + mineral profiles |
-| Effect Mappings API | ✅ Complete | `backend/internal/handlers/effectmapping/` | CRUD + relevance matching |
-| Recommendations API | ✅ Complete | `backend/internal/handlers/recommendation/` | Gap-based matching, dismiss/undo, try mapping |
-
-**Backend Progress: 7/7 components (100%)**
-
-### Frontend
-
-| Component | Status | Location | Notes |
-|-----------|--------|----------|-------|
-| Authentication | ✅ Complete | `frontend/src/features/auth/` | Login/signup flow |
-| Coffee Library | ✅ Complete | `frontend/src/features/library/` | List + CRUD forms |
-| Brew Tracking | ✅ Complete | `frontend/src/features/experiments/` | Entry forms |
-| Reference Data | ✅ Complete | `frontend/src/features/reference-data/` | Filter papers CRUD + mineral profiles + brew defaults |
-| Brew Optimization | ✅ Complete | `frontend/src/features/experiments/components/optimization/` | Target inputs, radar chart, gap analysis |
-| Experiment Review | ✅ Complete | `frontend/src/features/experiments/` | List, compare, analyze views, correlation matrix |
-| Effect Mappings UI | ✅ Complete | `frontend/src/features/effect-mappings/` | CRUD + filtering |
-| Recommendations | ✅ Complete | `frontend/src/features/experiments/components/optimization/` | Gap-based suggestions, dismiss/try actions |
-
-**Frontend Progress: 8/8 components (100%)**
-
-### Overall Project Progress
-
-| Layer | Complete | Total | Progress |
-|-------|----------|-------|----------|
-| Specs | 8 | 8 | 100% |
-| Backend | 7 | 7 | 100% |
-| Frontend | 8 | 8 | 100% |
-| **Total** | **23** | **23** | **100%** |

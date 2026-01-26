@@ -11,9 +11,6 @@ The design prioritizes:
 - User-configurable defaults
 - Low-friction entry that scales with user sophistication
 
-**Related features:**
-- [Brew Optimization](brew-optimization.md): Set target scores, view gaps via radar chart, consult effect mappings
-
 ---
 
 ## Entity: Experiment
