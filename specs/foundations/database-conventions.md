@@ -62,10 +62,9 @@ user_id UUID NOT NULL REFERENCES users(id)
 
 | Element | Convention | Example |
 |---------|------------|---------|
-| Tables | Plural, snake_case | `experiments`, `issue_tags` |
+| Tables | Plural, snake_case | `experiments`, `coffees` |
 | Columns | Singular, snake_case | `coffee_id`, `brew_date` |
 | Foreign keys | `{singular_table}_id` | `user_id`, `coffee_id` |
-| Junction tables | `{table1}_{table2}` | `experiment_tags` |
 | Indexes | `idx_{table}_{column(s)}` | `idx_experiments_brew_date` |
 
 ### Check Constraints
@@ -98,7 +97,7 @@ overall_score INTEGER CHECK (overall_score BETWEEN 1 AND 10)
 
 | Use Case | Type | Example |
 |----------|------|---------|
-| Short identifiers | `VARCHAR(50)` | tag name |
+| Short identifiers | `VARCHAR(50)` | code, abbreviation |
 | Names | `VARCHAR(255)` | coffee name, roaster |
 | Short descriptions | `VARCHAR(255)` | grind_size |
 | Long text | `TEXT` | notes, suggestions |
@@ -174,7 +173,7 @@ migrations/
 1. **Versioned Files**: Sequential numbering (001, 002, ...)
 2. **Reversible**: Each migration has up and down scripts
 3. **Atomic**: Each migration is a single logical change
-4. **Seed Data**: Separate seed files for system tags and profiles
+4. **Seed Data**: Separate seed files for reference data (e.g., mineral profiles)
 
 ### Example Migration
 
@@ -196,31 +195,6 @@ DROP TABLE IF EXISTS users;
 
 ## Design Decisions
 
-### Separate Tags Table
-
-Issue tags are a separate table (not JSONB array) because:
-- Enables consistent tag vocabulary
-- Supports tag metadata (description, category)
-- Foreign key integrity
-- Efficient querying for tag-based filtering
-
-### Junction Tables for Many-to-Many
-
-Use explicit junction tables:
-
-```sql
-CREATE TABLE experiment_tags (
-    experiment_id UUID REFERENCES experiments(id) ON DELETE CASCADE,
-    tag_id UUID REFERENCES issue_tags(id) ON DELETE CASCADE,
-    PRIMARY KEY (experiment_id, tag_id)
-);
-```
-
-**Benefits:**
-- Clear relationships
-- Referential integrity
-- Easy to extend with metadata
-
 ### Cascade Deletes
 
 Use cascade deletes carefully:
@@ -232,9 +206,3 @@ ON DELETE CASCADE
 -- Core entities: restrict or application-level handling
 -- (e.g., don't cascade delete experiments when deleting coffee)
 ```
-
-## Open Questions
-
-1. **Soft Delete**: Should deleted records be preserved with a `deleted_at` flag?
-2. **Audit Log**: Track changes to experiments for history?
-3. **Partitioning**: Partition experiments by date if volume grows large?

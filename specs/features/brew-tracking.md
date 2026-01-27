@@ -90,25 +90,6 @@ All intensity fields are 1-10 scale.
 | aftertaste_intensity | integer | Strength of aftertaste |
 | aftertaste_notes | text | Aftertaste descriptors |
 
-### Target Profile
-
-Optional target scores for brew optimization (see [brew-optimization.md](brew-optimization.md)):
-
-| Field | Type | Description |
-|-------|------|-------------|
-| target_acidity | integer | Target acidity intensity (1-10) |
-| target_sweetness | integer | Target sweetness intensity (1-10) |
-| target_bitterness | integer | Target bitterness intensity (1-10) |
-| target_body | integer | Target body weight (1-10) |
-| target_aroma | integer | Target aroma intensity (1-10) |
-
-### Issue Tags
-
-| Field | Type | Description |
-|-------|------|-------------|
-| issue_tags | array[string] | Selected issues with this brew |
-| improvement_notes | text | Ideas for next attempt |
-
 ### Computed Properties
 
 - **Days Off Roast**: `brew_date - coffee.roast_date` (if roast_date provided)
@@ -121,7 +102,7 @@ Optional target scores for brew optimization (see [brew-optimization.md](brew-op
 CREATE TABLE experiments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id),
-    coffee_id UUID NOT NULL REFERENCES coffees(id),
+    coffee_id UUID NOT NULL REFERENCES coffees(id) ON DELETE RESTRICT,
     brew_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
     -- Pre-brew variables
@@ -169,22 +150,8 @@ CREATE TABLE experiments (
     overall_notes TEXT NOT NULL,
     improvement_notes TEXT,
 
-    -- Target profile (for optimization)
-    target_acidity INTEGER CHECK (target_acidity BETWEEN 1 AND 10),
-    target_sweetness INTEGER CHECK (target_sweetness BETWEEN 1 AND 10),
-    target_bitterness INTEGER CHECK (target_bitterness BETWEEN 1 AND 10),
-    target_body INTEGER CHECK (target_body BETWEEN 1 AND 10),
-    target_aroma INTEGER CHECK (target_aroma BETWEEN 1 AND 10),
-
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Junction table for experiment-tag relationship
-CREATE TABLE experiment_tags (
-    experiment_id UUID REFERENCES experiments(id) ON DELETE CASCADE,
-    tag_id UUID REFERENCES issue_tags(id) ON DELETE CASCADE,
-    PRIMARY KEY (experiment_id, tag_id)
 );
 
 CREATE INDEX idx_experiments_user_id ON experiments(user_id);
@@ -207,7 +174,6 @@ GET /api/v1/experiments
 - `filter[coffee_id]`: Filter by coffee
 - `filter[score_gte]`: Minimum score
 - `filter[score_lte]`: Maximum score
-- `filter[tags]`: Filter by issue tags (comma-separated)
 - `filter[has_tds]`: `true` to only show experiments with TDS data
 - `date_from`, `date_to`: Date range filter
 
@@ -237,11 +203,16 @@ GET /api/v1/experiments
       "ratio": "1:15",
       "overall_score": 7,
       "overall_notes": "Bright acidity, lemon notes...",
-      "issue_tags": ["too_acidic"],
+      "improvement_notes": "Try finer grind next time",
       "created_at": "2026-01-19T10:35:00Z"
     }
   ],
-  "pagination": {...}
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 45,
+    "total_pages": 3
+  }
 }
 ```
 
@@ -264,8 +235,7 @@ POST /api/v1/experiments
   "pour_1": "90g, circular motion",
   "pour_2": "90g, circular motion",
   "overall_notes": "Bright acidity, lemon notes",
-  "overall_score": 7,
-  "issue_tags": ["too_acidic"]
+  "overall_score": 7
 }
 ```
 
@@ -294,23 +264,6 @@ DELETE /api/v1/experiments/:id
 
 **Response:** `204 No Content`
 
-### Add Tags to Experiment
-```
-POST /api/v1/experiments/:id/tags
-```
-
-**Request:**
-```json
-{
-  "tags": ["too_acidic", "lacks_sweetness"]
-}
-```
-
-### Remove Tag from Experiment
-```
-DELETE /api/v1/experiments/:id/tags/:tag_id
-```
-
 ### Copy Experiment as Template
 ```
 POST /api/v1/experiments/:id/copy
@@ -319,7 +272,7 @@ POST /api/v1/experiments/:id/copy
 Creates a new experiment with same parameters but:
 - New ID and timestamps
 - No coffee_id (must be selected)
-- No notes, score, or tags
+- No notes or score
 - `brew_date` set to now
 
 **Response:** `201 Created` with new experiment template
@@ -328,59 +281,7 @@ Creates a new experiment with same parameters but:
 
 ## User Defaults
 
-### Get Defaults
-```
-GET /api/v1/defaults
-```
-
-**Response:**
-```json
-{
-  "data": {
-    "coffee_weight": "15",
-    "ratio": "1:15",
-    "grind_size": "8 clicks",
-    "water_temperature": "90",
-    "filter_paper_id": "uuid",
-    "bloom_water": "45",
-    "bloom_time": "75"
-  }
-}
-```
-
-### Update Defaults
-```
-PUT /api/v1/defaults
-```
-
-**Request:**
-```json
-{
-  "coffee_weight": "15",
-  "ratio": "1:15"
-}
-```
-
-### Delete Default
-```
-DELETE /api/v1/defaults/:field
-```
-
-Removes a single default value.
-
-### Database Schema for Defaults
-
-```sql
-CREATE TABLE user_defaults (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    field_name VARCHAR(100) NOT NULL,
-    default_value TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(user_id, field_name)
-);
-```
+For defaults API endpoints and database schema, see [Reference Data](reference-data.md#user-defaults-api).
 
 ---
 
@@ -393,7 +294,6 @@ CREATE TABLE user_defaults (
 3. **Use Defaults**: As a user, I can set defaults for my common setup to reduce entry
 4. **Edit Later**: As a user, I can add details after the initial entry
 5. **Copy Previous**: As a user, I can start from a previous experiment's settings
-6. **Tag Issues**: As a user, I can tag problems with my brew for recommendations
 
 ### Entry Flow
 
@@ -431,7 +331,6 @@ CREATE TABLE user_defaults (
 │ [+ Post-Brew Variables]                 │
 │ [+ Quantitative Outcomes]               │
 │ [+ Sensory Outcomes]                    │
-│ [+ Issue Tags]                          │
 │                                         │
 │      [Cancel]  [Save Experiment]        │
 └─────────────────────────────────────────┘
@@ -490,14 +389,6 @@ CREATE TABLE user_defaults (
 - Aftertaste Intensity (1-10)
 - Aftertaste Notes (text)
 
-**Target Profile:**
-- Set target scores for optimization (see [brew-optimization.md](brew-optimization.md))
-- View radar chart comparing current vs target
-
-**Issue Tags:**
-- Multi-select from predefined tags
-- Add custom tags inline
-
 ### Defaults System
 
 **Setting Defaults:**
@@ -520,7 +411,7 @@ Navigate to: Settings (nav) → Reference Data & Settings → Brew Defaults sect
 
 **Behavior:**
 - Creates new experiment with same parameters
-- Coffee, notes, score, tags are NOT copied
+- Coffee, notes, and score are NOT copied
 - User must select coffee and add notes
 - Useful for A/B testing with one variable changed
 
@@ -628,13 +519,6 @@ Built-in timer not included initially:
 - Users have phone timers, scales with timers
 - Adds significant UI complexity
 - Can be added later as enhancement
-
-### Issue Tags at Entry Time
-
-Tags can be added during entry because:
-- User knows issues while tasting
-- Don't need to return later
-- Enables immediate recommendations
 
 ---
 

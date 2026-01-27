@@ -47,7 +47,6 @@ Experiment Review is how users browse, filter, and analyze their brewing history
 - Days Off Roast
 - Score
 - Notes (truncated)
-- Tags (icons/badges)
 
 **Row Actions (on hover/menu):**
 - View details
@@ -71,12 +70,6 @@ Experiment Review is how users browse, filter, and analyze their brewing history
 │ Score                       │
 │ [Min] to [Max]              │
 │                             │
-│ Issue Tags                  │
-│ [☐ too_acidic]              │
-│ [☐ under_extracted]         │
-│ [☐ lacks_body]              │
-│ ...                         │
-│                             │
 │ Has Fields                  │
 │ [☐ TDS recorded]            │
 │ [☐ Sensory scores]          │
@@ -88,7 +81,6 @@ Experiment Review is how users browse, filter, and analyze their brewing history
 **Quick Filters:**
 - "This week"
 - "This month"
-- "With issues" (has any issue tag)
 - "High scores" (≥8)
 
 ### Sorting
@@ -140,9 +132,6 @@ Click column header to sort, click again to reverse.
 │ Body: 7/10                                              │
 │ Flavors: Slightly sour cherry, very slight hay-like    │
 │ Aftertaste: 7/10 duration, 6/10 intensity              │
-│                                                         │
-│ ─── ISSUES ───                                          │
-│ [too_acidic] [lacks_sweetness]                          │
 │                                                         │
 │ Improvement Ideas:                                      │
 │ Try lower temperature, longer bloom                     │

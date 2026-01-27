@@ -173,9 +173,9 @@ GET /api/v1/experiments?include=coffee
 
 Experiment responses include nested coffee data by default for common access patterns.
 
-## Computed Fields
+## Computed Properties
 
-API returns computed fields in responses:
+API returns computed properties in responses:
 - `days_off_roast`: Calculated from coffee roast_date and experiment brew_date
 - `experiment_count`: Count of experiments for a coffee
 
@@ -212,9 +212,3 @@ Bulk create/update not initially supported:
 - Single-experiment entry is primary use case
 - Keeps API simple
 - Can add later if needed
-
-## Open Questions
-
-1. **Rate Limiting**: Needed for single-user? Probably not initially.
-2. **WebSocket**: Real-time updates for timer feature?
-3. **Export Endpoint**: `/api/v1/export/csv` for data export?

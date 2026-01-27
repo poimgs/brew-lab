@@ -5,7 +5,7 @@
 Reference data and settings consists of reusable brewing inputs and user preferences that users configure once and use during experiment entry. This reduces repetitive typing and enables consistent data for analysis.
 
 **Includes:**
-- **Brew Defaults** - User-configurable default values for new experiments (see [brew-tracking.md](brew-tracking.md) for API details)
+- **Brew Defaults** - User-configurable default values for new experiments
 - **Filter Papers** - User-managed list of filter paper types (CRUD)
 - **Mineral Profiles** - Predefined mineral concentrate profiles (read-only)
 
@@ -138,6 +138,53 @@ The UI provides dropdowns to assist selection, but the field stores the combined
 ---
 
 ## API Endpoints
+
+### User Defaults API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v1/defaults` | Get user's brew defaults |
+| PUT | `/api/v1/defaults` | Update brew defaults |
+| DELETE | `/api/v1/defaults/:field` | Delete a single default |
+
+**Get Defaults Response:**
+```json
+{
+  "data": {
+    "coffee_weight": "15",
+    "ratio": "1:15",
+    "grind_size": "8 clicks",
+    "water_temperature": "90",
+    "filter_paper_id": "uuid",
+    "bloom_water": "45",
+    "bloom_time": "75"
+  }
+}
+```
+
+**Update Defaults Request:**
+```json
+{
+  "coffee_weight": "15",
+  "ratio": "1:15"
+}
+```
+
+**Delete Default:**
+Removes a single default value by field name.
+
+**Database Schema:**
+```sql
+CREATE TABLE user_defaults (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    field_name VARCHAR(100) NOT NULL,
+    default_value TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, field_name)
+);
+```
 
 ### Filter Papers (User-managed CRUD)
 

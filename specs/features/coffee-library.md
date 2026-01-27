@@ -176,12 +176,6 @@ DELETE /api/v1/coffees/:id
 - If coffee has experiments: `409 Conflict` with error message
 - If no experiments: `204 No Content`
 
-**Force Delete (with experiments):**
-```
-DELETE /api/v1/coffees/:id?cascade=true
-```
-Deletes coffee and all associated experiments.
-
 ### Get Coffee Experiments
 ```
 GET /api/v1/coffees/:id/experiments
@@ -315,21 +309,33 @@ Supported fields: `roaster`, `country`, `process`
 
 **Rules:**
 - Coffee with 0 experiments: Confirm and delete
-- Coffee with experiments: Show warning, require explicit confirmation
-- Cascade option: Delete coffee and all its experiments (dangerous)
+- Coffee with experiments: Delete blocked (409 Conflict) - user must delete experiments first
 
-**Confirmation Dialog:**
+**Confirmation Dialog (no experiments):**
 ```
 ┌─────────────────────────────────────────┐
 │ Delete Coffee?                          │
 ├─────────────────────────────────────────┤
-│ "Kiamaina" by Cata Coffee has 8         │
-│ experiments. Deleting will also remove  │
-│ all experiment data.                    │
+│ Delete "Kiamaina" by Cata Coffee?       │
 │                                         │
 │ This cannot be undone.                  │
 │                                         │
-│    [Cancel]  [Delete Coffee & Brews]    │
+│         [Cancel]  [Delete Coffee]       │
+└─────────────────────────────────────────┘
+```
+
+**Error State (has experiments):**
+```
+┌─────────────────────────────────────────┐
+│ Cannot Delete Coffee                    │
+├─────────────────────────────────────────┤
+│ "Kiamaina" by Cata Coffee has 8         │
+│ experiments and cannot be deleted.      │
+│                                         │
+│ Delete the experiments first if you     │
+│ want to remove this coffee.             │
+│                                         │
+│                              [OK]       │
 └─────────────────────────────────────────┘
 ```
 
