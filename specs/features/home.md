@@ -41,15 +41,19 @@ The Home page is the landing page, providing quick access to the primary action:
 
 ### Header
 
-Simple header with app name and navigation bar.
+Simple header with app name, navigation bar, and user menu.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ ☕ Coffee Tracker     [Home] [Experiments] [Library] [⚙️]           │
+│ ☕ Coffee Tracker     [Home] [Experiments] [Library]      [User ▼]  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 **Active state:** Current page highlighted with teal underline/background.
+
+**User menu dropdown:**
+- Preferences (navigates to `/preferences`)
+- Logout
 
 ### New Experiment Button
 
@@ -161,12 +165,18 @@ Returns recent experiments for the home page display.
 
 The home page serves as the landing page. Navigation structure:
 
+**Main Navigation:**
 | Item | Route | Description |
 |------|-------|-------------|
 | Home | `/` | Landing page (this feature) |
 | Experiments | `/experiments` | Brew list and review |
-| Library | `/library` | Coffee + Reference Data (combined) |
-| Settings | `/settings` | User preferences |
+| Library | `/library` | Coffees, filter papers, mineral profiles |
+
+**User Menu:**
+| Item | Route | Description |
+|------|-------|-------------|
+| Preferences | `/preferences` | User preferences (brew defaults) |
+| Logout | — | Log out of the application |
 
 ---
 

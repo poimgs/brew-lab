@@ -63,37 +63,42 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | Spec | Dependencies | Purpose |
 |------|--------------|---------|
 | [authentication.md](features/authentication.md) | — | User entity, login/signup, JWT, session handling |
-| [coffee-library.md](features/coffee-library.md) | authentication | Coffee entity + CRUD API + library UI |
-| [reference-data.md](features/reference-data.md) | authentication | Filter papers (CRUD) + mineral profiles (read-only) + brew defaults |
-| [brew-tracking.md](features/brew-tracking.md) | authentication, coffee-library | Experiment entity + logging API + entry forms |
+| [library.md](features/library.md) | authentication | Coffees + filter papers + mineral profiles with tabbed UI |
+| [user-preferences.md](features/user-preferences.md) | authentication | Brew defaults, accessed via user menu |
+| [brew-tracking.md](features/brew-tracking.md) | authentication, library | Experiment entity + logging API + entry forms |
 | [experiment-review.md](features/experiment-review.md) | brew-tracking | List/compare/analyze views, correlation analysis |
-| [dashboard.md](features/dashboard.md) | brew-tracking | Home landing page with quick experiment logging |
+| [home.md](features/home.md) | brew-tracking | Home landing page with quick experiment logging |
 
 ### Dependency Graph
 
 ```
 authentication (core)
     │
-    ├── coffee-library
+    ├── library (coffees + filter papers + mineral profiles)
     │       │
-    │       └── brew-tracking ←── reference-data
+    │       └── brew-tracking
     │               │
     │               ├── experiment-review
     │               │       (includes correlation analysis)
     │               │
-    │               └── dashboard (home)
+    │               └── home
     │
-    └── reference-data (filter papers + mineral profiles)
+    └── user-preferences (brew defaults)
 ```
 
 ### Navigation Structure
 
 | Item | Route | Feature |
 |------|-------|---------|
-| Home | `/` | dashboard (home landing page) |
+| Home | `/` | home (landing page) |
 | Experiments | `/experiments` | experiment-review (brew list and review) |
-| Library | `/library` | coffee-library + reference-data (combined) |
-| Settings | `/settings` | authentication (user preferences) |
+| Library | `/library` | library (coffees, filter papers, mineral profiles) |
+
+**User Menu:**
+| Item | Route | Feature |
+|------|-------|---------|
+| Preferences | `/preferences` | user-preferences (brew defaults) |
+| Logout | — | authentication (logout action) |
 
 ## Reading Guide
 

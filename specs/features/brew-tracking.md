@@ -24,6 +24,7 @@ The design prioritizes:
 | brew_date | timestamp | Auto | When the experiment was recorded (defaults to now) |
 | overall_notes | text | Yes | Free-form notes about the brew |
 | overall_score | integer | No | 1-10 rating |
+| improvement_notes | text | No | Ideas for improving the next brew |
 | created_at | timestamp | Auto | Record creation time |
 | updated_at | timestamp | Auto | Last modification time |
 
@@ -38,7 +39,7 @@ These are set before brewing begins.
 | ratio | string | — | Shorthand like "1:15" (can be calculated or entered) |
 | grind_size | string | — | Grinder-specific (e.g., "8 clicks", "3.5 on Ode") |
 | water_temperature | decimal | °C | Water temperature at pour |
-| filter_paper_id | UUID | — | Reference to filter paper (see [Reference Data](reference-data.md)) |
+| filter_paper_id | UUID | — | Reference to filter paper (see [Library](library.md)) |
 
 ### Brew Variables
 
@@ -269,10 +270,10 @@ DELETE /api/v1/experiments/:id
 POST /api/v1/experiments/:id/copy
 ```
 
-Creates a new experiment with same parameters but:
+Creates a new experiment with same parameters:
 - New ID and timestamps
-- No coffee_id (must be selected)
-- No notes or score
+- All parameters copied including `coffee_id`
+- `overall_notes`, `overall_score`, and `improvement_notes` cleared (must be entered fresh)
 - `brew_date` set to now
 
 **Response:** `201 Created` with new experiment template
@@ -281,7 +282,7 @@ Creates a new experiment with same parameters but:
 
 ## User Defaults
 
-For defaults API endpoints and database schema, see [Reference Data](reference-data.md#user-defaults-api).
+For defaults API endpoints and database schema, see [User Preferences](user-preferences.md).
 
 ---
 
@@ -356,7 +357,7 @@ For defaults API endpoints and database schema, see [Reference Data](reference-d
 - Ratio (calculated or entered)
 - Grind Size (free text)
 - Water Temperature (°C)
-- Filter Paper (dropdown, see [Reference Data](reference-data.md))
+- Filter Paper (dropdown, see [Library](library.md))
 
 **Brew Variables:**
 - Bloom Water (g)
@@ -393,9 +394,9 @@ For defaults API endpoints and database schema, see [Reference Data](reference-d
 
 **Setting Defaults:**
 
-Brew defaults are now managed under the Reference Data & Settings page (see [reference-data.md](reference-data.md) for UI wireframe).
+Brew defaults are managed in User Preferences (see [user-preferences.md](user-preferences.md) for UI wireframe).
 
-Navigate to: Settings (nav) → Reference Data & Settings → Brew Defaults section
+Navigate to: User menu → Preferences → Brew Defaults section
 
 **Default Behavior:**
 - Defaults pre-populate fields when expanding sections
@@ -410,9 +411,8 @@ Navigate to: Settings (nav) → Reference Data & Settings → Brew Defaults sect
 - Experiment detail: "Use as Template" button
 
 **Behavior:**
-- Creates new experiment with same parameters
-- Coffee, notes, and score are NOT copied
-- User must select coffee and add notes
+- Creates new experiment with same parameters including coffee selection
+- Notes and score are NOT copied (must be entered fresh)
 - Useful for A/B testing with one variable changed
 
 ### Real-Time Calculations
