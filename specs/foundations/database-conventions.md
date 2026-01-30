@@ -193,6 +193,69 @@ CREATE TABLE users (
 DROP TABLE IF EXISTS users;
 ```
 
+## Soft Delete Conventions
+
+### Pattern
+
+Entities that need to preserve historical references use soft delete via a `deleted_at` timestamp:
+
+```sql
+deleted_at TIMESTAMP WITH TIME ZONE
+```
+
+**Behavior:**
+- `NULL` = active record
+- Timestamp = soft deleted
+- Queries filter out deleted records by default
+- API can optionally include deleted records for admin/history views
+
+### Partial Unique Indexes
+
+When using soft delete, unique constraints should exclude deleted records:
+
+```sql
+-- Only enforce uniqueness among non-deleted records
+CREATE UNIQUE INDEX idx_filter_papers_user_name
+    ON filter_papers(user_id, name)
+    WHERE deleted_at IS NULL;
+```
+
+### Filtered Indexes
+
+Create filtered indexes for efficient querying of active records:
+
+```sql
+CREATE INDEX idx_coffees_deleted_at
+    ON coffees(deleted_at)
+    WHERE deleted_at IS NULL;
+```
+
+### Applicable Entities
+
+| Entity | Soft Delete | Archive | Reason |
+|--------|-------------|---------|--------|
+| Coffee | ✓ | ✓ | Preserve experiment history; archive for finished bags |
+| Filter Paper | ✓ | — | Preserve experiment history |
+| Experiment | — | — | Hard delete OK; user owns the data |
+| User | — | — | Account deletion handled separately |
+
+### Archive Pattern
+
+For entities that benefit from a "hidden but usable" state, add an `archived_at` timestamp:
+
+```sql
+archived_at TIMESTAMP WITH TIME ZONE
+```
+
+**Behavior:**
+- Archived records hidden from default list views
+- Can still be selected/referenced in new records
+- "Show archived" toggle in UI to reveal them
+
+Currently only `coffees` uses the archive pattern.
+
+---
+
 ## Design Decisions
 
 ### Cascade Deletes
@@ -206,3 +269,10 @@ ON DELETE CASCADE
 -- Core entities: restrict or application-level handling
 -- (e.g., don't cascade delete experiments when deleting coffee)
 ```
+
+### Foreign Keys to Soft-Deleted Records
+
+When referencing entities that use soft delete:
+- Remove `ON DELETE SET NULL` from FK constraints
+- Let experiments retain their FK to deleted coffees/filter papers
+- Display "(deleted)" indicator in UI when showing historical references

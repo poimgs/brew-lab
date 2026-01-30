@@ -55,6 +55,8 @@ The Library is a unified page where users manage their coffee beans, filter pape
 | roast_date | date | No | Date the coffee was roasted |
 | purchase_date | date | No | Date acquired |
 | notes | text | No | Personal notes about this coffee |
+| archived_at | timestamp | No | When coffee was archived (hidden but still usable) |
+| deleted_at | timestamp | No | Soft delete timestamp (preserved for experiment history) |
 | created_at | timestamp | Auto | Record creation time |
 | updated_at | timestamp | Auto | Last modification time |
 
@@ -74,11 +76,12 @@ The Library is a unified page where users manage their coffee beans, filter pape
 ### Relationships
 
 - **One-to-Many with Experiment**: A coffee can have many experiments; each experiment references exactly one coffee
-- Deleting a coffee should be blocked if experiments reference it, or require explicit cascade decision
+- Deleting a coffee uses soft delete (`deleted_at` timestamp) to preserve experiment history
+- Archived coffees are hidden from lists but can still be referenced in new experiments
 
 ### Computed Properties
 
-- **Days Since Roast**: `current_date - roast_date` (if roast_date provided)
+- **Days Off Roast**: `current_date - roast_date` (if roast_date provided)
 - **Experiment Count**: Number of experiments using this coffee
 - **Last Brewed**: Most recent experiment date for this coffee
 
@@ -98,6 +101,8 @@ CREATE TABLE coffees (
     roast_date DATE,
     purchase_date DATE,
     notes TEXT,
+    archived_at TIMESTAMP WITH TIME ZONE,
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -105,6 +110,8 @@ CREATE TABLE coffees (
 CREATE INDEX idx_coffees_user_id ON coffees(user_id);
 CREATE INDEX idx_coffees_roaster ON coffees(roaster);
 CREATE INDEX idx_coffees_roast_date ON coffees(roast_date);
+CREATE INDEX idx_coffees_deleted_at ON coffees(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX idx_coffees_archived_at ON coffees(archived_at) WHERE archived_at IS NULL;
 ```
 
 ---
@@ -122,6 +129,7 @@ User-managed reference data for filter paper types used in experiments.
 | name | string | Yes | Filter name (e.g., "Abaca", "Tabbed") |
 | brand | string | No | Manufacturer (e.g., "Cafec", "Hario") |
 | notes | text | No | User notes about characteristics |
+| deleted_at | timestamp | No | Soft delete timestamp (preserved for experiment history) |
 | created_at | timestamp | Auto | Record creation time |
 | updated_at | timestamp | Auto | Last modification time |
 
@@ -134,12 +142,14 @@ CREATE TABLE filter_papers (
     name VARCHAR(100) NOT NULL,
     brand VARCHAR(100),
     notes TEXT,
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX idx_filter_papers_user_id ON filter_papers(user_id);
-CREATE UNIQUE INDEX idx_filter_papers_user_name ON filter_papers(user_id, name);
+CREATE UNIQUE INDEX idx_filter_papers_user_name ON filter_papers(user_id, name) WHERE deleted_at IS NULL;
+CREATE INDEX idx_filter_papers_deleted_at ON filter_papers(deleted_at) WHERE deleted_at IS NULL;
 ```
 
 ---
@@ -214,7 +224,8 @@ CREATE TABLE mineral_profiles (
     bicarbonate DECIMAL(6,2),
     typical_dose VARCHAR(100),
     taste_effects TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Seed predefined profiles
@@ -247,15 +258,17 @@ GET /api/v1/coffees
 **Query Parameters:**
 - `page`, `per_page`: Pagination
 - `sort`: Field name, `-` prefix for descending (default: `-created_at`)
-- `filter[roaster]`: Filter by roaster name
-- `filter[country]`: Filter by country
-- `filter[process]`: Filter by process
+- `roaster`: Filter by roaster name
+- `country`: Filter by country
+- `process`: Filter by process
 - `search`: Search roaster and name fields
+- `include_archived`: `true` to include archived coffees (default: `false`)
+- `include_deleted`: `true` to include soft-deleted coffees (default: `false`)
 
 **Response:**
 ```json
 {
-  "data": [
+  "items": [
     {
       "id": "uuid",
       "roaster": "Cata Coffee",
@@ -268,7 +281,7 @@ GET /api/v1/coffees
       "roast_date": "2025-11-19",
       "purchase_date": "2025-11-22",
       "notes": "Best around 3-4 weeks off roast",
-      "days_since_roast": 61,
+      "days_off_roast": 61,
       "experiment_count": 8,
       "last_brewed": "2026-01-19T10:30:00Z",
       "created_at": "2025-11-22T15:00:00Z",
@@ -323,14 +336,36 @@ PUT /api/v1/coffees/:id
 
 **Response:** Updated coffee object
 
+#### Archive Coffee
+```
+POST /api/v1/coffees/:id/archive
+```
+
+**Behavior:**
+- Sets `archived_at` timestamp
+- Coffee hidden from default list but still usable in experiments
+- Returns `200 OK` with updated coffee object
+
+#### Unarchive Coffee
+```
+POST /api/v1/coffees/:id/unarchive
+```
+
+**Behavior:**
+- Clears `archived_at` timestamp
+- Coffee visible in default list again
+- Returns `200 OK` with updated coffee object
+
 #### Delete Coffee
 ```
 DELETE /api/v1/coffees/:id
 ```
 
 **Behavior:**
-- If coffee has experiments: `409 Conflict` with error message
-- If no experiments: `204 No Content`
+- Soft delete: sets `deleted_at` timestamp
+- Experiments retain their FK reference to the deleted coffee
+- Deleted coffees excluded from lists and dropdowns by default
+- Returns `204 No Content`
 
 #### Get Coffee Experiments
 ```
@@ -347,7 +382,7 @@ GET /api/v1/coffees/suggestions?field=roaster&q=cat
 Returns distinct values for autocomplete:
 ```json
 {
-  "data": ["Cata Coffee", "Catalyst Roasters"]
+  "items": ["Cata Coffee", "Catalyst Roasters"]
 }
 ```
 
@@ -363,10 +398,14 @@ Supported fields: `roaster`, `country`, `process`
 | PUT | `/api/v1/filter-papers/:id` | Update filter paper |
 | DELETE | `/api/v1/filter-papers/:id` | Delete filter paper |
 
+**Query Parameters:**
+- `page`, `per_page`: Pagination (default: page=1, per_page=20)
+- `sort`: Field name, `-` prefix for descending (default: `-created_at`)
+
 **List Response:**
 ```json
 {
-  "data": [
+  "items": [
     {
       "id": "uuid",
       "name": "Abaca",
@@ -375,7 +414,13 @@ Supported fields: `roaster`, `country`, `process`
       "created_at": "2026-01-20T10:00:00Z",
       "updated_at": "2026-01-20T10:00:00Z"
     }
-  ]
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 5,
+    "total_pages": 1
+  }
 }
 ```
 
@@ -389,8 +434,9 @@ Supported fields: `roaster`, `country`, `process`
 ```
 
 **Delete Behavior:**
-- If filter paper is referenced by experiments, set `filter_paper_id = NULL` on those experiments
-- Delete the filter paper record
+- Soft delete: sets `deleted_at` timestamp
+- Experiments retain their FK reference to the deleted filter paper
+- Deleted filter papers are excluded from dropdowns but visible in experiment history
 
 ### Mineral Profiles API (Read-only)
 
@@ -401,7 +447,7 @@ Supported fields: `roaster`, `country`, `process`
 **Response:**
 ```json
 {
-  "data": [
+  "items": [
     {
       "id": "uuid",
       "name": "Catalyst",
@@ -522,37 +568,36 @@ Supported fields: `roaster`, `country`, `process`
 - Sortable by date, score
 - Quick stats: average score, best score, total brews
 
+#### Archive/Unarchive Coffee
+
+**Archive Flow:**
+- Archive action available on coffee row and detail view
+- Archived coffees hidden from main list by default
+- "Show archived" toggle reveals archived coffees with visual indicator
+- Archived coffees can still be selected for new experiments
+
+**Unarchive Flow:**
+- Unarchive action available on archived coffee rows
+- Removes from archive, coffee appears in main list again
+
 #### Delete Coffee
 
 **Rules:**
-- Coffee with 0 experiments: Confirm and delete
-- Coffee with experiments: Delete blocked (409 Conflict) - user must delete experiments first
+- Soft delete preserves experiment history
+- Deleted coffees hidden from all lists and dropdowns
+- Experiments retain reference to deleted coffee for historical accuracy
 
-**Confirmation Dialog (no experiments):**
+**Confirmation Dialog:**
 ```
 ┌─────────────────────────────────────────┐
 │ Delete Coffee?                          │
 ├─────────────────────────────────────────┤
 │ Delete "Kiamaina" by Cata Coffee?       │
 │                                         │
-│ This cannot be undone.                  │
+│ This coffee will be hidden but your     │
+│ experiment history will be preserved.   │
 │                                         │
 │         [Cancel]  [Delete Coffee]       │
-└─────────────────────────────────────────┘
-```
-
-**Error State (has experiments):**
-```
-┌─────────────────────────────────────────┐
-│ Cannot Delete Coffee                    │
-├─────────────────────────────────────────┤
-│ "Kiamaina" by Cata Coffee has 8         │
-│ experiments and cannot be deleted.      │
-│                                         │
-│ Delete the experiments first if you     │
-│ want to remove this coffee.             │
-│                                         │
-│                              [OK]       │
 └─────────────────────────────────────────┘
 ```
 
@@ -715,12 +760,13 @@ Two note fields because:
 - Personal notes = user's observations (evolving)
 - Common pattern: roaster says X, user experiences Y
 
-### No Archive, Just Filter
+### Archive and Soft Delete
 
-No explicit archive feature:
-- Filter by "has recent experiments" achieves same result
-- Simpler data model
-- Users can delete truly finished coffees
+Coffees support both archive and soft delete:
+- **Archive** (`archived_at`): Hidden from default list but still usable for experiments. Use for finished bags you might buy again.
+- **Soft Delete** (`deleted_at`): Hidden everywhere, preserved for experiment history. Use for coffees you won't use again.
+
+Filter papers use soft delete only (no archive) since they're simpler reference data.
 
 ### Read-Only Mineral Profiles
 

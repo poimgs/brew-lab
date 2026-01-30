@@ -24,6 +24,9 @@
 - User defaults: Allow setting defaults for optional fields
 - Manual mappings only: No automated inference; users define effect mappings explicitly
 
+### Equipment Assumption
+The app assumes a single equipment setup: Fellow Ode 2 grinder and V60 brewer. Grind settings are numeric values specific to this grinder. Future versions may add equipment tracking if needed.
+
 ### Data Model
 ```
 Coffee (metadata) 1:N ← Experiment (brew record)
@@ -51,6 +54,7 @@ Conventions and patterns used across all features. Read these first.
 | [api-conventions.md](foundations/api-conventions.md) | REST patterns, errors, pagination, filtering |
 | [database-conventions.md](foundations/database-conventions.md) | Schema patterns, types, migrations |
 | [design-system.md](foundations/design-system.md) | UI patterns, colors, typography, components |
+| [e2e-testing.md](foundations/e2e-testing.md) | Playwright E2E tests, fixtures, patterns |
 
 ---
 
