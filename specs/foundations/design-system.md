@@ -241,3 +241,158 @@ Mobile-first responsive design using Tailwind's default breakpoints.
 | Table | `↑` `↓` | Navigate rows |
 | Tag selector | `Tab`, `Space` | Navigate and toggle |
 | Modal | `Escape` | Close |
+
+---
+
+## 7. Loading States
+
+### Skeletons
+
+Use skeleton loaders for content that takes time to load. Skeletons should match the shape of the expected content.
+
+**Card Skeleton:**
+```
+┌─────────────────────────────────────┐
+│ ████████████████  ░░░░░░░░░░░░░░░░ │
+│ ████████████  ░░░░░░░░░░░░░░░░░░░░ │
+│ ████████████████████░░░░░░░░░░░░░░ │
+└─────────────────────────────────────┘
+```
+
+**Table Row Skeleton:**
+```
+│ ██████ │ ████████████ │ ████ │ ████████ │
+```
+
+**Form Field Skeleton:**
+```
+████████  (label)
+┌──────────────────────────────────────┐
+│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+└──────────────────────────────────────┘
+```
+
+**Implementation:**
+- Use `animate-pulse` with `bg-muted` for skeleton elements
+- Match skeleton dimensions to expected content
+- Show skeletons for 150ms minimum to prevent flashing
+
+### Spinners
+
+Use spinners for actions and inline loading states.
+
+| Context | Size | Style |
+|---------|------|-------|
+| Button (loading) | 16px | Replace button text with spinner |
+| Inline action | 16px | Replace icon with spinner |
+| Page loading | 32px | Centered with optional message |
+| Modal loading | 24px | Centered in modal content area |
+
+**Button Loading State:**
+```tsx
+<Button disabled>
+  <Loader2 className="h-4 w-4 animate-spin" />
+  Saving...
+</Button>
+```
+
+**Page Loading:**
+```tsx
+<div className="flex h-screen items-center justify-center">
+  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+</div>
+```
+
+### Page-Level Loading
+
+| State | Display |
+|-------|---------|
+| Initial page load | Full-page skeleton matching page layout |
+| Route transition | Keep previous content, show progress indicator |
+| Data refresh | Keep content visible, show inline spinner |
+| Error recovery | Show skeleton while retrying |
+
+---
+
+## 8. Error States
+
+### Inline Field Errors
+
+Display below the input field in error color.
+
+```tsx
+<div className="space-y-2">
+  <Label htmlFor="email">Email</Label>
+  <Input id="email" className="border-error" />
+  <p className="text-sm text-error">Please enter a valid email address</p>
+</div>
+```
+
+### Toast Notifications
+
+Use for async operation feedback (success, error, info).
+
+| Type | Icon | Duration | Color |
+|------|------|----------|-------|
+| Success | CheckCircle | 3s | `success` |
+| Error | XCircle | 5s (manual dismiss) | `error` |
+| Warning | AlertTriangle | 4s | `warning` |
+| Info | Info | 3s | `info` |
+
+**Position:** Bottom-right on desktop, bottom-center on mobile.
+
+### Full-Page Error States
+
+**404 Not Found:**
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│              ┌───────┐                  │
+│              │  404  │                  │
+│              └───────┘                  │
+│                                         │
+│         Page not found                  │
+│                                         │
+│   The page you're looking for          │
+│   doesn't exist or has been moved.     │
+│                                         │
+│          [Go to Home]                   │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+**500 Server Error:**
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│              ┌───────┐                  │
+│              │  ⚠️   │                  │
+│              └───────┘                  │
+│                                         │
+│       Something went wrong              │
+│                                         │
+│   We're having trouble loading this    │
+│   page. Please try again.              │
+│                                         │
+│     [Try Again]  [Go to Home]          │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+**Network Error:**
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│              ┌───────┐                  │
+│              │  📡   │                  │
+│              └───────┘                  │
+│                                         │
+│       Connection lost                   │
+│                                         │
+│   Check your internet connection       │
+│   and try again.                       │
+│                                         │
+│            [Retry]                      │
+│                                         │
+└─────────────────────────────────────────┘
+```

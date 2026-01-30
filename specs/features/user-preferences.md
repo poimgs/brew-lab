@@ -113,15 +113,13 @@ GET /api/v1/defaults
 **Response:**
 ```json
 {
-  "data": {
-    "coffee_weight": "15",
-    "ratio": "1:15",
-    "grind_size": "8 clicks",
-    "water_temperature": "90",
-    "filter_paper_id": "uuid",
-    "bloom_water": "45",
-    "bloom_time": "75"
-  }
+  "coffee_weight": "15",
+  "ratio": "1:15",
+  "grind_size": "8 clicks",
+  "water_temperature": "90",
+  "filter_paper_id": "uuid",
+  "bloom_water": "45",
+  "bloom_time": "75"
 }
 ```
 

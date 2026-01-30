@@ -133,18 +133,16 @@ Returns recent experiments for the home page display.
 **Response:**
 ```json
 {
-  "data": {
-    "recent_experiments": [
-      {
-        "id": "uuid",
-        "brew_date": "2026-01-19T10:30:00Z",
-        "coffee_name": "Kiamaina",
-        "overall_score": 7,
-        "notes": "Bright, nice acidity...",
-        "relative_date": "today"
-      }
-    ]
-  }
+  "recent_experiments": [
+    {
+      "id": "uuid",
+      "brew_date": "2026-01-19T10:30:00Z",
+      "coffee_name": "Kiamaina",
+      "overall_score": 7,
+      "notes": "Bright, nice acidity...",
+      "relative_date": "today"
+    }
+  ]
 }
 ```
 

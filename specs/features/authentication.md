@@ -181,13 +181,11 @@ POST /api/v1/auth/login
 
 Response 200:
 {
-  "data": {
-    "user": {
-      "id": "uuid",
-      "email": "user@example.com"
-    },
-    "access_token": "eyJ..."
-  }
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com"
+  },
+  "access_token": "eyJ..."
 }
 + Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Strict
 ```
@@ -199,9 +197,7 @@ POST /api/v1/auth/refresh
 
 Response 200:
 {
-  "data": {
-    "access_token": "eyJ..."
-  }
+  "access_token": "eyJ..."
 }
 + Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Strict
 ```
@@ -222,10 +218,8 @@ Authorization: Bearer <access_token>
 
 Response 200:
 {
-  "data": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "created_at": "2026-01-19T10:00:00Z"
-  }
+  "id": "uuid",
+  "email": "user@example.com",
+  "created_at": "2026-01-19T10:00:00Z"
 }
 ```

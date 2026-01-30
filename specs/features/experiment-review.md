@@ -338,7 +338,7 @@ r = Σ((xi - x̄)(yi - ȳ)) / √(Σ(xi - x̄)² × Σ(yi - ȳ)²)
 | filter_paper | categorical | One-hot encoded |
 | mineral_additions | categorical | Presence/absence |
 
-*Grind size is text; analysis requires user mapping or inference.
+*Grind size is text; analysis requires user mapping or inference. Grind size requires numeric conversion for correlation analysis. Display warning when grind values are non-numeric.
 
 **Outcome Variables:**
 | Variable | Type |
@@ -427,24 +427,22 @@ Maximum 4 experiments. Returns full experiment objects with computed delta value
 **Response:**
 ```json
 {
-  "data": {
-    "experiments": [
-      {
-        "id": "uuid1",
-        "brew_date": "2026-01-19T10:30:00Z",
-        "coffee": {...},
-        "coffee_weight": 15.0,
-        "water_temperature": 92,
-        "acidity_intensity": 7,
-        "overall_score": 7
-      },
-      {...}
-    ],
-    "deltas": {
-      "water_temperature": {"min": 88, "max": 95, "trend": "variable"},
-      "acidity_intensity": {"min": 5, "max": 8, "trend": "decreasing"},
-      "overall_score": {"min": 6, "max": 8, "trend": "increasing"}
-    }
+  "experiments": [
+    {
+      "id": "uuid1",
+      "brew_date": "2026-01-19T10:30:00Z",
+      "coffee": {...},
+      "coffee_weight": 15.0,
+      "water_temperature": 92,
+      "acidity_intensity": 7,
+      "overall_score": 7
+    },
+    {...}
+  ],
+  "deltas": {
+    "water_temperature": {"min": 88, "max": 95, "trend": "variable"},
+    "acidity_intensity": {"min": 5, "max": 8, "trend": "decreasing"},
+    "overall_score": {"min": 6, "max": 8, "trend": "increasing"}
   }
 }
 ```
@@ -487,45 +485,43 @@ Compute correlations for a user-selected set of experiments.
 **Response:**
 ```json
 {
-  "data": {
-    "correlations": {
-      "water_temperature": {
-        "overall_score": {"r": 0.42, "n": 12, "p": 0.004},
-        "acidity_intensity": {"r": 0.65, "n": 10, "p": 0.001},
-        "sweetness_intensity": {"r": 0.21, "n": 10, "p": 0.15},
-        "bitterness_intensity": {"r": -0.15, "n": 10, "p": 0.35},
-        "body_weight": {"r": 0.33, "n": 9, "p": 0.05}
-      },
-      "coffee_weight": {
-        "overall_score": {"r": 0.28, "n": 12, "p": 0.05},
-        "body_weight": {"r": 0.61, "n": 11, "p": 0.001}
-      },
-      "days_off_roast": {
-        "overall_score": {"r": -0.35, "n": 12, "p": 0.02},
-        "aroma_intensity": {"r": -0.45, "n": 10, "p": 0.003}
-      }
+  "correlations": {
+    "water_temperature": {
+      "overall_score": {"r": 0.42, "n": 12, "p": 0.004},
+      "acidity_intensity": {"r": 0.65, "n": 10, "p": 0.001},
+      "sweetness_intensity": {"r": 0.21, "n": 10, "p": 0.15},
+      "bitterness_intensity": {"r": -0.15, "n": 10, "p": 0.35},
+      "body_weight": {"r": 0.33, "n": 9, "p": 0.05}
     },
-    "inputs": ["water_temperature", "coffee_weight", "water_weight", "bloom_time", "total_brew_time", "days_off_roast"],
-    "outcomes": ["overall_score", "acidity_intensity", "sweetness_intensity", "bitterness_intensity", "body_weight", "aroma_intensity"],
-    "experiment_count": 12,
-    "insights": [
-      {
-        "type": "strong_correlation",
-        "input": "water_temperature",
-        "outcome": "acidity_intensity",
-        "r": 0.65,
-        "message": "Temperature strongly affects acidity (+0.65) in these experiments."
-      }
-    ],
-    "warnings": [
-      {
-        "type": "insufficient_data",
-        "field": "tds",
-        "n": 4,
-        "message": "Only 4 experiments have TDS data"
-      }
-    ]
-  }
+    "coffee_weight": {
+      "overall_score": {"r": 0.28, "n": 12, "p": 0.05},
+      "body_weight": {"r": 0.61, "n": 11, "p": 0.001}
+    },
+    "days_off_roast": {
+      "overall_score": {"r": -0.35, "n": 12, "p": 0.02},
+      "aroma_intensity": {"r": -0.45, "n": 10, "p": 0.003}
+    }
+  },
+  "inputs": ["water_temperature", "coffee_weight", "water_weight", "bloom_time", "total_brew_time", "days_off_roast"],
+  "outcomes": ["overall_score", "acidity_intensity", "sweetness_intensity", "bitterness_intensity", "body_weight", "aroma_intensity"],
+  "experiment_count": 12,
+  "insights": [
+    {
+      "type": "strong_correlation",
+      "input": "water_temperature",
+      "outcome": "acidity_intensity",
+      "r": 0.65,
+      "message": "Temperature strongly affects acidity (+0.65) in these experiments."
+    }
+  ],
+  "warnings": [
+    {
+      "type": "insufficient_data",
+      "field": "tds",
+      "n": 4,
+      "message": "Only 4 experiments have TDS data"
+    }
+  ]
 }
 ```
 
@@ -553,31 +549,29 @@ Drill down into a specific input→outcome correlation.
 **Response:**
 ```json
 {
-  "data": {
-    "input_variable": "water_temperature",
-    "outcome_variable": "acidity_intensity",
-    "correlation": {
-      "r": 0.65,
-      "n": 10,
-      "p": 0.001,
-      "interpretation": "moderate_positive"
-    },
-    "scatter_data": [
-      {"x": 85, "y": 4, "experiment_id": "uuid1"},
-      {"x": 88, "y": 5, "experiment_id": "uuid2"},
-      {"x": 92, "y": 8, "experiment_id": "uuid3"}
-    ],
-    "insight": "Higher water temperature is associated with higher acidity intensity in your selected experiments.",
-    "experiments": [
-      {
-        "id": "uuid1",
-        "brew_date": "2026-01-19T10:30:00Z",
-        "coffee_name": "Kiamaina",
-        "input_value": 92,
-        "outcome_value": 8
-      }
-    ]
-  }
+  "input_variable": "water_temperature",
+  "outcome_variable": "acidity_intensity",
+  "correlation": {
+    "r": 0.65,
+    "n": 10,
+    "p": 0.001,
+    "interpretation": "moderate_positive"
+  },
+  "scatter_data": [
+    {"x": 85, "y": 4, "experiment_id": "uuid1"},
+    {"x": 88, "y": 5, "experiment_id": "uuid2"},
+    {"x": 92, "y": 8, "experiment_id": "uuid3"}
+  ],
+  "insight": "Higher water temperature is associated with higher acidity intensity in your selected experiments.",
+  "experiments": [
+    {
+      "id": "uuid1",
+      "brew_date": "2026-01-19T10:30:00Z",
+      "coffee_name": "Kiamaina",
+      "input_value": 92,
+      "outcome_value": 8
+    }
+  ]
 }
 ```
 
