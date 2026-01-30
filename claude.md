@@ -20,8 +20,65 @@ Read `specs/index.md` for project overview and specifications.
   - **Design Decisions**: Chosen approach with rationale
   - **Open Questions**: Unresolved items (if any)
 
+## Running the App
+
+### Database (from project root)
+```bash
+docker compose up -d   # Start PostgreSQL
+docker compose down    # Stop PostgreSQL
+```
+
+### Backend (from `backend/` directory)
+```bash
+make migrate    # Run migrations
+make run        # Start backend server
+```
+
+### Frontend (from `frontend/` directory)
+```bash
+npm install     # First time only
+npm run dev     # Start dev server
+```
+
+## Backend Commands (Make Targets)
+
+| Command | Description |
+|---------|-------------|
+| `make build` | Build all binaries |
+| `make run` | Run server |
+| `make tidy` | go mod tidy |
+| `make migrate` | Run migrations up |
+| `make migrate-down` | Rollback migrations |
+| `make migrate-version` | Show migration version |
+| `make seed-user EMAIL=... PASSWORD=...` | Create user |
+
+## Frontend Commands (npm scripts)
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Vite dev server |
+| `npm run build` | Production build |
+| `npm run preview` | Preview build |
+| `npm run lint` | Run ESLint |
+
+## Verifying Changes
+
+Quick verification steps for agents after making changes:
+
+| Change Type | Verification |
+|-------------|--------------|
+| Backend code | `cd backend && go build ./...` |
+| Frontend code | `cd frontend && npm run lint && npm run build` |
+| Migrations | `cd backend && make migrate` |
+| E2E-impacting | `cd e2e && make test` |
+
+For full E2E testing, see `specs/foundations/e2e-testing.md`.
+
 ## File Organization
 ```
-specs/           # Specifications (categorized)
-src/             # Application source (structure TBD)
+specs/           # Specifications
+backend/         # Go backend (chi router)
+frontend/        # React + TypeScript (Vite)
+e2e/             # Playwright E2E tests
+docker-compose.yml
 ```
