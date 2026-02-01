@@ -8,7 +8,13 @@ import (
 	"coffee-tracker/internal/auth"
 	"coffee-tracker/internal/config"
 	"coffee-tracker/internal/database"
+	"coffee-tracker/internal/domain/coffee"
+	"coffee-tracker/internal/domain/defaults"
+	"coffee-tracker/internal/domain/experiment"
+	"coffee-tracker/internal/domain/filter_paper"
+	"coffee-tracker/internal/domain/mineral_profile"
 	"coffee-tracker/internal/domain/user"
+	"coffee-tracker/internal/handler"
 	"coffee-tracker/internal/middleware"
 
 	"github.com/go-chi/chi/v5"
@@ -42,6 +48,23 @@ func main() {
 	authService := auth.NewService(userRepo, cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	authHandler := auth.NewHandler(authService, cfg.RefreshTokenTTL, cfg.Environment == "production")
 
+	coffeeRepo := coffee.NewRepository(db)
+	coffeeHandler := coffee.NewHandler(coffeeRepo)
+
+	filterPaperRepo := filter_paper.NewRepository(db)
+	filterPaperHandler := filter_paper.NewHandler(filterPaperRepo)
+
+	mineralProfileRepo := mineral_profile.NewRepository(db)
+	mineralProfileHandler := mineral_profile.NewHandler(mineralProfileRepo)
+
+	defaultsRepo := defaults.NewRepository(db)
+	defaultsHandler := defaults.NewHandler(defaultsRepo)
+
+	experimentRepo := experiment.NewRepository(db)
+	experimentHandler := experiment.NewHandler(experimentRepo)
+
+	dashboardHandler := handler.NewDashboardHandler(db)
+
 	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.Logger)
@@ -66,6 +89,56 @@ func main() {
 				r.Use(auth.AuthMiddleware(cfg.JWTSecret))
 				r.Get("/me", authHandler.Me)
 			})
+		})
+
+		// Protected routes
+		r.Group(func(r chi.Router) {
+			r.Use(auth.AuthMiddleware(cfg.JWTSecret))
+
+			r.Route("/coffees", func(r chi.Router) {
+				r.Get("/", coffeeHandler.List)
+				r.Post("/", coffeeHandler.Create)
+				r.Get("/suggestions", coffeeHandler.Suggestions)
+				r.Get("/{id}", coffeeHandler.Get)
+				r.Put("/{id}", coffeeHandler.Update)
+				r.Delete("/{id}", coffeeHandler.Delete)
+				r.Post("/{id}/archive", coffeeHandler.Archive)
+				r.Post("/{id}/unarchive", coffeeHandler.Unarchive)
+			})
+
+			r.Route("/filter-papers", func(r chi.Router) {
+				r.Get("/", filterPaperHandler.List)
+				r.Post("/", filterPaperHandler.Create)
+				r.Get("/{id}", filterPaperHandler.Get)
+				r.Put("/{id}", filterPaperHandler.Update)
+				r.Delete("/{id}", filterPaperHandler.Delete)
+			})
+
+			r.Route("/mineral-profiles", func(r chi.Router) {
+				r.Get("/", mineralProfileHandler.List)
+				r.Get("/{id}", mineralProfileHandler.Get)
+			})
+
+			r.Route("/defaults", func(r chi.Router) {
+				r.Get("/", defaultsHandler.GetAll)
+				r.Put("/", defaultsHandler.Update)
+				r.Delete("/{field}", defaultsHandler.DeleteField)
+			})
+
+			r.Route("/experiments", func(r chi.Router) {
+				r.Get("/", experimentHandler.List)
+				r.Post("/", experimentHandler.Create)
+				r.Get("/export", experimentHandler.Export)
+				r.Post("/compare", experimentHandler.Compare)
+				r.Post("/analyze", experimentHandler.Analyze)
+				r.Post("/analyze/detail", experimentHandler.AnalyzeDetail)
+				r.Get("/{id}", experimentHandler.Get)
+				r.Put("/{id}", experimentHandler.Update)
+				r.Delete("/{id}", experimentHandler.Delete)
+				r.Post("/{id}/copy", experimentHandler.Copy)
+			})
+
+			r.Get("/dashboard", dashboardHandler.GetDashboard)
 		})
 	})
 

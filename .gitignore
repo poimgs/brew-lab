@@ -17,6 +17,7 @@ backend/bin/
 # Test artifacts
 playwright-report/
 test-results/
+.playwright-mcp/
 
 # IDE/Editor
 .vscode/

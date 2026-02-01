@@ -55,3 +55,8 @@ func GetUserID(ctx context.Context) (uuid.UUID, bool) {
 	userID, ok := ctx.Value(userContextKey).(uuid.UUID)
 	return userID, ok
 }
+
+// SetUserID sets the user ID in the context (for testing purposes)
+func SetUserID(ctx context.Context, userID uuid.UUID) context.Context {
+	return context.WithValue(ctx, userContextKey, userID)
+}
