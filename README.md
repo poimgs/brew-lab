@@ -43,6 +43,18 @@ npm install     # First time only
 npm run dev     # Start dev server
 ```
 
+### Create a User
+
+For local development (from `backend/` directory):
+```bash
+make seed-user EMAIL=you@example.com PASSWORD=YourPassword123!
+```
+
+For production:
+```bash
+./scripts/create-user.sh -email=you@example.com -password=YourPassword123!
+```
+
 ### E2E Tests (from `e2e/` directory)
 
 ```bash
