@@ -65,8 +65,8 @@ func (r *PostgresRepository) Create(ctx context.Context, userID uuid.UUID, input
 func (r *PostgresRepository) GetByID(ctx context.Context, userID, coffeeID uuid.UUID) (*Coffee, error) {
 	query := `
 		SELECT id, user_id, roaster, name, country, region, process, roast_level,
-			tasting_notes, roast_date, purchase_date, notes, archived_at, deleted_at,
-			created_at, updated_at
+			tasting_notes, roast_date, purchase_date, notes, best_experiment_id,
+			archived_at, deleted_at, created_at, updated_at
 		FROM coffees
 		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
 	`
@@ -76,7 +76,8 @@ func (r *PostgresRepository) GetByID(ctx context.Context, userID, coffeeID uuid.
 		&coffee.ID, &coffee.UserID, &coffee.Roaster, &coffee.Name,
 		&coffee.Country, &coffee.Region, &coffee.Process, &coffee.RoastLevel,
 		&coffee.TastingNotes, &coffee.RoastDate, &coffee.PurchaseDate, &coffee.Notes,
-		&coffee.ArchivedAt, &coffee.DeletedAt, &coffee.CreatedAt, &coffee.UpdatedAt,
+		&coffee.BestExperimentID, &coffee.ArchivedAt, &coffee.DeletedAt,
+		&coffee.CreatedAt, &coffee.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -162,8 +163,8 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 	offset := (params.Page - 1) * params.PerPage
 	listQuery := fmt.Sprintf(`
 		SELECT id, user_id, roaster, name, country, region, process, roast_level,
-			tasting_notes, roast_date, purchase_date, notes, archived_at, deleted_at,
-			created_at, updated_at
+			tasting_notes, roast_date, purchase_date, notes, best_experiment_id,
+			archived_at, deleted_at, created_at, updated_at
 		FROM coffees
 		%s
 		ORDER BY %s
@@ -185,7 +186,7 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 			&c.ID, &c.UserID, &c.Roaster, &c.Name,
 			&c.Country, &c.Region, &c.Process, &c.RoastLevel,
 			&c.TastingNotes, &c.RoastDate, &c.PurchaseDate, &c.Notes,
-			&c.ArchivedAt, &c.DeletedAt, &c.CreatedAt, &c.UpdatedAt,
+			&c.BestExperimentID, &c.ArchivedAt, &c.DeletedAt, &c.CreatedAt, &c.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -383,4 +384,153 @@ func (r *PostgresRepository) GetSuggestions(ctx context.Context, userID uuid.UUI
 	}
 
 	return suggestions, nil
+}
+
+var (
+	ErrExperimentNotFound     = errors.New("experiment not found")
+	ErrExperimentWrongCoffee  = errors.New("experiment does not belong to this coffee")
+)
+
+func (r *PostgresRepository) SetBestExperiment(ctx context.Context, userID, coffeeID uuid.UUID, experimentID *uuid.UUID) (*Coffee, error) {
+	// First verify the coffee exists and belongs to user
+	coffee, err := r.GetByID(ctx, userID, coffeeID)
+	if err != nil {
+		return nil, err
+	}
+
+	// If experimentID is provided, verify it belongs to this coffee
+	if experimentID != nil {
+		var expCoffeeID uuid.UUID
+		var expUserID uuid.UUID
+		err := r.db.QueryRowContext(ctx, `
+			SELECT coffee_id, user_id FROM experiments WHERE id = $1
+		`, *experimentID).Scan(&expCoffeeID, &expUserID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, ErrExperimentNotFound
+			}
+			return nil, err
+		}
+		if expCoffeeID != coffeeID {
+			return nil, ErrExperimentWrongCoffee
+		}
+		if expUserID != userID {
+			return nil, ErrExperimentNotFound
+		}
+	}
+
+	// Update the coffee's best_experiment_id
+	query := `
+		UPDATE coffees SET best_experiment_id = $1, updated_at = NOW()
+		WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL
+	`
+	_, err = r.db.ExecContext(ctx, query, experimentID, coffeeID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	coffee.BestExperimentID = experimentID
+	coffee.UpdatedAt = time.Now()
+	return coffee, nil
+}
+
+func (r *PostgresRepository) GetReference(ctx context.Context, userID, coffeeID uuid.UUID) (*CoffeeReference, error) {
+	// First verify the coffee exists
+	coffee, err := r.GetByID(ctx, userID, coffeeID)
+	if err != nil {
+		return nil, err
+	}
+
+	ref := &CoffeeReference{}
+
+	// Get the best experiment (or latest if none marked)
+	var experimentQuery string
+	var experimentID uuid.UUID
+
+	if coffee.BestExperimentID != nil {
+		experimentID = *coffee.BestExperimentID
+		experimentQuery = `
+			SELECT e.id, e.brew_date, e.coffee_weight, e.water_weight, e.ratio,
+				e.grind_size, e.water_temperature, e.filter_paper_id,
+				e.bloom_water, e.bloom_time, e.total_brew_time,
+				e.tds, e.extraction_yield, e.overall_score,
+				fp.id, fp.name, fp.brand
+			FROM experiments e
+			LEFT JOIN filter_papers fp ON e.filter_paper_id = fp.id
+			WHERE e.id = $1 AND e.user_id = $2
+		`
+	} else {
+		// Get latest experiment by brew_date
+		experimentQuery = `
+			SELECT e.id, e.brew_date, e.coffee_weight, e.water_weight, e.ratio,
+				e.grind_size, e.water_temperature, e.filter_paper_id,
+				e.bloom_water, e.bloom_time, e.total_brew_time,
+				e.tds, e.extraction_yield, e.overall_score,
+				fp.id, fp.name, fp.brand
+			FROM experiments e
+			LEFT JOIN filter_papers fp ON e.filter_paper_id = fp.id
+			WHERE e.coffee_id = $1 AND e.user_id = $2
+			ORDER BY e.brew_date DESC
+			LIMIT 1
+		`
+	}
+
+	var exp ReferenceExperiment
+	var fpID *uuid.UUID
+	var fpName *string
+	var fpBrand *string
+
+	var queryArgs []interface{}
+	if coffee.BestExperimentID != nil {
+		queryArgs = []interface{}{experimentID, userID}
+	} else {
+		queryArgs = []interface{}{coffeeID, userID}
+	}
+
+	err = r.db.QueryRowContext(ctx, experimentQuery, queryArgs...).Scan(
+		&exp.ID, &exp.BrewDate, &exp.CoffeeWeight, &exp.WaterWeight, &exp.Ratio,
+		&exp.GrindSize, &exp.WaterTemperature, &fpID,
+		&exp.BloomWater, &exp.BloomTime, &exp.TotalBrewTime,
+		&exp.TDS, &exp.ExtractionYield, &exp.OverallScore,
+		&fpID, &fpName, &fpBrand,
+	)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	if err == nil {
+		exp.IsBest = coffee.BestExperimentID != nil
+		if fpID != nil && fpName != nil {
+			exp.FilterPaper = &FilterPaperSummary{
+				ID:    *fpID,
+				Name:  *fpName,
+				Brand: fpBrand,
+			}
+		}
+		ref.Experiment = &exp
+	}
+
+	// Get coffee goals
+	goalsQuery := `
+		SELECT id, coffee_id, user_id, tds, extraction_yield,
+			aroma_intensity, acidity_intensity, sweetness_intensity, bitterness_intensity,
+			body_weight, flavor_intensity, aftertaste_duration, aftertaste_intensity,
+			overall_score, notes, created_at, updated_at
+		FROM coffee_goals
+		WHERE coffee_id = $1 AND user_id = $2
+	`
+	var goals CoffeeGoal
+	err = r.db.QueryRowContext(ctx, goalsQuery, coffeeID, userID).Scan(
+		&goals.ID, &goals.CoffeeID, &goals.UserID, &goals.TDS, &goals.ExtractionYield,
+		&goals.AromaIntensity, &goals.AcidityIntensity, &goals.SweetnessIntensity, &goals.BitternessIntensity,
+		&goals.BodyWeight, &goals.FlavorIntensity, &goals.AftertasteDuration, &goals.AftertasteIntensity,
+		&goals.OverallScore, &goals.Notes, &goals.CreatedAt, &goals.UpdatedAt,
+	)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	if err == nil {
+		ref.Goals = &goals
+	}
+
+	return ref, nil
 }

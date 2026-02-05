@@ -76,6 +76,13 @@ export default function Header() {
                     Experiments
                   </Link>
                   <Link
+                    to="/coffees"
+                    className="text-lg font-medium hover:text-teal-600 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Coffees
+                  </Link>
+                  <Link
                     to="/library"
                     className="text-lg font-medium hover:text-teal-600 transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
@@ -99,6 +106,7 @@ export default function Header() {
             <nav className="hidden md:flex items-center gap-1">
               <NavLink to="/">Home</NavLink>
               <NavLink to="/experiments">Experiments</NavLink>
+              <NavLink to="/coffees">Coffees</NavLink>
               <NavLink to="/library">Library</NavLink>
             </nav>
           </div>

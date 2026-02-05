@@ -480,6 +480,134 @@ Navigate to: User menu → Preferences → Brew Defaults section
 
 ---
 
+## Reference Sidebar
+
+When logging an experiment, users can view reference information for the selected coffee in a collapsible sidebar. This shows the best brew parameters and target goals, providing context while filling out the form.
+
+### Layout
+
+```
+┌─────────────────────────────────────┬─────────────────────────────────┐
+│ Log Experiment                      │ ▼ Reference (Best Brew)        │
+│                                     │ ─────────────────────────────── │
+│ Coffee*  [Kiamaina - Cata ▼]        │ Based on: Jan 15 brew           │
+│                                     │                                 │
+│ ─── Pre-Brew ───                    │ INPUT PARAMETERS                │
+│ Coffee (g)  [15        ]            │ • Coffee: 15g                   │
+│ Ratio       [15        ]            │ • Ratio: 1:15                   │
+│ Water (g)   [225       ] calc       │ • Water: 225g                   │
+│ Grind       [3.5       ]            │ • Grind: 3.5                    │
+│ Temp (°C)   [96        ]            │ • Temp: 96°C                    │
+│ Filter      [Abaca ▼   ]            │ • Filter: Abaca                 │
+│                                     │ • Bloom: 40g / 30s              │
+│ ─── Brew ───                        │                                 │
+│ Bloom (g)   [40        ]            │ ─────────────────────────────── │
+│ Bloom (s)   [30        ]            │ TARGET GOALS              [✏️]  │
+│ ...                                 │ • TDS: 1.35-1.40                │
+│                                     │ • Extraction: 20-22%            │
+│ ─── Outcomes ───                    │ • Acidity: 7/10                 │
+│ TDS         [1.38      ]            │ • Sweetness: 8/10               │
+│ Extraction  [20.1      ]            │ • Overall: 9/10                 │
+│ ...                                 │                                 │
+│                                     │ ─────────────────────────────── │
+│                                     │ IMPROVEMENT NOTES         [✏️]  │
+│                                     │ "Try finer grind to boost       │
+│                                     │ sweetness, maybe 3.2"           │
+│                                     │                                 │
+│              [Save Experiment]      │ [Copy Parameters]               │
+└─────────────────────────────────────┴─────────────────────────────────┘
+```
+
+### Behavior
+
+**Visibility:**
+- Sidebar hidden when no coffee is selected
+- Sidebar appears when coffee is selected (collapsed by default)
+- User can expand/collapse the sidebar
+- Expansion state persists during the session
+
+**Data Source:**
+- Fetches data from `GET /api/v1/coffees/:id/reference` when coffee is selected
+- Shows best experiment parameters (or latest if no best marked)
+- Shows target goals if they exist for this coffee
+
+**Sections:**
+
+1. **Best Brew Header**
+   - Shows date of the reference experiment
+   - Indicates if this is explicitly marked best or just latest
+
+2. **Input Parameters**
+   - Coffee weight, ratio, water weight
+   - Grind size, temperature
+   - Filter paper name
+   - Bloom water and time
+   - Total brew time (if recorded)
+
+3. **Target Goals** (editable)
+   - Target outcome values (TDS, extraction, sensory scores)
+   - Edit icon opens inline edit or modal
+   - Changes saved to `PUT /api/v1/coffees/:id/goals`
+
+4. **Improvement Notes** (editable)
+   - Free-form notes about what to try next
+   - Part of coffee goals entity
+   - Edit icon toggles inline editing
+   - Changes saved to `PUT /api/v1/coffees/:id/goals`
+
+**Actions:**
+
+- **Copy Parameters**: Fills form fields with best brew's input parameters
+  - Copies: coffee weight, ratio, water weight, grind, temp, filter, bloom
+  - Does NOT copy: outcomes, sensory data, notes
+  - Shows toast confirmation: "Parameters copied from Jan 15 brew"
+
+- **Edit Goals** (✏️): Opens inline editor for target goals
+  - All goal fields editable
+  - Save/Cancel buttons
+  - Auto-saves on blur or explicit save
+
+- **Edit Notes** (✏️): Opens inline text editor for improvement notes
+  - Auto-saves on blur
+
+### Empty States
+
+**No experiments for coffee:**
+```
+┌─────────────────────────────────┐
+│ ▼ Reference                     │
+│ ─────────────────────────────── │
+│                                 │
+│ No experiments yet for this     │
+│ coffee. This will show your     │
+│ best brew parameters after      │
+│ you log some experiments.       │
+│                                 │
+│ ─────────────────────────────── │
+│ TARGET GOALS              [✏️]  │
+│ No goals set. Add targets to    │
+│ track what you're aiming for.   │
+│                                 │
+└─────────────────────────────────┘
+```
+
+**No goals set:**
+```
+│ TARGET GOALS              [Add] │
+│ No goals set yet.               │
+│ Set targets for TDS,            │
+│ extraction, or taste scores.    │
+```
+
+### Mobile Behavior
+
+On mobile (< 768px):
+- Sidebar displays below the form instead of beside it
+- Collapsible accordion style
+- Same content and functionality
+
+---
+
 ## Design Decisions
 
 ### Minimal Required Fields

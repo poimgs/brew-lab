@@ -1,0 +1,181 @@
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { RecentCoffee } from '@/api/home';
+import CoffeeCard from './CoffeeCard';
+
+interface CoffeeCarouselProps {
+  coffees: RecentCoffee[];
+}
+
+export default function CoffeeCarousel({ coffees }: CoffeeCarouselProps) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [visibleCards, setVisibleCards] = useState(3);
+  const [cardWidth, setCardWidth] = useState(256);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  // Update visible cards and card width based on container width
+  useEffect(() => {
+    const updateLayout = () => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const containerWidth = container.offsetWidth;
+      const gap = 16; // gap-4 = 16px
+
+      let newVisibleCards: number;
+      if (window.innerWidth < 640) {
+        newVisibleCards = 1;
+      } else if (window.innerWidth < 1024) {
+        newVisibleCards = 2;
+      } else {
+        newVisibleCards = 3;
+      }
+
+      setVisibleCards(newVisibleCards);
+      // Calculate card width: (containerWidth - gaps) / visibleCards
+      const totalGaps = (newVisibleCards - 1) * gap;
+      const newCardWidth = (containerWidth - totalGaps) / newVisibleCards;
+      setCardWidth(newCardWidth);
+    };
+
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+    return () => window.removeEventListener('resize', updateLayout);
+  }, []);
+
+  const maxIndex = Math.max(0, coffees.length - visibleCards);
+  const numDots = Math.min(5, maxIndex + 1);
+
+  const goToIndex = useCallback((index: number) => {
+    setCurrentIndex(Math.max(0, Math.min(index, maxIndex)));
+  }, [maxIndex]);
+
+  const goNext = useCallback(() => {
+    goToIndex(currentIndex + 1);
+  }, [currentIndex, goToIndex]);
+
+  const goPrev = useCallback(() => {
+    goToIndex(currentIndex - 1);
+  }, [currentIndex, goToIndex]);
+
+  // Touch handlers for swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const minSwipeDistance = 50;
+
+    if (Math.abs(distance) >= minSwipeDistance) {
+      if (distance > 0) {
+        goNext();
+      } else {
+        goPrev();
+      }
+    }
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
+  // Map current index to dot index (for more items than dots)
+  const getDotIndex = () => {
+    if (maxIndex === 0) return 0;
+    if (numDots >= maxIndex + 1) return currentIndex;
+    return Math.round((currentIndex / maxIndex) * (numDots - 1));
+  };
+
+  if (coffees.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="w-full">
+      <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wide">
+        Recently Brewed Coffees
+      </h2>
+
+      <div className="relative">
+        {/* Navigation Arrows */}
+        {currentIndex > 0 && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 hidden sm:flex"
+            onClick={goPrev}
+            aria-label="Previous coffees"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        )}
+
+        {currentIndex < maxIndex && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 hidden sm:flex"
+            onClick={goNext}
+            aria-label="Next coffees"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
+
+        {/* Cards Container */}
+        <div
+          ref={containerRef}
+          className="overflow-hidden"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div
+            className="flex gap-4 transition-transform duration-300 ease-out"
+            style={{
+              transform: `translateX(-${currentIndex * (cardWidth + 16)}px)`,
+            }}
+          >
+            {coffees.map((coffee) => (
+              <div key={coffee.id} style={{ width: cardWidth, flexShrink: 0 }}>
+                <CoffeeCard coffee={coffee} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Dot Indicators */}
+        {numDots > 1 && (
+          <div className="flex justify-center gap-2 mt-4">
+            {Array.from({ length: numDots }).map((_, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  if (numDots >= maxIndex + 1) {
+                    goToIndex(index);
+                  } else {
+                    goToIndex(Math.round((index / (numDots - 1)) * maxIndex));
+                  }
+                }}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  index === getDotIndex()
+                    ? 'bg-teal-600'
+                    : 'bg-gray-300 hover:bg-gray-400'
+                }`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

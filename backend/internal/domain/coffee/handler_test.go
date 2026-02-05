@@ -134,6 +134,41 @@ func (m *mockRepository) GetSuggestions(ctx context.Context, userID uuid.UUID, f
 	return []string{"Test Roaster", "Test Country"}, nil
 }
 
+func (m *mockRepository) SetBestExperiment(ctx context.Context, userID, coffeeID uuid.UUID, experimentID *uuid.UUID) (*Coffee, error) {
+	coffee, ok := m.coffees[coffeeID]
+	if !ok || coffee.UserID != userID {
+		return nil, ErrCoffeeNotFound
+	}
+	// Simulate experiment validation
+	if experimentID != nil {
+		// For testing, we'll use a special UUID to simulate "wrong coffee"
+		wrongCoffeeExperiment := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+		if *experimentID == wrongCoffeeExperiment {
+			return nil, ErrExperimentWrongCoffee
+		}
+		// For testing, we'll use a special UUID to simulate "not found"
+		notFoundExperiment := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+		if *experimentID == notFoundExperiment {
+			return nil, ErrExperimentNotFound
+		}
+	}
+	coffee.BestExperimentID = experimentID
+	coffee.UpdatedAt = time.Now()
+	return coffee, nil
+}
+
+func (m *mockRepository) GetReference(ctx context.Context, userID, coffeeID uuid.UUID) (*CoffeeReference, error) {
+	coffee, ok := m.coffees[coffeeID]
+	if !ok || coffee.UserID != userID {
+		return nil, ErrCoffeeNotFound
+	}
+	// Return a basic reference
+	return &CoffeeReference{
+		Experiment: nil, // No experiment for basic mock
+		Goals:      nil, // No goals for basic mock
+	}, nil
+}
+
 // Helper to create request with user context
 func createRequestWithUser(method, path string, body []byte, userID uuid.UUID) *http.Request {
 	var req *http.Request
@@ -484,4 +519,226 @@ func TestHandler_Create_RoastDateValidation(t *testing.T) {
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("expected status %d for future roast date, got %d", http.StatusBadRequest, rr.Code)
 	}
+}
+
+func TestHandler_SetBestExperiment(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+	experimentID := uuid.New()
+	wrongCoffeeExperiment := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	notFoundExperiment := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+
+	// Add a coffee to the mock repo
+	repo.coffees[coffeeID] = &Coffee{
+		ID:        coffeeID,
+		UserID:    userID,
+		Roaster:   "Test Roaster",
+		Name:      "Test Coffee",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	tests := []struct {
+		name           string
+		coffeeID       string
+		body           interface{}
+		expectedStatus int
+	}{
+		{
+			name:           "set best experiment successfully",
+			coffeeID:       coffeeID.String(),
+			body:           SetBestExperimentInput{ExperimentID: &experimentID},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "clear best experiment (set to null)",
+			coffeeID:       coffeeID.String(),
+			body:           SetBestExperimentInput{ExperimentID: nil},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "coffee not found",
+			coffeeID:       uuid.New().String(),
+			body:           SetBestExperimentInput{ExperimentID: &experimentID},
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "experiment belongs to different coffee",
+			coffeeID:       coffeeID.String(),
+			body:           SetBestExperimentInput{ExperimentID: &wrongCoffeeExperiment},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "experiment not found",
+			coffeeID:       coffeeID.String(),
+			body:           SetBestExperimentInput{ExperimentID: &notFoundExperiment},
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "invalid coffee id",
+			coffeeID:       "invalid",
+			body:           SetBestExperimentInput{ExperimentID: &experimentID},
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, err := json.Marshal(tt.body)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			req := createRequestWithUser("POST", "/coffees/"+tt.coffeeID+"/best-experiment", body, userID)
+			rr := httptest.NewRecorder()
+
+			r := chi.NewRouter()
+			r.Post("/coffees/{id}/best-experiment", handler.SetBestExperiment)
+			r.ServeHTTP(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+		})
+	}
+}
+
+func TestHandler_SetBestExperiment_VerifyUpdate(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+	experimentID := uuid.New()
+
+	// Add a coffee to the mock repo
+	repo.coffees[coffeeID] = &Coffee{
+		ID:        coffeeID,
+		UserID:    userID,
+		Roaster:   "Test Roaster",
+		Name:      "Test Coffee",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Set best experiment
+	body, _ := json.Marshal(SetBestExperimentInput{ExperimentID: &experimentID})
+	req := createRequestWithUser("POST", "/coffees/"+coffeeID.String()+"/best-experiment", body, userID)
+	rr := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Post("/coffees/{id}/best-experiment", handler.SetBestExperiment)
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	// Verify the response contains the updated coffee with best_experiment_id
+	var resultCoffee Coffee
+	if err := json.NewDecoder(rr.Body).Decode(&resultCoffee); err != nil {
+		t.Fatal(err)
+	}
+
+	if resultCoffee.BestExperimentID == nil {
+		t.Error("expected best_experiment_id to be set in response")
+	} else if *resultCoffee.BestExperimentID != experimentID {
+		t.Errorf("expected best_experiment_id %s, got %s", experimentID, *resultCoffee.BestExperimentID)
+	}
+}
+
+func TestHandler_GetReference(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+
+	// Add a coffee to the mock repo
+	repo.coffees[coffeeID] = &Coffee{
+		ID:        coffeeID,
+		UserID:    userID,
+		Roaster:   "Test Roaster",
+		Name:      "Test Coffee",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	tests := []struct {
+		name           string
+		coffeeID       string
+		expectedStatus int
+	}{
+		{
+			name:           "get reference successfully",
+			coffeeID:       coffeeID.String(),
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "coffee not found",
+			coffeeID:       uuid.New().String(),
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "invalid coffee id",
+			coffeeID:       "invalid",
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := createRequestWithUser("GET", "/coffees/"+tt.coffeeID+"/reference", nil, userID)
+			rr := httptest.NewRecorder()
+
+			r := chi.NewRouter()
+			r.Get("/coffees/{id}/reference", handler.GetReference)
+			r.ServeHTTP(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+		})
+	}
+}
+
+func TestHandler_GetReference_ResponseStructure(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+
+	// Add a coffee to the mock repo
+	repo.coffees[coffeeID] = &Coffee{
+		ID:        coffeeID,
+		UserID:    userID,
+		Roaster:   "Test Roaster",
+		Name:      "Test Coffee",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	req := createRequestWithUser("GET", "/coffees/"+coffeeID.String()+"/reference", nil, userID)
+	rr := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Get("/coffees/{id}/reference", handler.GetReference)
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	// Verify the response structure
+	var ref CoffeeReference
+	if err := json.NewDecoder(rr.Body).Decode(&ref); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	// The mock returns nil for both fields, which is valid for a coffee with no experiments/goals
+	// This test verifies the endpoint returns valid JSON with the expected structure
 }

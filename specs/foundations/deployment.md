@@ -81,7 +81,6 @@ This specification defines the deployment architecture for Coffee Tracker. A VPS
 | `.env.example` | Template for required environment variables |
 | `backend/.dockerignore` | Exclude dev files from Docker build |
 | `scripts/create-user.sh` | Wrapper script for user seeding |
-| `.github/workflows/deploy.yml` | CI/CD pipeline |
 
 ## Environment Variables
 
@@ -129,32 +128,6 @@ This specification defines the deployment architecture for Coffee Tracker. A VPS
    ./scripts/create-user.sh -email=user@example.com -password=SecurePass123!
    ```
 
-## CI/CD
-
-GitHub Actions automates deployment on every push to `main`.
-
-### Workflow Overview
-
-The `.github/workflows/deploy.yml` pipeline:
-1. Runs backend tests (`go test ./...`)
-2. If tests pass, SSHs into the VPS
-3. Pulls latest code and rebuilds containers
-
-### Required Secrets
-
-Configure these in GitHub repository settings (Settings → Secrets and variables → Actions):
-
-| Secret | Description |
-|--------|-------------|
-| `VPS_HOST` | VPS IP address or hostname |
-| `VPS_USER` | SSH username (e.g., `root` or deploy user) |
-| `VPS_SSH_KEY` | Private SSH key for authentication |
-
-### Triggers
-
-- **Automatic:** Push to `main` branch
-- **Manual:** Workflow dispatch (Actions → Deploy → Run workflow)
-
 ## Verification
 
 | Check | Command/Action |
@@ -193,13 +166,10 @@ docker compose -f docker-compose.prod.yml exec backend sh
 
 ### Update Procedure
 
-**Manual:**
 ```bash
 git pull origin main
 docker compose -f docker-compose.prod.yml up -d --build
 ```
-
-**Automated:** Push to `main` triggers GitHub Actions deployment.
 
 ### Backup Considerations
 

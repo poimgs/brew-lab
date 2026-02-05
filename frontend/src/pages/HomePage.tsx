@@ -2,28 +2,28 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import RecentCarousel from '@/components/home/RecentCarousel';
-import { getDashboard } from '@/api/dashboard';
-import type { RecentExperiment } from '@/api/dashboard';
+import CoffeeCarousel from '@/components/home/CoffeeCarousel';
+import { getHome } from '@/api/home';
+import type { RecentCoffee } from '@/api/home';
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const [recentExperiments, setRecentExperiments] = useState<RecentExperiment[]>([]);
+  const [recentCoffees, setRecentCoffees] = useState<RecentCoffee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDashboard = async () => {
+    const fetchHome = async () => {
       try {
-        const data = await getDashboard(10);
-        setRecentExperiments(data.recent_experiments);
+        const data = await getHome(10);
+        setRecentCoffees(data.recent_coffees);
       } catch (error) {
-        console.error('Failed to fetch dashboard:', error);
+        console.error('Failed to fetch home data:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchDashboard();
+    fetchHome();
   }, []);
 
   return (
@@ -39,10 +39,10 @@ export default function HomePage() {
           New Experiment
         </Button>
 
-        {/* Recent Experiments Carousel */}
-        {!isLoading && recentExperiments.length > 0 && (
-          <div className="mt-12 w-full max-w-3xl">
-            <RecentCarousel experiments={recentExperiments} />
+        {/* Recently Brewed Coffees Carousel */}
+        {!isLoading && recentCoffees.length > 0 && (
+          <div className="mt-12 w-full max-w-4xl">
+            <CoffeeCarousel coffees={recentCoffees} />
           </div>
         )}
       </div>

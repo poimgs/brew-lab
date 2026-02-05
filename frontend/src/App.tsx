@@ -9,6 +9,8 @@ import PreferencesPage from '@/pages/PreferencesPage';
 import ExperimentsPage from '@/pages/ExperimentsPage';
 import ExperimentNewPage from '@/pages/ExperimentNewPage';
 import ExperimentDetailPage from '@/pages/ExperimentDetailPage';
+import CoffeesPage from '@/pages/CoffeesPage';
+import CoffeeDetailPage from '@/pages/CoffeeDetailPage';
 
 function App() {
   return (
@@ -22,6 +24,26 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <HomePage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/coffees"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <CoffeesPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/coffees/:id"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <CoffeeDetailPage />
                 </Layout>
               </ProtectedRoute>
             }

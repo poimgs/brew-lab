@@ -255,6 +255,72 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, map[string][]string{"items": suggestions})
 }
 
+func (h *Handler) SetBestExperiment(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.GetUserID(r.Context())
+	if !ok {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+
+	coffeeID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid coffee id")
+		return
+	}
+
+	var input SetBestExperimentInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid request body")
+		return
+	}
+
+	coffee, err := h.repo.SetBestExperiment(r.Context(), userID, coffeeID, input.ExperimentID)
+	if err != nil {
+		if errors.Is(err, ErrCoffeeNotFound) {
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
+			return
+		}
+		if errors.Is(err, ErrExperimentNotFound) {
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "experiment not found")
+			return
+		}
+		if errors.Is(err, ErrExperimentWrongCoffee) {
+			response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "experiment does not belong to this coffee")
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to set best experiment")
+		return
+	}
+
+	response.JSON(w, http.StatusOK, coffee)
+}
+
+func (h *Handler) GetReference(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.GetUserID(r.Context())
+	if !ok {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+
+	coffeeID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid coffee id")
+		return
+	}
+
+	reference, err := h.repo.GetReference(r.Context(), userID, coffeeID)
+	if err != nil {
+		if errors.Is(err, ErrCoffeeNotFound) {
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get reference")
+		return
+	}
+
+	response.JSON(w, http.StatusOK, reference)
+}
+
 func parseIntOrDefault(s string, defaultVal int) int {
 	if s == "" {
 		return defaultVal

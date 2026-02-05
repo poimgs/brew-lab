@@ -12,6 +12,7 @@ export interface Coffee {
   roast_date?: string;
   purchase_date?: string;
   notes?: string;
+  best_experiment_id?: string;
   archived_at?: string;
   deleted_at?: string;
   created_at: string;
@@ -20,6 +21,51 @@ export interface Coffee {
   days_off_roast?: number;
   experiment_count: number;
   last_brewed?: string;
+}
+
+export interface FilterPaperSummary {
+  id: string;
+  name: string;
+  brand?: string;
+}
+
+export interface ReferenceExperiment {
+  id: string;
+  brew_date: string;
+  coffee_weight?: number;
+  water_weight?: number;
+  ratio?: number;
+  grind_size?: number;
+  water_temperature?: number;
+  filter_paper?: FilterPaperSummary;
+  bloom_water?: number;
+  bloom_time?: number;
+  total_brew_time?: number;
+  tds?: number;
+  extraction_yield?: number;
+  overall_score?: number;
+  is_best: boolean;
+}
+
+export interface CoffeeGoalSummary {
+  id: string;
+  tds?: number;
+  extraction_yield?: number;
+  aroma_intensity?: number;
+  acidity_intensity?: number;
+  sweetness_intensity?: number;
+  bitterness_intensity?: number;
+  body_weight?: number;
+  flavor_intensity?: number;
+  aftertaste_duration?: number;
+  aftertaste_intensity?: number;
+  overall_score?: number;
+  notes?: string;
+}
+
+export interface CoffeeReference {
+  experiment: ReferenceExperiment | null;
+  goals: CoffeeGoalSummary | null;
 }
 
 export interface CoffeeInput {
@@ -102,4 +148,19 @@ export async function getCoffeeSuggestions(field: string, query: string): Promis
     params: { field, q: query },
   });
   return response.data.items;
+}
+
+export async function setBestExperiment(
+  coffeeId: string,
+  experimentId: string | null
+): Promise<Coffee> {
+  const response = await client.post<Coffee>(`/coffees/${coffeeId}/best-experiment`, {
+    experiment_id: experimentId,
+  });
+  return response.data;
+}
+
+export async function getReference(coffeeId: string): Promise<CoffeeReference> {
+  const response = await client.get<CoffeeReference>(`/coffees/${coffeeId}/reference`);
+  return response.data;
 }

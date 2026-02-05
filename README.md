@@ -43,6 +43,30 @@ npm install     # First time only
 npm run dev     # Start dev server
 ```
 
+### Create a User
+
+For local development (from `backend/` directory):
+```bash
+make seed-user EMAIL=you@example.com PASSWORD=YourPassword123!
+```
+
+For production:
+```bash
+./scripts/create-user.sh -email=you@example.com -password=YourPassword123!
+```
+
+### Production Deployment
+
+SSH into the VPS and deploy:
+```bash
+ssh user@brew-lab.steven-chia.com
+cd ~/coffee-tracker
+git pull origin main
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+See [specs/foundations/deployment.md](specs/foundations/deployment.md) for full deployment documentation.
+
 ### E2E Tests (from `e2e/` directory)
 
 ```bash
