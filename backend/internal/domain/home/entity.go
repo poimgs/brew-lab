@@ -15,7 +15,7 @@ type BestExperiment struct {
 	Ratio            *float64  `json:"ratio,omitempty"`
 	WaterTemperature *float64  `json:"water_temperature,omitempty"`
 	FilterPaperName  *string   `json:"filter_paper_name,omitempty"`
-	MineralAdditions *string   `json:"mineral_additions,omitempty"`
+	MineralProfileName *string `json:"mineral_profile_name,omitempty"`
 	BloomTime        *int      `json:"bloom_time,omitempty"`
 	PourCount        int       `json:"pour_count"`
 	PourStyles       []string  `json:"pour_styles"`

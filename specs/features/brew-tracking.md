@@ -60,9 +60,8 @@ Modifications made after brewing, before tasting.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| serving_temperature | enum | Hot, Warm, Cold |
-| water_bypass | string | Water added post-brew (e.g., "5 drops") |
-| mineral_additions | string | Mineral modifiers added (e.g., "2 drops Catalyst") |
+| water_bypass_ml | integer | Water added post-brew in milliliters |
+| mineral_profile_id | UUID | Reference to mineral profile (see [Library](library.md)) |
 
 ### Quantitative Outcomes
 
@@ -126,9 +125,8 @@ CREATE TABLE experiments (
     technique_notes TEXT,
 
     -- Post-brew variables
-    serving_temperature VARCHAR(20),
-    water_bypass VARCHAR(100),
-    mineral_additions VARCHAR(255),
+    water_bypass_ml INTEGER,
+    mineral_profile_id UUID REFERENCES mineral_profiles(id),
 
     -- Quantitative outcomes
     final_weight DECIMAL(6,2),
@@ -400,9 +398,8 @@ For defaults API endpoints and database schema, see [User Preferences](user-pref
 - Technique Notes (text)
 
 **Post-Brew Variables:**
-- Serving Temperature (Hot/Warm/Cold)
-- Water Bypass (description)
-- Mineral Additions (description + profile selection)
+- Water Bypass (ml)
+- Mineral Profile (dropdown, see [Library](library.md))
 
 **Quantitative Outcomes:**
 - Final Weight (g)

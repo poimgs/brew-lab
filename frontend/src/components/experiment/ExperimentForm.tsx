@@ -1,30 +1,29 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import CoffeeSelector from './CoffeeSelector';
 import ReferenceSidebar from './ReferenceSidebar';
+import { WizardProvider, useWizard } from './wizard/WizardContext';
+import WizardProgress from './wizard/WizardProgress';
+import WizardNavigation from './wizard/WizardNavigation';
+import {
+  CoffeeSelectionStep,
+  PreBrewStep,
+  BrewStep,
+  PostBrewStep,
+  QuantitativeStep,
+  SensoryStep,
+  ImprovementStep,
+} from './wizard/steps';
 import { type Experiment, type CreateExperimentInput, createExperiment, updateExperiment } from '@/api/experiments';
 import { getDefaults, type Defaults } from '@/api/defaults';
 import { listFilterPapers, type FilterPaper } from '@/api/filter-papers';
+import { listMineralProfiles, type MineralProfile } from '@/api/mineral-profiles';
 import { type Coffee, type CoffeeReference, type ReferenceExperiment, getReference, getCoffee } from '@/api/coffees';
-
-const POUR_STYLES = ['circular', 'center', 'pulse'] as const;
-const SERVING_TEMPS = ['Hot', 'Warm', 'Cold'] as const;
 
 const pourSchema = z.object({
   pour_number: z.number(),
@@ -49,18 +48,17 @@ const experimentSchema = z.object({
   bloom_time: z.number().int().positive().optional().nullable(),
   pours: z.array(pourSchema).optional(),
   total_brew_time: z.number().int().positive().optional().nullable(),
-  drawdown_time: z.number().int().positive().optional().nullable(),
   technique_notes: z.string().optional().nullable(),
 
   // Post-brew variables
-  serving_temperature: z.string().optional().nullable(),
-  water_bypass: z.string().optional().nullable(),
-  mineral_additions: z.string().optional().nullable(),
+  water_bypass_ml: z.number().positive().optional().nullable(),
+  mineral_profile_id: z.string().optional().nullable(),
 
   // Quantitative outcomes
   final_weight: z.number().positive().optional().nullable(),
   tds: z.number().min(0).max(30).optional().nullable(),
   extraction_yield: z.number().min(0).max(30).optional().nullable(),
+  drawdown_time: z.number().int().positive().optional().nullable(),
 
   // Sensory outcomes (1-10 scale)
   aroma_intensity: z.number().int().min(1).max(10).optional().nullable(),
@@ -79,7 +77,7 @@ const experimentSchema = z.object({
   aftertaste_intensity: z.number().int().min(1).max(10).optional().nullable(),
   aftertaste_notes: z.string().optional().nullable(),
 
-  // Overall assessment
+  // Overall assessment (moved to Sensory step)
   overall_score: z.number().int().min(1).max(10).optional().nullable(),
   overall_notes: z.string().min(10, 'Notes must be at least 10 characters'),
   improvement_notes: z.string().optional().nullable(),
@@ -87,123 +85,41 @@ const experimentSchema = z.object({
 
 type ExperimentFormData = z.infer<typeof experimentSchema>;
 
+// Step field mappings for validation
+const STEP_FIELDS: Record<number, (keyof ExperimentFormData)[]> = {
+  1: ['coffee_id'],
+  2: ['coffee_weight', 'ratio', 'water_weight', 'grind_size', 'water_temperature', 'filter_paper_id'],
+  3: ['bloom_water', 'bloom_time', 'pours', 'total_brew_time', 'technique_notes'],
+  4: ['water_bypass_ml', 'mineral_profile_id'],
+  5: ['final_weight', 'tds', 'extraction_yield', 'drawdown_time'],
+  6: ['aroma_intensity', 'aroma_notes', 'acidity_intensity', 'acidity_notes', 'sweetness_intensity', 'sweetness_notes', 'bitterness_intensity', 'bitterness_notes', 'body_weight', 'body_notes', 'flavor_intensity', 'flavor_notes', 'aftertaste_duration', 'aftertaste_intensity', 'aftertaste_notes', 'overall_score', 'overall_notes'],
+  7: ['improvement_notes'],
+};
+
 interface ExperimentFormProps {
   experiment?: Experiment;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-// Collapsible section component
-function CollapsibleSection({
-  title,
-  isOpen,
-  onToggle,
-  children,
-}: {
-  title: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border rounded-lg">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 text-left font-medium hover:bg-muted/50 transition-colors"
-      >
-        <span>{title}</span>
-        {isOpen ? (
-          <ChevronUp className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        )}
-      </button>
-      {isOpen && <div className="px-4 pb-4 pt-2 border-t">{children}</div>}
-    </div>
-  );
-}
-
-// Intensity slider component
-function IntensityInput({
-  label,
-  value,
-  onChange,
-  notesValue,
-  onNotesChange,
-}: {
-  label: string;
-  value: number | null | undefined;
-  onChange: (value: number | null) => void;
-  notesValue?: string | null;
-  onNotesChange?: (value: string) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label>{label}</Label>
-        <span className="text-sm font-medium">{value ?? '-'}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          type="range"
-          min="1"
-          max="10"
-          value={value ?? 5}
-          onChange={(e) => onChange(parseInt(e.target.value))}
-          className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2 text-xs"
-          onClick={() => onChange(null)}
-        >
-          Clear
-        </Button>
-      </div>
-      {onNotesChange !== undefined && (
-        <Input
-          value={notesValue ?? ''}
-          onChange={(e) => onNotesChange(e.target.value)}
-          placeholder={`${label} notes...`}
-          className="text-sm"
-        />
-      )}
-    </div>
-  );
-}
-
-export default function ExperimentForm({ experiment, onSuccess, onCancel }: ExperimentFormProps) {
+function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFormProps) {
   const [searchParams] = useSearchParams();
   const initialCoffeeId = searchParams.get('coffee_id');
+  const isEditMode = !!experiment;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [selectedCoffee, setSelectedCoffee] = useState<Coffee | null>(null);
   const [filterPapers, setFilterPapers] = useState<FilterPaper[]>([]);
+  const [mineralProfiles, setMineralProfiles] = useState<MineralProfile[]>([]);
   const [defaults, setDefaults] = useState<Defaults>({});
   const [reference, setReference] = useState<CoffeeReference | null>(null);
   const [isLoadingReference, setIsLoadingReference] = useState(false);
+  const [waterWeightManuallySet, setWaterWeightManuallySet] = useState(false);
 
-  // Section open states
-  const [openSections, setOpenSections] = useState({
-    preBrew: !!experiment,
-    brew: !!experiment,
-    postBrew: !!experiment,
-    quantitative: !!experiment,
-    sensory: !!experiment,
-  });
+  const { currentStep, goToStep } = useWizard();
 
-  const {
-    register,
-    handleSubmit,
-    control,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<ExperimentFormData>({
+  const methods = useForm<ExperimentFormData>({
     resolver: zodResolver(experimentSchema),
     defaultValues: {
       coffee_id: experiment?.coffee_id || initialCoffeeId || '',
@@ -222,14 +138,13 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
         notes: p.notes ?? null,
       })) || [],
       total_brew_time: experiment?.total_brew_time ?? null,
-      drawdown_time: experiment?.drawdown_time ?? null,
       technique_notes: experiment?.technique_notes || '',
-      serving_temperature: experiment?.serving_temperature || '',
-      water_bypass: experiment?.water_bypass || '',
-      mineral_additions: experiment?.mineral_additions || '',
+      water_bypass_ml: experiment?.water_bypass_ml ?? null,
+      mineral_profile_id: experiment?.mineral_profile_id || '',
       final_weight: experiment?.final_weight ?? null,
       tds: experiment?.tds ?? null,
       extraction_yield: experiment?.extraction_yield ?? null,
+      drawdown_time: experiment?.drawdown_time ?? null,
       aroma_intensity: experiment?.aroma_intensity ?? null,
       aroma_notes: experiment?.aroma_notes || '',
       acidity_intensity: experiment?.acidity_intensity ?? null,
@@ -251,26 +166,23 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
     },
   });
 
-  const { fields: pourFields, append: appendPour, remove: removePour } = useFieldArray({
-    control,
-    name: 'pours',
-  });
-
+  const { setValue, watch, trigger } = methods;
   const coffeeWeight = watch('coffee_weight');
   const ratio = watch('ratio');
-  const waterWeight = watch('water_weight');
   const tds = watch('tds');
   const finalWeight = watch('final_weight');
 
-  // Load filter papers, defaults, and initial coffee from URL
+  // Load filter papers, mineral profiles, defaults, and initial coffee
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [papersResponse, defaultsData] = await Promise.all([
+        const [papersResponse, profilesResponse, defaultsData] = await Promise.all([
           listFilterPapers({ per_page: 100 }),
+          listMineralProfiles(),
           getDefaults(),
         ]);
         setFilterPapers(papersResponse.items || []);
+        setMineralProfiles(profilesResponse.items || []);
         setDefaults(defaultsData);
       } catch {
         // Ignore errors
@@ -316,11 +228,12 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
     fetchReference();
   }, [selectedCoffee]);
 
-  // Apply defaults when opening a section for the first time (only for new experiments)
-  const applyDefaultsToSection = useCallback((section: string) => {
+  // Apply defaults when entering a step (for new experiments)
+  useEffect(() => {
     if (experiment) return; // Don't apply defaults when editing
 
-    if (section === 'preBrew') {
+    if (currentStep === 2) {
+      // Pre-brew defaults
       if (defaults.coffee_weight && !watch('coffee_weight')) {
         setValue('coffee_weight', parseFloat(defaults.coffee_weight));
       }
@@ -336,7 +249,8 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
       if (defaults.filter_paper_id && !watch('filter_paper_id')) {
         setValue('filter_paper_id', defaults.filter_paper_id);
       }
-    } else if (section === 'brew') {
+    } else if (currentStep === 3) {
+      // Brew defaults
       if (defaults.bloom_water && !watch('bloom_water')) {
         setValue('bloom_water', parseFloat(defaults.bloom_water));
       }
@@ -344,25 +258,15 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
         setValue('bloom_time', parseInt(defaults.bloom_time));
       }
     }
-  }, [defaults, experiment, setValue, watch]);
+  }, [currentStep, defaults, experiment, setValue, watch]);
 
-  const toggleSection = (section: keyof typeof openSections) => {
-    const wasOpen = openSections[section];
-    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
-
-    // Apply defaults when opening a section for the first time
-    if (!wasOpen) {
-      applyDefaultsToSection(section);
-    }
-  };
-
-  // Calculate water weight from coffee weight and ratio
+  // Calculate water weight from coffee weight and ratio (only if not manually set)
   useEffect(() => {
-    if (coffeeWeight && ratio && !waterWeight) {
+    if (coffeeWeight && ratio && !waterWeightManuallySet) {
       const calculated = coffeeWeight * ratio;
       setValue('water_weight', Math.round(calculated * 10) / 10);
     }
-  }, [coffeeWeight, ratio, waterWeight, setValue]);
+  }, [coffeeWeight, ratio, waterWeightManuallySet, setValue]);
 
   // Calculate extraction yield from TDS, final weight, and coffee weight
   useEffect(() => {
@@ -381,19 +285,69 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
     // Copy input parameters from the reference experiment
     if (exp.coffee_weight) setValue('coffee_weight', exp.coffee_weight);
     if (exp.ratio) setValue('ratio', exp.ratio);
-    if (exp.water_weight) setValue('water_weight', exp.water_weight);
+    if (exp.water_weight) {
+      setValue('water_weight', exp.water_weight);
+      setWaterWeightManuallySet(true); // Mark as manually set when copying
+    }
     if (exp.grind_size) setValue('grind_size', exp.grind_size);
     if (exp.water_temperature) setValue('water_temperature', exp.water_temperature);
     if (exp.filter_paper?.id) setValue('filter_paper_id', exp.filter_paper.id);
     if (exp.bloom_water) setValue('bloom_water', exp.bloom_water);
     if (exp.bloom_time) setValue('bloom_time', exp.bloom_time);
+  };
 
-    // Open the pre-brew and brew sections so user can see the copied values
-    setOpenSections((prev) => ({
-      ...prev,
-      preBrew: true,
-      brew: true,
-    }));
+  // Validate current step fields before proceeding
+  const validateCurrentStep = async (): Promise<boolean> => {
+    const fields = STEP_FIELDS[currentStep];
+    if (!fields || fields.length === 0) return true;
+    const result = await trigger(fields);
+    return result;
+  };
+
+  // Find which step a field belongs to
+  const findStepForField = (fieldName: string): number => {
+    for (const [step, fields] of Object.entries(STEP_FIELDS)) {
+      if (fields.includes(fieldName as keyof ExperimentFormData)) {
+        return parseInt(step);
+      }
+    }
+    return 1;
+  };
+
+  // Handle form submission with validation error navigation
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitError(null);
+
+    // Trigger validation for all fields
+    const isValid = await trigger();
+
+    if (!isValid) {
+      // Find the first step with an error and navigate there
+      const errors = methods.formState.errors;
+      const errorFields = Object.keys(errors);
+
+      if (errorFields.length > 0) {
+        const firstErrorField = errorFields[0];
+        const stepWithError = findStepForField(firstErrorField);
+
+        if (stepWithError !== currentStep) {
+          goToStep(stepWithError);
+        }
+
+        // Set a generic error message
+        const errorMessage = errors[firstErrorField as keyof typeof errors]?.message;
+        if (typeof errorMessage === 'string') {
+          setSubmitError(errorMessage);
+        } else {
+          setSubmitError('Please fill in all required fields');
+        }
+      }
+      return;
+    }
+
+    // If validation passes, submit the form
+    methods.handleSubmit(onSubmit)();
   };
 
   const onSubmit = async (data: ExperimentFormData) => {
@@ -437,13 +391,30 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
     }
   };
 
-  const addPour = () => {
-    appendPour({
-      pour_number: pourFields.length + 1,
-      water_amount: null,
-      pour_style: null,
-      notes: null,
-    });
+  const renderCurrentStep = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <CoffeeSelectionStep
+            onCoffeeChange={handleCoffeeChange}
+            selectedCoffee={selectedCoffee}
+          />
+        );
+      case 2:
+        return <PreBrewStep filterPapers={filterPapers} />;
+      case 3:
+        return <BrewStep />;
+      case 4:
+        return <PostBrewStep mineralProfiles={mineralProfiles} />;
+      case 5:
+        return <QuantitativeStep />;
+      case 6:
+        return <SensoryStep />;
+      case 7:
+        return <ImprovementStep />;
+      default:
+        return null;
+    }
   };
 
   return (
@@ -466,482 +437,34 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
             )}
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {submitError && (
-                <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
-                  {submitError}
-                </div>
-              )}
-
-              {/* Coffee Selection */}
-              <Controller
-                name="coffee_id"
-                control={control}
-                render={({ field }) => (
-                  <CoffeeSelector
-                    value={field.value}
-                    onChange={handleCoffeeChange}
-                    error={errors.coffee_id?.message}
-                  />
+            <FormProvider {...methods}>
+              <form onSubmit={handleFormSubmit} className="space-y-6">
+                {submitError && (
+                  <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
+                    {submitError}
+                  </div>
                 )}
-              />
 
-            {/* Overall Notes (Required) */}
-            <div className="space-y-2">
-              <Label htmlFor="overall_notes" className={errors.overall_notes ? 'text-destructive' : ''}>
-                Overall Notes *
-              </Label>
-              <Textarea
-                id="overall_notes"
-                {...register('overall_notes')}
-                placeholder="How did this brew taste? What stood out?"
-                rows={3}
-                className={errors.overall_notes ? 'border-destructive' : ''}
-              />
-              {errors.overall_notes && (
-                <p className="text-sm text-destructive">{errors.overall_notes.message}</p>
-              )}
-            </div>
+                {/* Progress Indicator */}
+                <WizardProgress />
 
-            {/* Overall Score */}
-            <Controller
-              name="overall_score"
-              control={control}
-              render={({ field }) => (
-                <IntensityInput
-                  label="Overall Score (1-10)"
-                  value={field.value}
-                  onChange={field.onChange}
+                {/* Step Content */}
+                <div className="min-h-[300px]">
+                  {renderCurrentStep()}
+                </div>
+
+                {/* Navigation */}
+                <WizardNavigation
+                  onNext={validateCurrentStep}
+                  isSubmitting={isSubmitting}
+                  isEditMode={isEditMode}
+                  showSkip={currentStep >= 2 && currentStep <= 5}
+                  submitLabel={experiment ? 'Save Changes' : 'Save Experiment'}
                 />
-              )}
-            />
-
-            {/* Improvement Notes */}
-            <div className="space-y-2">
-              <Label htmlFor="improvement_notes">Ideas for Next Time</Label>
-              <Textarea
-                id="improvement_notes"
-                {...register('improvement_notes')}
-                placeholder="What would you try differently?"
-                rows={2}
-              />
-            </div>
-
-            {/* Collapsible Sections */}
-            <div className="space-y-3">
-              {/* Pre-Brew Variables */}
-              <CollapsibleSection
-                title="Pre-Brew Variables"
-                isOpen={openSections.preBrew}
-                onToggle={() => toggleSection('preBrew')}
-              >
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="coffee_weight">Coffee Weight (g)</Label>
-                    <Input
-                      id="coffee_weight"
-                      type="number"
-                      step="0.1"
-                      {...register('coffee_weight', { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ratio">Ratio (1:X)</Label>
-                    <Input
-                      id="ratio"
-                      type="number"
-                      step="0.1"
-                      placeholder="e.g., 15 for 1:15"
-                      {...register('ratio', { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="water_weight">
-                      Water Weight (g)
-                      {coffeeWeight && ratio && (
-                        <span className="ml-2 text-xs text-muted-foreground">(calculated)</span>
-                      )}
-                    </Label>
-                    <Input
-                      id="water_weight"
-                      type="number"
-                      step="0.1"
-                      {...register('water_weight', { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="grind_size">Grind Size</Label>
-                    <Input
-                      id="grind_size"
-                      type="number"
-                      step="0.1"
-                      placeholder="e.g., 3.5 for Fellow Ode"
-                      {...register('grind_size', { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="water_temperature">Water Temperature (°C)</Label>
-                    <Input
-                      id="water_temperature"
-                      type="number"
-                      step="0.1"
-                      {...register('water_temperature', { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Filter Paper</Label>
-                    <Controller
-                      name="filter_paper_id"
-                      control={control}
-                      render={({ field }) => (
-                        <Select value={field.value || ''} onValueChange={field.onChange}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select filter paper" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {filterPapers.map((paper) => (
-                              <SelectItem key={paper.id} value={paper.id}>
-                                {paper.name} {paper.brand && `(${paper.brand})`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                </div>
-              </CollapsibleSection>
-
-              {/* Brew Variables */}
-              <CollapsibleSection
-                title="Brew Variables"
-                isOpen={openSections.brew}
-                onToggle={() => toggleSection('brew')}
-              >
-                <div className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="bloom_water">Bloom Water (g)</Label>
-                      <Input
-                        id="bloom_water"
-                        type="number"
-                        step="0.1"
-                        {...register('bloom_water', { valueAsNumber: true })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="bloom_time">Bloom Time (seconds)</Label>
-                      <Input
-                        id="bloom_time"
-                        type="number"
-                        {...register('bloom_time', { valueAsNumber: true })}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Pours */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label>Pours</Label>
-                      <Button type="button" variant="outline" size="sm" onClick={addPour}>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Pour
-                      </Button>
-                    </div>
-                    {pourFields.map((field, index) => (
-                      <div key={field.id} className="flex items-start gap-2 p-3 bg-muted/30 rounded-lg">
-                        <span className="text-sm font-medium text-muted-foreground w-6 pt-2">
-                          {index + 1}.
-                        </span>
-                        <div className="flex-1 grid gap-2 sm:grid-cols-3">
-                          <Input
-                            type="number"
-                            step="0.1"
-                            placeholder="Water (g)"
-                            {...register(`pours.${index}.water_amount`, { valueAsNumber: true })}
-                          />
-                          <Controller
-                            name={`pours.${index}.pour_style`}
-                            control={control}
-                            render={({ field: selectField }) => (
-                              <Select value={selectField.value || ''} onValueChange={selectField.onChange}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Style" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {POUR_STYLES.map((style) => (
-                                    <SelectItem key={style} value={style}>
-                                      {style}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          />
-                          <Input
-                            placeholder="Notes"
-                            {...register(`pours.${index}.notes`)}
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removePour(index)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="total_brew_time">Total Brew Time (seconds)</Label>
-                      <Input
-                        id="total_brew_time"
-                        type="number"
-                        {...register('total_brew_time', { valueAsNumber: true })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="drawdown_time">Drawdown Time (seconds)</Label>
-                      <Input
-                        id="drawdown_time"
-                        type="number"
-                        {...register('drawdown_time', { valueAsNumber: true })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="technique_notes">Technique Notes</Label>
-                    <Textarea
-                      id="technique_notes"
-                      {...register('technique_notes')}
-                      placeholder="Any specific techniques used?"
-                      rows={2}
-                    />
-                  </div>
-                </div>
-              </CollapsibleSection>
-
-              {/* Post-Brew Variables */}
-              <CollapsibleSection
-                title="Post-Brew Variables"
-                isOpen={openSections.postBrew}
-                onToggle={() => toggleSection('postBrew')}
-              >
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Serving Temperature</Label>
-                    <Controller
-                      name="serving_temperature"
-                      control={control}
-                      render={({ field }) => (
-                        <Select value={field.value || ''} onValueChange={field.onChange}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select temperature" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {SERVING_TEMPS.map((temp) => (
-                              <SelectItem key={temp} value={temp}>
-                                {temp}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="water_bypass">Water Bypass</Label>
-                    <Input
-                      id="water_bypass"
-                      {...register('water_bypass')}
-                      placeholder="e.g., 5 drops"
-                    />
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="mineral_additions">Mineral Additions</Label>
-                    <Input
-                      id="mineral_additions"
-                      {...register('mineral_additions')}
-                      placeholder="e.g., 2 drops Catalyst"
-                    />
-                  </div>
-                </div>
-              </CollapsibleSection>
-
-              {/* Quantitative Outcomes */}
-              <CollapsibleSection
-                title="Quantitative Outcomes"
-                isOpen={openSections.quantitative}
-                onToggle={() => toggleSection('quantitative')}
-              >
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="final_weight">Final Weight (g)</Label>
-                    <Input
-                      id="final_weight"
-                      type="number"
-                      step="0.1"
-                      {...register('final_weight', { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tds">TDS (%)</Label>
-                    <Input
-                      id="tds"
-                      type="number"
-                      step="0.01"
-                      {...register('tds', { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="extraction_yield">
-                      Extraction Yield (%)
-                      {tds && finalWeight && coffeeWeight && (
-                        <span className="ml-2 text-xs text-muted-foreground">(calculated)</span>
-                      )}
-                    </Label>
-                    <Input
-                      id="extraction_yield"
-                      type="number"
-                      step="0.01"
-                      {...register('extraction_yield', { valueAsNumber: true })}
-                    />
-                  </div>
-                </div>
-              </CollapsibleSection>
-
-              {/* Sensory Outcomes */}
-              <CollapsibleSection
-                title="Sensory Outcomes"
-                isOpen={openSections.sensory}
-                onToggle={() => toggleSection('sensory')}
-              >
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <Controller
-                    name="aroma_intensity"
-                    control={control}
-                    render={({ field }) => (
-                      <IntensityInput
-                        label="Aroma"
-                        value={field.value}
-                        onChange={field.onChange}
-                        notesValue={watch('aroma_notes')}
-                        onNotesChange={(v) => setValue('aroma_notes', v)}
-                      />
-                    )}
-                  />
-                  <Controller
-                    name="acidity_intensity"
-                    control={control}
-                    render={({ field }) => (
-                      <IntensityInput
-                        label="Acidity"
-                        value={field.value}
-                        onChange={field.onChange}
-                        notesValue={watch('acidity_notes')}
-                        onNotesChange={(v) => setValue('acidity_notes', v)}
-                      />
-                    )}
-                  />
-                  <Controller
-                    name="sweetness_intensity"
-                    control={control}
-                    render={({ field }) => (
-                      <IntensityInput
-                        label="Sweetness"
-                        value={field.value}
-                        onChange={field.onChange}
-                        notesValue={watch('sweetness_notes')}
-                        onNotesChange={(v) => setValue('sweetness_notes', v)}
-                      />
-                    )}
-                  />
-                  <Controller
-                    name="bitterness_intensity"
-                    control={control}
-                    render={({ field }) => (
-                      <IntensityInput
-                        label="Bitterness"
-                        value={field.value}
-                        onChange={field.onChange}
-                        notesValue={watch('bitterness_notes')}
-                        onNotesChange={(v) => setValue('bitterness_notes', v)}
-                      />
-                    )}
-                  />
-                  <Controller
-                    name="body_weight"
-                    control={control}
-                    render={({ field }) => (
-                      <IntensityInput
-                        label="Body"
-                        value={field.value}
-                        onChange={field.onChange}
-                        notesValue={watch('body_notes')}
-                        onNotesChange={(v) => setValue('body_notes', v)}
-                      />
-                    )}
-                  />
-                  <Controller
-                    name="flavor_intensity"
-                    control={control}
-                    render={({ field }) => (
-                      <IntensityInput
-                        label="Flavor"
-                        value={field.value}
-                        onChange={field.onChange}
-                        notesValue={watch('flavor_notes')}
-                        onNotesChange={(v) => setValue('flavor_notes', v)}
-                      />
-                    )}
-                  />
-                  <Controller
-                    name="aftertaste_duration"
-                    control={control}
-                    render={({ field }) => (
-                      <IntensityInput
-                        label="Aftertaste Duration"
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    )}
-                  />
-                  <Controller
-                    name="aftertaste_intensity"
-                    control={control}
-                    render={({ field }) => (
-                      <IntensityInput
-                        label="Aftertaste Intensity"
-                        value={field.value}
-                        onChange={field.onChange}
-                        notesValue={watch('aftertaste_notes')}
-                        onNotesChange={(v) => setValue('aftertaste_notes', v)}
-                      />
-                    )}
-                  />
-                </div>
-              </CollapsibleSection>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={onCancel}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {experiment ? 'Save Changes' : 'Save Experiment'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              </form>
+            </FormProvider>
+          </CardContent>
+        </Card>
 
         {/* Reference Sidebar - visible when coffee is selected */}
         {selectedCoffee && (
@@ -955,5 +478,15 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
         )}
       </div>
     </div>
+  );
+}
+
+export default function ExperimentForm(props: ExperimentFormProps) {
+  const isEditMode = !!props.experiment;
+
+  return (
+    <WizardProvider isEditMode={isEditMode}>
+      <ExperimentFormContent {...props} />
+    </WizardProvider>
   );
 }

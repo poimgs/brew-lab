@@ -113,11 +113,12 @@ func (r *postgresRepository) populateBestExperiments(ctx context.Context, userID
 				COALESCE(best.ratio, latest.ratio) as ratio,
 				COALESCE(best.water_temperature, latest.water_temperature) as water_temperature,
 				COALESCE(best.bloom_time, latest.bloom_time) as bloom_time,
-				COALESCE(best.mineral_additions, latest.mineral_additions) as mineral_additions,
+				COALESCE(best_mp.name, latest_mp.name) as mineral_profile_name,
 				COALESCE(best_fp.name, latest_fp.name) as filter_paper_name
 			FROM coffees c
 			LEFT JOIN experiments best ON best.id = c.best_experiment_id AND best.user_id = $1
 			LEFT JOIN filter_papers best_fp ON best_fp.id = best.filter_paper_id
+			LEFT JOIN mineral_profiles best_mp ON best_mp.id = best.mineral_profile_id
 			LEFT JOIN LATERAL (
 				SELECT e.*
 				FROM experiments e
@@ -126,9 +127,10 @@ func (r *postgresRepository) populateBestExperiments(ctx context.Context, userID
 				LIMIT 1
 			) latest ON c.best_experiment_id IS NULL
 			LEFT JOIN filter_papers latest_fp ON latest_fp.id = latest.filter_paper_id
+			LEFT JOIN mineral_profiles latest_mp ON latest_mp.id = latest.mineral_profile_id
 			WHERE c.id = ANY($2) AND c.user_id = $1
 		)
-		SELECT coffee_id, experiment_id, brew_date, overall_score, ratio, water_temperature, bloom_time, mineral_additions, filter_paper_name
+		SELECT coffee_id, experiment_id, brew_date, overall_score, ratio, water_temperature, bloom_time, mineral_profile_name, filter_paper_name
 		FROM best_or_latest
 		WHERE experiment_id IS NOT NULL
 	`
@@ -155,7 +157,7 @@ func (r *postgresRepository) populateBestExperiments(ctx context.Context, userID
 			&be.Ratio,
 			&be.WaterTemperature,
 			&be.BloomTime,
-			&be.MineralAdditions,
+			&be.MineralProfileName,
 			&filterPaperName,
 		)
 		if err != nil {

@@ -188,7 +188,7 @@ export default function ExperimentDetailPage() {
     experiment.total_brew_time || experiment.drawdown_time ||
     (experiment.pours && experiment.pours.length > 0) || experiment.technique_notes;
 
-  const hasPostBrewData = experiment.serving_temperature || experiment.water_bypass || experiment.mineral_additions;
+  const hasPostBrewData = experiment.water_bypass_ml || experiment.mineral_profile_id;
 
   return (
     <div className="container mx-auto py-8 px-4 space-y-6">
@@ -309,9 +309,13 @@ export default function ExperimentDetailPage() {
             <div>
               <h3 className="font-medium mb-3 pb-2 border-b">Post-Brew Variables</h3>
               <div className="space-y-0">
-                <DetailRow label="Serving Temperature" value={experiment.serving_temperature} />
-                <DetailRow label="Water Bypass" value={experiment.water_bypass} />
-                <DetailRow label="Mineral Additions" value={experiment.mineral_additions} />
+                <DetailRow label="Water Bypass" value={experiment.water_bypass_ml} unit="ml" />
+                {experiment.mineral_profile && (
+                  <DetailRow
+                    label="Mineral Profile"
+                    value={`${experiment.mineral_profile.name}${experiment.mineral_profile.brand ? ` (${experiment.mineral_profile.brand})` : ''}`}
+                  />
+                )}
               </div>
             </div>
           )}

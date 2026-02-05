@@ -7,7 +7,7 @@ export interface BestExperiment {
   ratio?: number | null;
   water_temperature?: number | null;
   filter_paper_name?: string | null;
-  mineral_additions?: string | null;
+  mineral_profile_name?: string | null;
   bloom_time?: number | null;
   pour_count: number;
   pour_styles: string[];

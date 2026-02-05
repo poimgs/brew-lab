@@ -161,7 +161,7 @@ Returns recently brewed coffees with best experiment data for the home page disp
         "ratio": 15.0,
         "water_temperature": 96.0,
         "filter_paper_name": "Abaca",
-        "mineral_additions": "Catalyst",
+        "mineral_profile_name": "Catalyst",
         "bloom_time": 30,
         "pour_count": 3,
         "pour_styles": ["circular", "circular", "center"]
@@ -187,7 +187,7 @@ Returns recently brewed coffees with best experiment data for the home page disp
 | `best_experiment.ratio` | Coffee to water ratio |
 | `best_experiment.water_temperature` | Brewing temperature in °C |
 | `best_experiment.filter_paper_name` | Name of filter paper used |
-| `best_experiment.mineral_additions` | Mineral profile or additions used |
+| `best_experiment.mineral_profile_name` | Name of mineral profile used |
 | `best_experiment.bloom_time` | Bloom duration in seconds |
 | `best_experiment.pour_count` | Number of pours |
 | `best_experiment.pour_styles` | Array of pour styles used |

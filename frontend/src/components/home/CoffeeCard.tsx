@@ -59,8 +59,8 @@ export default function CoffeeCard({ coffee }: CoffeeCardProps) {
   if (best_experiment?.filter_paper_name) {
     paramParts.push(best_experiment.filter_paper_name);
   }
-  if (best_experiment?.mineral_additions) {
-    paramParts.push(best_experiment.mineral_additions);
+  if (best_experiment?.mineral_profile_name) {
+    paramParts.push(best_experiment.mineral_profile_name);
   }
   const paramsLine = paramParts.join(' \u00B7 ');
 
