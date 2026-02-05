@@ -27,14 +27,18 @@ The Home page is the landing page, providing quick access to the primary action:
 │                    │                     │                          │
 │                    └─────────────────────┘                          │
 │                                                                     │
-│  RECENT EXPERIMENTS                              ←  [●○○○○]  →      │
-│  ┌─────────────────┐  ┌─────────────────┐                           │
-│  │ Kiamaina        │  │ El Calagual     │                           │
-│  │ 7/10            │  │ 8/10            │                           │
-│  │ "Bright, nice   │  │ "Best brew yet" │                           │
-│  │ acidity"        │  │                 │                           │
-│  │ Today, 10:30 AM │  │ Today, 8:15 AM  │                           │
-│  └─────────────────┘  └─────────────────┘                           │
+│  RECENTLY BREWED COFFEES                         ←  [●○○○○]  →      │
+│  ┌─────────────────────────────┐  ┌─────────────────────────────┐   │
+│  │ Kiamaina                    │  │ El Calagual                 │   │
+│  │ Cata Coffee                 │  │ Square Mile                 │   │
+│  │                             │  │                             │   │
+│  │ Best Brew (Jan 15)    8/10  │  │ Best Brew (Jan 14)    9/10  │   │
+│  │ 1:15 · 96°C · Abaca         │  │ 1:16 · 94°C · Cafec         │   │
+│  │ Bloom 30s → 3 pours         │  │ Bloom 45s → 4 pours         │   │
+│  │                             │  │                             │   │
+│  │ "Try finer grind..."        │  │ "Perfect as is"             │   │
+│  │                [+ New Brew] │  │                [+ New Brew] │   │
+│  └─────────────────────────────┘  └─────────────────────────────┘   │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -64,9 +68,9 @@ Large, prominent call-to-action centered on the page.
 - Always visible, positioned at top center of main content
 - Click action: Navigates to `/experiments/new`
 
-### Recent Experiments Carousel
+### Recently Brewed Coffees Carousel
 
-Horizontal carousel displaying recent experiments without page scrolling.
+Horizontal carousel displaying recently brewed coffees without page scrolling.
 
 **Navigation controls:**
 - Swipe gestures (mobile/touch)
@@ -80,22 +84,33 @@ Horizontal carousel displaying recent experiments without page scrolling.
 
 **Card layout:**
 ```
-┌─────────────────────┐
-│ Kiamaina            │
-│ 7/10                │
-│ "Bright, nice       │
-│ acidity"            │
-│ Today, 10:30 AM     │
-└─────────────────────┘
+┌─────────────────────────────────────┐
+│ Kiamaina                            │
+│ Cata Coffee                         │
+│                                     │
+│ Best Brew (Jan 15)           8/10   │
+│ 1:15 · 96°C · Abaca · Catalyst      │
+│ Bloom 30s → 3 pours (circular)      │
+│                                     │
+│ "Try finer grind to boost..."       │
+│                                     │
+│                    [+ New Brew]     │
+└─────────────────────────────────────┘
 ```
 
 **Card content:**
 - Coffee name
-- Overall score (X/10 format)
-- Notes excerpt (truncated with ellipsis if needed)
-- Relative date + time (e.g., "Today, 10:30 AM", "Yesterday, 3:15 PM")
+- Roaster
+- Best brew date + overall score
+- Params: ratio, temperature, filter, mineral additions
+- Pour info: bloom time, pour count, pour style(s)
+- Improvement notes snippet (from coffee goals)
+- "New Brew" button
 
-**Interaction:** Display only. No click action on cards.
+**Behavior:**
+- Sorted by last brewed (most recent first)
+- Click card → Coffee detail view (`/coffees/:id`)
+- Click "New Brew" → New experiment with coffee pre-selected (`/experiments/new?coffee_id=:id`)
 
 ### Empty State
 
@@ -125,22 +140,33 @@ When no experiments exist, display only the New Experiment button with no additi
 GET /api/v1/dashboard
 ```
 
-Returns recent experiments for the home page display.
+Returns recently brewed coffees with best experiment data for the home page display.
 
 **Query parameters:**
-- `limit`: Number of experiments to return (default: 10, max: 20)
+- `limit`: Number of coffees to return (default: 10, max: 20)
 
 **Response:**
 ```json
 {
-  "recent_experiments": [
+  "recent_coffees": [
     {
       "id": "uuid",
-      "brew_date": "2026-01-19T10:30:00Z",
-      "coffee_name": "Kiamaina",
-      "overall_score": 7,
-      "notes": "Bright, nice acidity...",
-      "relative_date": "today"
+      "name": "Kiamaina",
+      "roaster": "Cata Coffee",
+      "last_brewed_at": "2026-01-15T10:30:00Z",
+      "best_experiment": {
+        "id": "uuid",
+        "brew_date": "2026-01-15T10:30:00Z",
+        "overall_score": 8,
+        "ratio": 15.0,
+        "water_temperature": 96.0,
+        "filter_paper_name": "Abaca",
+        "mineral_additions": "Catalyst",
+        "bloom_time": 30,
+        "pour_count": 3,
+        "pour_styles": ["circular", "circular", "center"]
+      },
+      "improvement_note": "Try finer grind to boost sweetness..."
     }
   ]
 }
@@ -150,12 +176,22 @@ Returns recent experiments for the home page display.
 
 | Field | Description |
 |-------|-------------|
-| `id` | Unique experiment identifier |
-| `brew_date` | ISO 8601 timestamp of when the experiment was recorded |
-| `coffee_name` | Name of the coffee used |
-| `overall_score` | 1-10 rating (may be null if not scored) |
-| `notes` | Excerpt from overall_notes (truncated if needed) |
-| `relative_date` | One of: `today`, `yesterday`, `this_week`, `earlier` |
+| `id` | Unique coffee identifier |
+| `name` | Coffee name |
+| `roaster` | Roaster/company name |
+| `last_brewed_at` | ISO 8601 timestamp of most recent experiment |
+| `best_experiment` | Best experiment for this coffee (or latest if none marked) |
+| `best_experiment.id` | Unique experiment identifier |
+| `best_experiment.brew_date` | ISO 8601 timestamp of when the experiment was recorded |
+| `best_experiment.overall_score` | 1-10 rating (may be null if not scored) |
+| `best_experiment.ratio` | Coffee to water ratio |
+| `best_experiment.water_temperature` | Brewing temperature in °C |
+| `best_experiment.filter_paper_name` | Name of filter paper used |
+| `best_experiment.mineral_additions` | Mineral profile or additions used |
+| `best_experiment.bloom_time` | Bloom duration in seconds |
+| `best_experiment.pour_count` | Number of pours |
+| `best_experiment.pour_styles` | Array of pour styles used |
+| `improvement_note` | Notes from coffee goals (truncated if needed) |
 
 ---
 
@@ -196,10 +232,11 @@ Horizontal carousel instead of scrolling list because:
 - Natural swipe interaction on mobile
 - Dot indicators show position at a glance
 
-### No Click Interaction on Cards
+### Coffee-Centric Cards
 
-Experiment cards are display-only because:
-- Experiments page provides full list and detail access
-- Keeps home page focused on logging, not browsing
-- Reduces decision points on the landing page
-- Clear separation of concerns between pages
+Showing coffees instead of experiments because:
+- Users think in terms of "which coffee to brew" not "which experiment to view"
+- Best brew params provide actionable reference for next brew
+- "New Brew" action enables quick experiment creation
+- Improvement notes guide the next brewing attempt
+- Click-through to coffee detail enables deeper exploration

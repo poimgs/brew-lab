@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { BrowserRouter } from 'react-router-dom';
 import ExperimentForm from './ExperimentForm';
 
 // Mock the API functions
@@ -33,7 +34,25 @@ vi.mock('@/api/coffees', () => ({
     ],
     pagination: { page: 1, per_page: 5, total: 2, total_pages: 1 },
   }),
+  getCoffee: vi.fn().mockResolvedValue({
+    id: 'coffee-1',
+    roaster: 'Test Roaster',
+    name: 'Test Coffee',
+    roast_date: '2025-11-01',
+    days_off_roast: 90,
+    experiment_count: 5,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+  }),
+  getReference: vi.fn().mockResolvedValue({
+    experiment: null,
+    goals: null,
+  }),
 }));
+
+function renderWithRouter(ui: React.ReactElement) {
+  return render(<BrowserRouter>{ui}</BrowserRouter>);
+}
 
 vi.mock('@/api/defaults', () => ({
   getDefaults: vi.fn().mockResolvedValue({
@@ -89,7 +108,7 @@ describe('ExperimentForm', () => {
 
   describe('rendering', () => {
     it('renders new experiment form when no experiment is provided', async () => {
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       expect(screen.getByText('New Experiment')).toBeInTheDocument();
       expect(screen.getByText('Coffee *')).toBeInTheDocument();
@@ -98,7 +117,7 @@ describe('ExperimentForm', () => {
     });
 
     it('renders edit form when experiment is provided', async () => {
-      render(
+      renderWithRouter(
         <ExperimentForm
           experiment={mockExperiment}
           onSuccess={mockOnSuccess}
@@ -112,7 +131,7 @@ describe('ExperimentForm', () => {
     });
 
     it('renders all collapsible sections', () => {
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       expect(screen.getByText('Pre-Brew Variables')).toBeInTheDocument();
       expect(screen.getByText('Brew Variables')).toBeInTheDocument();
@@ -125,7 +144,7 @@ describe('ExperimentForm', () => {
   describe('coffee selector', () => {
     it('shows recent coffees when coffee selector is opened', async () => {
       const user = userEvent.setup();
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       const selector = screen.getByText('Select a coffee...');
       await user.click(selector);
@@ -138,7 +157,7 @@ describe('ExperimentForm', () => {
 
     it('allows selecting a coffee', async () => {
       const user = userEvent.setup();
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       const selector = screen.getByText('Select a coffee...');
       await user.click(selector);
@@ -161,7 +180,7 @@ describe('ExperimentForm', () => {
   describe('collapsible sections', () => {
     it('expands pre-brew section when clicked', async () => {
       const user = userEvent.setup();
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       // Initially, pre-brew section is collapsed for new experiments
       expect(screen.queryByLabelText(/coffee weight/i)).not.toBeInTheDocument();
@@ -182,7 +201,7 @@ describe('ExperimentForm', () => {
 
     it('applies defaults when expanding pre-brew section for new experiment', async () => {
       const user = userEvent.setup();
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       // Click to expand pre-brew section
       const sectionButton = screen.getByRole('button', { name: /pre-brew variables/i });
@@ -199,7 +218,7 @@ describe('ExperimentForm', () => {
 
     it('expands brew section and shows pours management', async () => {
       const user = userEvent.setup();
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       // Find the brew variables section by text and click its parent button
       const brewSectionText = screen.getByText('Brew Variables');
@@ -217,7 +236,7 @@ describe('ExperimentForm', () => {
   describe('validation', () => {
     it('shows error when coffee is not selected', async () => {
       const user = userEvent.setup();
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       // Fill in notes but don't select coffee
       const notesInput = screen.getByLabelText(/overall notes/i);
@@ -235,7 +254,7 @@ describe('ExperimentForm', () => {
 
     it('shows error when notes are too short', async () => {
       const user = userEvent.setup();
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       // Select a coffee first
       const selector = screen.getByText('Select a coffee...');
@@ -268,7 +287,7 @@ describe('ExperimentForm', () => {
       const user = userEvent.setup();
       vi.mocked(createExperiment).mockResolvedValueOnce(mockExperiment);
 
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       // Select coffee
       const selector = screen.getByText('Select a coffee...');
@@ -307,7 +326,7 @@ describe('ExperimentForm', () => {
         overall_notes: 'Updated notes are here now',
       });
 
-      render(
+      renderWithRouter(
         <ExperimentForm
           experiment={mockExperiment}
           onSuccess={mockOnSuccess}
@@ -341,7 +360,7 @@ describe('ExperimentForm', () => {
         response: { data: { error: 'Coffee not found' } },
       });
 
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       // Select coffee
       const selector = screen.getByText('Select a coffee...');
@@ -372,7 +391,7 @@ describe('ExperimentForm', () => {
   describe('pours management', () => {
     it('can add pours', async () => {
       const user = userEvent.setup();
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       // Expand brew section by finding text and clicking its parent button
       const brewSectionText = screen.getByText('Brew Variables');
@@ -406,7 +425,7 @@ describe('ExperimentForm', () => {
   describe('cancel action', () => {
     it('calls onCancel when cancel button is clicked', async () => {
       const user = userEvent.setup();
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       const cancelButton = screen.getByRole('button', { name: /cancel/i });
       await user.click(cancelButton);
@@ -416,7 +435,7 @@ describe('ExperimentForm', () => {
 
     it('calls onCancel when back button is clicked', async () => {
       const user = userEvent.setup();
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       const backButton = screen.getByRole('button', { name: /back/i });
       await user.click(backButton);
@@ -427,7 +446,7 @@ describe('ExperimentForm', () => {
 
   describe('overall score slider', () => {
     it('allows setting overall score via slider', async () => {
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       // The score slider should be present
       const scoreSlider = screen.getByRole('slider');
@@ -439,7 +458,7 @@ describe('ExperimentForm', () => {
 
     it('can clear overall score', async () => {
       const user = userEvent.setup();
-      render(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
       // Get the first clear button (for overall score)
       const clearButtons = screen.getAllByRole('button', { name: /clear/i });

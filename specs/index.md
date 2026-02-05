@@ -53,6 +53,7 @@ Conventions and patterns used across all features. Read these first.
 |------|---------|
 | [api-conventions.md](foundations/api-conventions.md) | REST patterns, errors, pagination, filtering |
 | [database-conventions.md](foundations/database-conventions.md) | Schema patterns, types, migrations |
+| [deployment.md](foundations/deployment.md) | VPS + Docker deployment setup |
 | [design-system.md](foundations/design-system.md) | UI patterns, colors, typography, components |
 | [e2e-testing.md](foundations/e2e-testing.md) | Playwright E2E tests, fixtures, patterns |
 
@@ -67,9 +68,10 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | Spec | Dependencies | Purpose |
 |------|--------------|---------|
 | [authentication.md](features/authentication.md) | — | User entity, login/signup, JWT, session handling |
-| [library.md](features/library.md) | authentication | Coffees + filter papers + mineral profiles with tabbed UI |
+| [coffees.md](features/coffees.md) | authentication | Coffee beans + best brew tracking + target goals |
+| [library.md](features/library.md) | authentication | Filter papers + mineral profiles with tabbed UI |
 | [user-preferences.md](features/user-preferences.md) | authentication | Brew defaults, accessed via user menu |
-| [brew-tracking.md](features/brew-tracking.md) | authentication, library | Experiment entity + logging API + entry forms |
+| [brew-tracking.md](features/brew-tracking.md) | authentication, coffees | Experiment entity + logging API + entry forms + reference sidebar |
 | [experiment-review.md](features/experiment-review.md) | brew-tracking | List/compare/analyze views, correlation analysis |
 | [home.md](features/home.md) | brew-tracking | Home landing page with quick experiment logging |
 
@@ -78,7 +80,7 @@ Self-contained feature specifications. Each includes entity definitions, API end
 ```
 authentication (core)
     │
-    ├── library (coffees + filter papers + mineral profiles)
+    ├── coffees (bean metadata + best brew + goals)
     │       │
     │       └── brew-tracking
     │               │
@@ -86,6 +88,8 @@ authentication (core)
     │               │       (includes correlation analysis)
     │               │
     │               └── home
+    │
+    ├── library (filter papers + mineral profiles)
     │
     └── user-preferences (brew defaults)
 ```
@@ -96,7 +100,8 @@ authentication (core)
 |------|-------|---------|
 | Home | `/` | home (landing page) |
 | Experiments | `/experiments` | experiment-review (brew list and review) |
-| Library | `/library` | library (coffees, filter papers, mineral profiles) |
+| Coffees | `/coffees` | coffees (beans, best brew, goals) |
+| Library | `/library` | library (filter papers, mineral profiles) |
 
 **User Menu:**
 | Item | Route | Feature |

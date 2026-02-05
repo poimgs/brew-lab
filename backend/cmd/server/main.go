@@ -9,12 +9,13 @@ import (
 	"coffee-tracker/internal/config"
 	"coffee-tracker/internal/database"
 	"coffee-tracker/internal/domain/coffee"
+	"coffee-tracker/internal/domain/coffee_goal"
 	"coffee-tracker/internal/domain/defaults"
 	"coffee-tracker/internal/domain/experiment"
 	"coffee-tracker/internal/domain/filter_paper"
+	"coffee-tracker/internal/domain/home"
 	"coffee-tracker/internal/domain/mineral_profile"
 	"coffee-tracker/internal/domain/user"
-	"coffee-tracker/internal/handler"
 	"coffee-tracker/internal/middleware"
 
 	"github.com/go-chi/chi/v5"
@@ -51,6 +52,9 @@ func main() {
 	coffeeRepo := coffee.NewRepository(db)
 	coffeeHandler := coffee.NewHandler(coffeeRepo)
 
+	coffeeGoalRepo := coffee_goal.NewRepository(db)
+	coffeeGoalHandler := coffee_goal.NewHandler(coffeeGoalRepo)
+
 	filterPaperRepo := filter_paper.NewRepository(db)
 	filterPaperHandler := filter_paper.NewHandler(filterPaperRepo)
 
@@ -63,7 +67,8 @@ func main() {
 	experimentRepo := experiment.NewRepository(db)
 	experimentHandler := experiment.NewHandler(experimentRepo)
 
-	dashboardHandler := handler.NewDashboardHandler(db)
+	homeRepo := home.NewRepository(db)
+	homeHandler := home.NewHandler(homeRepo)
 
 	r := chi.NewRouter()
 
@@ -104,6 +109,11 @@ func main() {
 				r.Delete("/{id}", coffeeHandler.Delete)
 				r.Post("/{id}/archive", coffeeHandler.Archive)
 				r.Post("/{id}/unarchive", coffeeHandler.Unarchive)
+				r.Post("/{id}/best-experiment", coffeeHandler.SetBestExperiment)
+				r.Get("/{id}/reference", coffeeHandler.GetReference)
+				r.Get("/{id}/goals", coffeeGoalHandler.Get)
+				r.Put("/{id}/goals", coffeeGoalHandler.Upsert)
+				r.Delete("/{id}/goals", coffeeGoalHandler.Delete)
 			})
 
 			r.Route("/filter-papers", func(r chi.Router) {
@@ -138,7 +148,7 @@ func main() {
 				r.Post("/{id}/copy", experimentHandler.Copy)
 			})
 
-			r.Get("/dashboard", dashboardHandler.GetDashboard)
+			r.Get("/home", homeHandler.Get)
 		})
 	})
 

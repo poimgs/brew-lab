@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,10 +17,11 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import CoffeeSelector from './CoffeeSelector';
+import ReferenceSidebar from './ReferenceSidebar';
 import { type Experiment, type CreateExperimentInput, createExperiment, updateExperiment } from '@/api/experiments';
 import { getDefaults, type Defaults } from '@/api/defaults';
 import { listFilterPapers, type FilterPaper } from '@/api/filter-papers';
-import { type Coffee } from '@/api/coffees';
+import { type Coffee, type CoffeeReference, type ReferenceExperiment, getReference, getCoffee } from '@/api/coffees';
 
 const POUR_STYLES = ['circular', 'center', 'pulse'] as const;
 const SERVING_TEMPS = ['Hot', 'Warm', 'Cold'] as const;
@@ -174,11 +176,16 @@ function IntensityInput({
 }
 
 export default function ExperimentForm({ experiment, onSuccess, onCancel }: ExperimentFormProps) {
+  const [searchParams] = useSearchParams();
+  const initialCoffeeId = searchParams.get('coffee_id');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [selectedCoffee, setSelectedCoffee] = useState<Coffee | null>(null);
   const [filterPapers, setFilterPapers] = useState<FilterPaper[]>([]);
   const [defaults, setDefaults] = useState<Defaults>({});
+  const [reference, setReference] = useState<CoffeeReference | null>(null);
+  const [isLoadingReference, setIsLoadingReference] = useState(false);
 
   // Section open states
   const [openSections, setOpenSections] = useState({
@@ -199,7 +206,7 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
   } = useForm<ExperimentFormData>({
     resolver: zodResolver(experimentSchema),
     defaultValues: {
-      coffee_id: experiment?.coffee_id || '',
+      coffee_id: experiment?.coffee_id || initialCoffeeId || '',
       coffee_weight: experiment?.coffee_weight ?? null,
       water_weight: experiment?.water_weight ?? null,
       ratio: experiment?.ratio ?? null,
@@ -255,7 +262,7 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
   const tds = watch('tds');
   const finalWeight = watch('final_weight');
 
-  // Load filter papers and defaults
+  // Load filter papers, defaults, and initial coffee from URL
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -271,6 +278,43 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
     };
     loadData();
   }, []);
+
+  // Load initial coffee from URL parameter
+  useEffect(() => {
+    if (initialCoffeeId && !experiment) {
+      const loadInitialCoffee = async () => {
+        try {
+          const coffee = await getCoffee(initialCoffeeId);
+          setSelectedCoffee(coffee);
+        } catch {
+          // Ignore errors - coffee might not exist
+        }
+      };
+      loadInitialCoffee();
+    }
+  }, [initialCoffeeId, experiment]);
+
+  // Fetch reference data when coffee changes
+  useEffect(() => {
+    if (!selectedCoffee) {
+      setReference(null);
+      return;
+    }
+
+    const fetchReference = async () => {
+      setIsLoadingReference(true);
+      try {
+        const data = await getReference(selectedCoffee.id);
+        setReference(data);
+      } catch {
+        setReference(null);
+      } finally {
+        setIsLoadingReference(false);
+      }
+    };
+
+    fetchReference();
+  }, [selectedCoffee]);
 
   // Apply defaults when opening a section for the first time (only for new experiments)
   const applyDefaultsToSection = useCallback((section: string) => {
@@ -333,6 +377,25 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
     setSelectedCoffee(coffee);
   };
 
+  const handleCopyParameters = (exp: ReferenceExperiment) => {
+    // Copy input parameters from the reference experiment
+    if (exp.coffee_weight) setValue('coffee_weight', exp.coffee_weight);
+    if (exp.ratio) setValue('ratio', exp.ratio);
+    if (exp.water_weight) setValue('water_weight', exp.water_weight);
+    if (exp.grind_size) setValue('grind_size', exp.grind_size);
+    if (exp.water_temperature) setValue('water_temperature', exp.water_temperature);
+    if (exp.filter_paper?.id) setValue('filter_paper_id', exp.filter_paper.id);
+    if (exp.bloom_water) setValue('bloom_water', exp.bloom_water);
+    if (exp.bloom_time) setValue('bloom_time', exp.bloom_time);
+
+    // Open the pre-brew and brew sections so user can see the copied values
+    setOpenSections((prev) => ({
+      ...prev,
+      preBrew: true,
+      brew: true,
+    }));
+  };
+
   const onSubmit = async (data: ExperimentFormData) => {
     setIsSubmitting(true);
     setSubmitError(null);
@@ -390,36 +453,38 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
         Back
       </Button>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{experiment ? 'Edit Experiment' : 'New Experiment'}</CardTitle>
-          {selectedCoffee && (
-            <p className="text-sm text-muted-foreground">
-              {selectedCoffee.name} · {selectedCoffee.roaster}
-              {selectedCoffee.days_off_roast !== undefined && ` · ${selectedCoffee.days_off_roast} days off roast`}
-            </p>
-          )}
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {submitError && (
-              <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
-                {submitError}
-              </div>
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Main Form */}
+        <Card className="flex-1">
+          <CardHeader>
+            <CardTitle>{experiment ? 'Edit Experiment' : 'New Experiment'}</CardTitle>
+            {selectedCoffee && (
+              <p className="text-sm text-muted-foreground">
+                {selectedCoffee.name} · {selectedCoffee.roaster}
+                {selectedCoffee.days_off_roast !== undefined && ` · ${selectedCoffee.days_off_roast} days off roast`}
+              </p>
             )}
-
-            {/* Coffee Selection */}
-            <Controller
-              name="coffee_id"
-              control={control}
-              render={({ field }) => (
-                <CoffeeSelector
-                  value={field.value}
-                  onChange={handleCoffeeChange}
-                  error={errors.coffee_id?.message}
-                />
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {submitError && (
+                <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
+                  {submitError}
+                </div>
               )}
-            />
+
+              {/* Coffee Selection */}
+              <Controller
+                name="coffee_id"
+                control={control}
+                render={({ field }) => (
+                  <CoffeeSelector
+                    value={field.value}
+                    onChange={handleCoffeeChange}
+                    error={errors.coffee_id?.message}
+                  />
+                )}
+              />
 
             {/* Overall Notes (Required) */}
             <div className="space-y-2">
@@ -877,6 +942,18 @@ export default function ExperimentForm({ experiment, onSuccess, onCancel }: Expe
           </form>
         </CardContent>
       </Card>
+
+        {/* Reference Sidebar - visible when coffee is selected */}
+        {selectedCoffee && (
+          <div className="lg:w-80 lg:shrink-0">
+            <ReferenceSidebar
+              reference={reference}
+              isLoading={isLoadingReference}
+              onCopyParameters={handleCopyParameters}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

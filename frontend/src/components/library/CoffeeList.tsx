@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Archive, ArchiveRestore, Trash2, Loader2, ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,13 +27,13 @@ import {
   deleteCoffee,
 } from '@/api/coffees';
 import CoffeeForm from './CoffeeForm';
-import CoffeeDetail from './CoffeeDetail';
 import DeleteConfirmDialog from './DeleteConfirmDialog';
 
 type SortField = 'roaster' | 'name' | 'country' | 'roast_date' | 'experiment_count' | 'created_at';
 type SortDirection = 'asc' | 'desc';
 
 export default function CoffeeList() {
+  const navigate = useNavigate();
   const [coffees, setCoffees] = useState<Coffee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +55,6 @@ export default function CoffeeList() {
   // UI state
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingCoffee, setEditingCoffee] = useState<Coffee | null>(null);
-  const [viewingCoffee, setViewingCoffee] = useState<Coffee | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Coffee | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -174,19 +174,6 @@ export default function CoffeeList() {
         coffee={editingCoffee}
         onSuccess={handleFormSuccess}
         onCancel={() => setEditingCoffee(null)}
-      />
-    );
-  }
-
-  if (viewingCoffee) {
-    return (
-      <CoffeeDetail
-        coffee={viewingCoffee}
-        onBack={() => setViewingCoffee(null)}
-        onEdit={() => {
-          setEditingCoffee(viewingCoffee);
-          setViewingCoffee(null);
-        }}
       />
     );
   }
@@ -317,7 +304,7 @@ export default function CoffeeList() {
                   <TableRow
                     key={coffee.id}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => setViewingCoffee(coffee)}
+                    onClick={() => navigate(`/coffees/${coffee.id}`)}
                   >
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
