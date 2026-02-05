@@ -1,0 +1,16 @@
+{$CADDY_DOMAIN:localhost} {
+    root * /srv/frontend
+
+    handle /api/* {
+        reverse_proxy backend:8080
+    }
+
+    handle /health {
+        reverse_proxy backend:8080
+    }
+
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+}

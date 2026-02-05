@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: coffee-tracker-db
+    environment:
+      POSTGRES_USER: coffee
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: coffee_tracker
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coffee -d coffee_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: coffee-tracker-backend
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-3600}
+      REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-604800}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      PORT: 8080
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: coffee-tracker-frontend-build
+    volumes:
+      - frontend_dist:/dist
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: coffee-tracker-caddy
+    environment:
+      CADDY_DOMAIN: ${CADDY_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - frontend_dist:/srv/frontend:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  frontend_dist:
+  caddy_data:
+  caddy_config:

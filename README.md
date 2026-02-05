@@ -62,8 +62,20 @@ specs/           # Specifications
 backend/         # Go backend (chi router)
 frontend/        # React + TypeScript (Vite)
 e2e/             # Playwright E2E tests
-docker-compose.yml
+docker-compose.yml       # Local dev (PostgreSQL only)
+docker-compose.prod.yml  # Production (all services)
 ```
+
+## Environment Files
+
+**Local development** uses component-specific `.env` files:
+- `backend/.env` - Backend config (copy from `backend/.env.example`)
+- Frontend uses Vite defaults, no `.env` needed
+
+**Production deployment** uses the root `.env` file:
+- `.env` - Combined config for `docker-compose.prod.yml` (copy from `.env.example`)
+
+The root `.env.example` is only for production - it configures all services (database, backend, Caddy) in the Docker Compose stack.
 
 ## Documentation
 
