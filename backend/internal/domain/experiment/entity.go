@@ -29,9 +29,8 @@ type Experiment struct {
 	TechniqueNotes *string  `json:"technique_notes,omitempty"`
 
 	// Post-brew variables
-	ServingTemperature *string `json:"serving_temperature,omitempty"`
-	WaterBypass        *string `json:"water_bypass,omitempty"`
-	MineralAdditions   *string `json:"mineral_additions,omitempty"`
+	WaterBypassML    *int       `json:"water_bypass_ml,omitempty"`
+	MineralProfileID *uuid.UUID `json:"mineral_profile_id,omitempty"`
 
 	// Quantitative outcomes
 	FinalWeight     *float64 `json:"final_weight,omitempty"`
@@ -120,9 +119,8 @@ type CreateExperimentInput struct {
 	TechniqueNotes *string          `json:"technique_notes,omitempty"`
 
 	// Post-brew variables
-	ServingTemperature *string `json:"serving_temperature,omitempty"`
-	WaterBypass        *string `json:"water_bypass,omitempty"`
-	MineralAdditions   *string `json:"mineral_additions,omitempty"`
+	WaterBypassML    *int       `json:"water_bypass_ml,omitempty"`
+	MineralProfileID *uuid.UUID `json:"mineral_profile_id,omitempty"`
 
 	// Quantitative outcomes
 	FinalWeight     *float64 `json:"final_weight,omitempty"`
@@ -182,9 +180,8 @@ type UpdateExperimentInput struct {
 	TechniqueNotes *string           `json:"technique_notes,omitempty"`
 
 	// Post-brew variables
-	ServingTemperature *string `json:"serving_temperature,omitempty"`
-	WaterBypass        *string `json:"water_bypass,omitempty"`
-	MineralAdditions   *string `json:"mineral_additions,omitempty"`
+	WaterBypassML    *int       `json:"water_bypass_ml,omitempty"`
+	MineralProfileID *uuid.UUID `json:"mineral_profile_id,omitempty"`
 
 	// Quantitative outcomes
 	FinalWeight     *float64 `json:"final_weight,omitempty"`
@@ -216,15 +213,16 @@ type UpdateExperimentInput struct {
 
 // ListExperimentsParams defines query parameters for listing experiments
 type ListExperimentsParams struct {
-	Page     int
-	PerPage  int
-	Sort     string
-	CoffeeID *uuid.UUID
-	ScoreGTE *int
-	ScoreLTE *int
-	HasTDS   bool
-	DateFrom *time.Time
-	DateTo   *time.Time
+	Page      int
+	PerPage   int
+	Sort      string
+	CoffeeID  *uuid.UUID
+	CoffeeIDs []uuid.UUID // Multiple coffee IDs for filter-based analysis
+	ScoreGTE  *int
+	ScoreLTE  *int
+	HasTDS    bool
+	DateFrom  *time.Time
+	DateTo    *time.Time
 }
 
 // ListExperimentsResult is the paginated result for listing experiments
@@ -268,10 +266,20 @@ type CompareResponse struct {
 	Deltas      map[string]*DeltaInfo `json:"deltas"`
 }
 
+// AnalyzeFilters defines filter parameters for filter-based analysis
+type AnalyzeFilters struct {
+	CoffeeIDs []uuid.UUID `json:"coffee_ids,omitempty"`
+	DateFrom  *time.Time  `json:"date_from,omitempty"`
+	DateTo    *time.Time  `json:"date_to,omitempty"`
+	ScoreMin  *int        `json:"score_min,omitempty"`
+	ScoreMax  *int        `json:"score_max,omitempty"`
+}
+
 // AnalyzeRequest is the input for analyzing correlations across experiments
 type AnalyzeRequest struct {
-	ExperimentIDs []uuid.UUID `json:"experiment_ids"`
-	MinSamples    int         `json:"min_samples"`
+	ExperimentIDs []uuid.UUID     `json:"experiment_ids,omitempty"`
+	Filters       *AnalyzeFilters `json:"filters,omitempty"`
+	MinSamples    int             `json:"min_samples"`
 }
 
 // AnalyzeResponse contains correlation analysis results
@@ -280,6 +288,7 @@ type AnalyzeResponse struct {
 	Inputs          []string                                 `json:"inputs"`
 	Outcomes        []string                                 `json:"outcomes"`
 	ExperimentCount int                                      `json:"experiment_count"`
+	ExperimentIDs   []uuid.UUID                              `json:"experiment_ids"`
 	Insights        []Insight                                `json:"insights"`
 	Warnings        []Warning                                `json:"warnings"`
 }

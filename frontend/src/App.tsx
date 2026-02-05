@@ -9,6 +9,7 @@ import PreferencesPage from '@/pages/PreferencesPage';
 import ExperimentsPage from '@/pages/ExperimentsPage';
 import ExperimentNewPage from '@/pages/ExperimentNewPage';
 import ExperimentDetailPage from '@/pages/ExperimentDetailPage';
+import AnalysisPage from '@/pages/AnalysisPage';
 import CoffeesPage from '@/pages/CoffeesPage';
 import CoffeeDetailPage from '@/pages/CoffeeDetailPage';
 
@@ -114,6 +115,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <ExperimentDetailPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analysis"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AnalysisPage />
                 </Layout>
               </ProtectedRoute>
             }

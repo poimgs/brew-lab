@@ -286,7 +286,7 @@ export default function AnalyzeView({
       </p>
 
       {/* Insights */}
-      {result.insights.length > 0 && (
+      {result.insights && result.insights.length > 0 && (
         <div className="rounded-lg border p-4 bg-card">
           <div className="flex items-center gap-2 mb-3">
             <Lightbulb className="h-5 w-5 text-amber-500" />
@@ -303,7 +303,7 @@ export default function AnalyzeView({
       )}
 
       {/* Warnings */}
-      {result.warnings.length > 0 && (
+      {result.warnings && result.warnings.length > 0 && (
         <div className="rounded-lg border border-amber-500/50 p-4 bg-amber-50 dark:bg-amber-950/20">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="h-5 w-5 text-amber-500" />

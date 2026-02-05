@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Search,
   Plus,
@@ -56,18 +56,15 @@ import {
   deleteExperiment,
   copyExperiment,
   compareExperiments,
-  analyzeExperiments,
   exportExperiments,
   type CompareResponse,
-  type AnalyzeResponse,
 } from '@/api/experiments';
 import { listCoffees, type Coffee } from '@/api/coffees';
 import CompareView from '@/components/experiment/CompareView';
-import AnalyzeView from '@/components/experiment/AnalyzeView';
 
 type SortField = 'brew_date' | 'overall_score' | 'days_off_roast';
 type SortDirection = 'asc' | 'desc';
-type ViewMode = 'list' | 'compare' | 'analyze';
+type ViewMode = 'list' | 'compare';
 
 export default function ExperimentsPage() {
   const navigate = useNavigate();
@@ -100,10 +97,8 @@ export default function ExperimentsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
-  // Compare/Analyze results
+  // Compare result
   const [compareResult, setCompareResult] = useState<CompareResponse | null>(null);
-  const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResponse | null>(null);
-  const [analyzeIds, setAnalyzeIds] = useState<string[]>([]);
 
   // UI State
   const [deleteConfirm, setDeleteConfirm] = useState<Experiment | null>(null);
@@ -259,28 +254,9 @@ export default function ExperimentsPage() {
     }
   };
 
-  const handleAnalyze = async () => {
-    const ids = Array.from(selectedIds);
-    if (ids.length < 5) return;
-
-    setActionLoading('analyze');
-    try {
-      const result = await analyzeExperiments(ids);
-      setAnalyzeResult(result);
-      setAnalyzeIds(ids);
-      setViewMode('analyze');
-    } catch (err) {
-      console.error('Error analyzing experiments:', err);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const exitCompareAnalyzeMode = () => {
+  const exitCompareMode = () => {
     setViewMode('list');
     setCompareResult(null);
-    setAnalyzeResult(null);
-    setAnalyzeIds([]);
   };
 
   const clearFilters = () => {
@@ -339,20 +315,7 @@ export default function ExperimentsPage() {
   if (viewMode === 'compare' && compareResult) {
     return (
       <div className="container mx-auto py-8 px-4">
-        <CompareView result={compareResult} onClose={exitCompareAnalyzeMode} />
-      </div>
-    );
-  }
-
-  // Render analyze view
-  if (viewMode === 'analyze' && analyzeResult) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <AnalyzeView
-          result={analyzeResult}
-          experimentIds={analyzeIds}
-          onClose={exitCompareAnalyzeMode}
-        />
+        <CompareView result={compareResult} onClose={exitCompareMode} />
       </div>
     );
   }
@@ -425,7 +388,7 @@ export default function ExperimentsPage() {
         </div>
 
         {/* Quick Filters */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
           <Button
             variant="outline"
             size="sm"
@@ -447,6 +410,12 @@ export default function ExperimentsPage() {
           >
             High scores (8+)
           </Button>
+          <span className="text-sm text-muted-foreground ml-2">
+            Looking for patterns?{' '}
+            <Link to="/analysis" className="text-primary hover:underline">
+              Try the Analysis page
+            </Link>
+          </span>
         </div>
 
         {/* Filter Panel */}
@@ -548,17 +517,10 @@ export default function ExperimentsPage() {
                 Compare Selected
               </Button>
             )}
-            {selectedIds.size >= 5 && (
-              <Button
-                size="sm"
-                onClick={handleAnalyze}
-                disabled={actionLoading === 'analyze'}
-              >
-                {actionLoading === 'analyze' && (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                )}
-                Analyze Selected
-              </Button>
+            {selectedIds.size > 4 && (
+              <span className="text-sm text-muted-foreground">
+                Select 2-4 experiments to compare
+              </span>
             )}
             <Button
               variant="ghost"

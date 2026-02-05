@@ -432,11 +432,6 @@ func (h *Handler) Analyze(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(req.ExperimentIDs) < 5 {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "at least 5 experiments required for analysis")
-		return
-	}
-
 	// Default min_samples to 5
 	minSamples := req.MinSamples
 	if minSamples < 5 {
@@ -446,25 +441,57 @@ func (h *Handler) Analyze(w http.ResponseWriter, r *http.Request) {
 		minSamples = 50
 	}
 
-	experiments, err := h.repo.GetByIDs(r.Context(), userID, req.ExperimentIDs)
+	var experiments []Experiment
+	var err error
+
+	// Support both experiment_ids and filters
+	if len(req.ExperimentIDs) > 0 {
+		// Legacy: Use experiment IDs directly
+		if len(req.ExperimentIDs) < 5 {
+			response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "at least 5 experiments required for analysis")
+			return
+		}
+		experiments, err = h.repo.GetByIDs(r.Context(), userID, req.ExperimentIDs)
+	} else if req.Filters != nil {
+		// New: Use filters to find experiments
+		params := ListExperimentsParams{
+			CoffeeIDs: req.Filters.CoffeeIDs,
+			DateFrom:  req.Filters.DateFrom,
+			DateTo:    req.Filters.DateTo,
+			ScoreGTE:  req.Filters.ScoreMin,
+			ScoreLTE:  req.Filters.ScoreMax,
+		}
+		experiments, err = h.repo.ListAll(r.Context(), userID, params)
+	} else {
+		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "either experiment_ids or filters must be provided")
+		return
+	}
+
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to fetch experiments")
 		return
 	}
 
 	if len(experiments) < 5 {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "not enough valid experiments found")
+		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "not enough valid experiments found (minimum 5 required)")
 		return
 	}
 
 	correlations, warnings := CalculateCorrelations(experiments, minSamples)
 	insights := GenerateInsights(correlations)
 
+	// Extract experiment IDs for use in detail calls
+	expIDs := make([]uuid.UUID, len(experiments))
+	for i, exp := range experiments {
+		expIDs[i] = exp.ID
+	}
+
 	response.JSON(w, http.StatusOK, AnalyzeResponse{
 		Correlations:    correlations,
 		Inputs:          InputVariables(),
 		Outcomes:        OutcomeVariables(),
 		ExperimentCount: len(experiments),
+		ExperimentIDs:   expIDs,
 		Insights:        insights,
 		Warnings:        warnings,
 	})
@@ -677,7 +704,7 @@ func (h *Handler) exportCSV(w http.ResponseWriter, experiments []Experiment) {
 		"id", "brew_date", "coffee_name", "coffee_roaster", "days_off_roast",
 		"coffee_weight", "water_weight", "ratio", "grind_size", "water_temperature",
 		"filter_paper", "bloom_water", "bloom_time", "total_brew_time", "drawdown_time",
-		"serving_temperature", "water_bypass", "mineral_additions",
+		"water_bypass_ml", "mineral_profile_id",
 		"final_weight", "tds", "extraction_yield",
 		"aroma_intensity", "acidity_intensity", "sweetness_intensity", "bitterness_intensity",
 		"body_weight", "flavor_intensity", "aftertaste_duration", "aftertaste_intensity",
@@ -704,9 +731,8 @@ func (h *Handler) exportCSV(w http.ResponseWriter, experiments []Experiment) {
 			csvIntPtr(exp.BloomTime),
 			csvIntPtr(exp.TotalBrewTime),
 			csvIntPtr(exp.DrawdownTime),
-			csvStrPtr(exp.ServingTemperature),
-			csvStrPtr(exp.WaterBypass),
-			csvStrPtr(exp.MineralAdditions),
+			csvIntPtr(exp.WaterBypassML),
+			csvUUIDPtr(exp.MineralProfileID),
 			csvFloatPtr(exp.FinalWeight),
 			csvFloatPtr(exp.TDS),
 			csvFloatPtr(exp.ExtractionYield),
@@ -757,6 +783,13 @@ func csvStrPtr(s *string) string {
 		return ""
 	}
 	return csvEscape(*s)
+}
+
+func csvUUIDPtr(u *uuid.UUID) string {
+	if u == nil {
+		return ""
+	}
+	return u.String()
 }
 
 func csvString[T any](ptr *T, getter func(*T) string) string {

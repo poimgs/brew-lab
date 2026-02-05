@@ -14,6 +14,12 @@ export interface FilterPaperSummary {
   brand?: string;
 }
 
+export interface MineralProfileSummary {
+  id: string;
+  name: string;
+  brand?: string;
+}
+
 // Pour types
 export interface ExperimentPour {
   id: string;
@@ -54,9 +60,8 @@ export interface Experiment {
   technique_notes?: string;
 
   // Post-brew variables
-  serving_temperature?: string;
-  water_bypass?: string;
-  mineral_additions?: string;
+  water_bypass_ml?: number;
+  mineral_profile_id?: string;
 
   // Quantitative outcomes
   final_weight?: number;
@@ -92,6 +97,7 @@ export interface Experiment {
   pours?: ExperimentPour[];
   coffee?: CoffeeSummary;
   filter_paper?: FilterPaperSummary;
+  mineral_profile?: MineralProfileSummary;
 
   // Computed properties (read-only)
   days_off_roast?: number;
@@ -120,9 +126,8 @@ export interface CreateExperimentInput {
   technique_notes?: string;
 
   // Post-brew variables
-  serving_temperature?: string;
-  water_bypass?: string;
-  mineral_additions?: string;
+  water_bypass_ml?: number;
+  mineral_profile_id?: string;
 
   // Quantitative outcomes
   final_weight?: number;
@@ -174,9 +179,8 @@ export interface UpdateExperimentInput {
   technique_notes?: string;
 
   // Post-brew variables
-  serving_temperature?: string;
-  water_bypass?: string;
-  mineral_additions?: string;
+  water_bypass_ml?: number;
+  mineral_profile_id?: string;
 
   // Quantitative outcomes
   final_weight?: number;
@@ -336,6 +340,7 @@ export interface AnalyzeResponse {
   inputs: string[];
   outcomes: string[];
   experiment_count: number;
+  experiment_ids: string[];
   insights: Insight[];
   warnings: Warning[];
 }
@@ -349,6 +354,29 @@ export async function analyzeExperiments(
 ): Promise<AnalyzeResponse> {
   const response = await client.post<AnalyzeResponse>('/experiments/analyze', {
     experiment_ids: experimentIds,
+    min_samples: minSamples,
+  });
+  return response.data;
+}
+
+// Filter-based analysis types
+export interface AnalyzeFilters {
+  coffee_ids?: string[];
+  date_from?: string;
+  date_to?: string;
+  score_min?: number;
+  score_max?: number;
+}
+
+/**
+ * Analyze correlations across experiments matching filters
+ */
+export async function analyzeExperimentsWithFilters(
+  filters: AnalyzeFilters,
+  minSamples = 5
+): Promise<AnalyzeResponse> {
+  const response = await client.post<AnalyzeResponse>('/experiments/analyze', {
+    filters,
     min_samples: minSamples,
   });
   return response.data;
