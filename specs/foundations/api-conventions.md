@@ -29,7 +29,7 @@ Authorization: Bearer <token>
 |--------|-------|
 | GET | Retrieve resource(s) |
 | POST | Create new resource |
-| PUT | Replace entire resource |
+| PUT | Update resource (partial updates allowed) |
 | PATCH | Partial update |
 | DELETE | Remove resource |
 
@@ -87,7 +87,7 @@ GET /api/v1/experiments?page=1&per_page=20
 Response includes pagination metadata:
 ```json
 {
-  "data": [...],
+  "items": [...],
   "pagination": {
     "page": 1,
     "per_page": 20,
@@ -104,7 +104,7 @@ Response includes pagination metadata:
 ## Filtering and Sorting
 
 ```
-GET /api/v1/experiments?coffee_id=uuid&sort=-brew_date&filter[score_gte]=7
+GET /api/v1/experiments?coffee_id=uuid&sort=-brew_date&score_gte=7
 ```
 
 ### Sorting
@@ -114,31 +114,29 @@ GET /api/v1/experiments?coffee_id=uuid&sort=-brew_date&filter[score_gte]=7
 ### Filter Operators
 | Suffix | Operator | Example |
 |--------|----------|---------|
-| (none) | equals | `filter[status]=active` |
-| `_gt` | greater than | `filter[score_gt]=5` |
-| `_gte` | greater or equal | `filter[score_gte]=7` |
-| `_lt` | less than | `filter[score_lt]=5` |
-| `_lte` | less or equal | `filter[score_lte]=3` |
-| `_contains` | contains substring | `filter[name_contains]=Kenya` |
+| (none) | equals | `status=active` |
+| `_gt` | greater than | `score_gt=5` |
+| `_gte` | greater or equal | `score_gte=7` |
+| `_lt` | less than | `score_lt=5` |
+| `_lte` | less or equal | `score_lte=3` |
+| `_contains` | contains substring | `name_contains=Kenya` |
 
-## Response Envelope
-
-All responses use a consistent envelope:
+## Response Format
 
 ### Success (single resource)
+Returns the resource object directly:
 ```json
 {
-  "data": {
-    "id": "uuid",
-    "field": "value"
-  }
+  "id": "uuid",
+  "field": "value"
 }
 ```
 
 ### Success (list)
+Returns items array with pagination:
 ```json
 {
-  "data": [...],
+  "items": [...],
   "pagination": {...}
 }
 ```
@@ -173,9 +171,9 @@ GET /api/v1/experiments?include=coffee
 
 Experiment responses include nested coffee data by default for common access patterns.
 
-## Computed Fields
+## Computed Properties
 
-API returns computed fields in responses:
+API returns computed properties in responses:
 - `days_off_roast`: Calculated from coffee roast_date and experiment brew_date
 - `experiment_count`: Count of experiments for a coffee
 
@@ -212,9 +210,3 @@ Bulk create/update not initially supported:
 - Single-experiment entry is primary use case
 - Keeps API simple
 - Can add later if needed
-
-## Open Questions
-
-1. **Rate Limiting**: Needed for single-user? Probably not initially.
-2. **WebSocket**: Real-time updates for timer feature?
-3. **Export Endpoint**: `/api/v1/export/csv` for data export?

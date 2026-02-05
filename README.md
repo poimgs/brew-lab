@@ -1,107 +1,82 @@
 # Coffee Tracker
 
-A full-stack application for tracking coffee consumption with a Go backend and React frontend.
+A personal brewing experiment tracker for capturing brewing parameters, taste outcomes, and discovering patterns in your coffee.
+
+## Features
+
+- **Experiment Tracking**: Capture brewing parameters and taste outcomes
+- **Coffee Library**: Maintain bean metadata independent from experiments
+- **Pattern Discovery**: Reveal relationships between variables and outcomes
+- **Actionable Recommendations**: Suggest improvements based on score gaps and effect mappings
+
+## Tech Stack
+
+- **Frontend**: React + TypeScript (Vite)
+- **Backend**: Go with chi router
+- **Database**: PostgreSQL
 
 ## Prerequisites
 
-- **Docker & Docker Compose** - For running PostgreSQL database
-- **Go 1.25+** - For the backend server
-- **Node.js 18+** - For the frontend
-- **golang-migrate CLI** - For database migrations (install: `go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest`)
+- Go 1.21+
+- Node.js 18+
+- Docker (for PostgreSQL)
 
-## Quick Start
+## Getting Started
 
-1. **Start the database and backend:**
-   ```bash
-   cd backend
-   make dev
-   ```
-   This starts PostgreSQL via Docker, runs migrations, and starts the API server.
-
-2. **Create a test user (in a new terminal):**
-   ```bash
-   cd backend
-   make seed-user EMAIL=test@example.com PASSWORD=TestPass123!
-   ```
-
-3. **Start the frontend (in a new terminal):**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-4. **Open the app:**
-   Navigate to http://localhost:5173
-
-## Development Setup
-
-### Backend
-
-The backend is a Go API server using Chi router and PostgreSQL.
+### Database
 
 ```bash
-cd backend
-
-# Start everything (database + migrations + server)
-make dev
-
-# Or run individual commands:
-make docker-up      # Start PostgreSQL container
-make migrate-up     # Run database migrations
-make run            # Start the server
-
-# Other useful commands:
-make test           # Run tests
-make lint           # Run linter
-make build          # Build binary
+docker compose up -d   # Start PostgreSQL
 ```
 
-### Frontend
-
-The frontend is a React application using Vite, TypeScript, and Tailwind CSS.
+### Backend (from `backend/` directory)
 
 ```bash
-cd frontend
-
-npm install         # Install dependencies
-npm run dev         # Start development server
-npm run build       # Build for production
-npm run lint        # Run ESLint
+make migrate    # Run migrations
+make run        # Start backend server
 ```
+
+### Frontend (from `frontend/` directory)
+
+```bash
+npm install     # First time only
+npm run dev     # Start dev server
+```
+
+### E2E Tests (from `e2e/` directory)
+
+```bash
+docker compose up -d   # Ensure database is running
+make install           # First time: install deps + browser
+make test              # Run all tests
+make test-ui           # Interactive UI mode
+make test-headed       # Run with visible browser
+```
+
+E2E tests use a separate database (`coffee_tracker_test`) and ports (5174/8081) to avoid conflicts with development.
 
 ## Project Structure
 
 ```
-coffee-tracker/
-├── backend/
-│   ├── cmd/              # Application entrypoints
-│   │   ├── server/       # API server
-│   │   └── seed/         # User seeding CLI
-│   ├── internal/         # Private application code
-│   │   ├── handlers/     # HTTP handlers
-│   │   ├── middleware/   # HTTP middleware
-│   │   ├── models/       # Data models
-│   │   ├── repository/   # Database access layer
-│   │   ├── router/       # Route definitions
-│   │   └── services/     # Business logic
-│   └── migrations/       # SQL migration files
-├── frontend/
-│   └── src/
-│       ├── components/   # React components
-│       ├── contexts/     # React contexts
-│       ├── features/     # Feature modules
-│       └── lib/          # Utilities
-├── specs/                # Project specifications
-└── docker-compose.yml    # PostgreSQL container config
+specs/           # Specifications
+backend/         # Go backend (chi router)
+frontend/        # React + TypeScript (Vite)
+e2e/             # Playwright E2E tests
+docker-compose.yml       # Local dev (PostgreSQL only)
+docker-compose.prod.yml  # Production (all services)
 ```
 
-## Environment Variables
+## Environment Files
 
-The backend uses the following environment variables (can be set in `backend/.env`):
+**Local development** uses component-specific `.env` files:
+- `backend/.env` - Backend config (copy from `backend/.env.example`)
+- Frontend uses Vite defaults, no `.env` needed
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DATABASE_URL` | `postgres://postgres:postgres@localhost:5432/coffee_tracker?sslmode=disable` | PostgreSQL connection string |
-| `JWT_SECRET` | - | Secret key for JWT token signing |
-| `PORT` | `8080` | Server port |
+**Production deployment** uses the root `.env` file:
+- `.env` - Combined config for `docker-compose.prod.yml` (copy from `.env.example`)
+
+The root `.env.example` is only for production - it configures all services (database, backend, Caddy) in the Docker Compose stack.
+
+## Documentation
+
+See [specs/index.md](specs/index.md) for detailed project specifications.

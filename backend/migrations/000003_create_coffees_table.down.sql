@@ -1,2 +1,0 @@
-DROP TABLE IF EXISTS coffees;
-DROP TYPE IF EXISTS roast_level;

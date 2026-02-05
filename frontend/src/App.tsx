@@ -1,50 +1,28 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
-import { ProtectedRoute } from "@/components/protected-route"
-import { AuthProvider } from "@/contexts/auth-context"
-import { LoginPage } from "@/features/auth/login-page"
-import { LibraryPage } from "@/features/library"
-import {
-  ExperimentsListPage,
-  NewExperimentPage,
-  ExperimentDetailPage,
-  DefaultsPage,
-} from "@/features/experiments"
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from '@/contexts/AuthContext';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import Layout from '@/components/layout/Layout';
+import LoginPage from '@/pages/LoginPage';
+import HomePage from '@/pages/HomePage';
+import LibraryPage from '@/pages/LibraryPage';
+import PreferencesPage from '@/pages/PreferencesPage';
+import ExperimentsPage from '@/pages/ExperimentsPage';
+import ExperimentNewPage from '@/pages/ExperimentNewPage';
+import ExperimentDetailPage from '@/pages/ExperimentDetailPage';
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/"
             element={
               <ProtectedRoute>
-                <Navigate to="/experiments" replace />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/experiments"
-            element={
-              <ProtectedRoute>
-                <ExperimentsListPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/experiments/new"
-            element={
-              <ProtectedRoute>
-                <NewExperimentPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/experiments/:id"
-            element={
-              <ProtectedRoute>
-                <ExperimentDetailPage />
+                <Layout>
+                  <HomePage />
+                </Layout>
               </ProtectedRoute>
             }
           />
@@ -52,22 +30,76 @@ function App() {
             path="/library"
             element={
               <ProtectedRoute>
-                <LibraryPage />
+                <Layout>
+                  <LibraryPage />
+                </Layout>
               </ProtectedRoute>
             }
           />
           <Route
-            path="/settings/defaults"
+            path="/library/filter-papers"
             element={
               <ProtectedRoute>
-                <DefaultsPage />
+                <Layout>
+                  <LibraryPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/library/mineral-profiles"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <LibraryPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/preferences"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <PreferencesPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/experiments"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ExperimentsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/experiments/new"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ExperimentNewPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/experiments/:id"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ExperimentDetailPage />
+                </Layout>
               </ProtectedRoute>
             }
           />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
-  )
+      </AuthProvider>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;

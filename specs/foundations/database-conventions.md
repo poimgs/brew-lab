@@ -58,27 +58,13 @@ user_id UUID NOT NULL REFERENCES users(id)
 - Row-level security possible
 - Clean data isolation
 
-### System vs User Data
-
-Tables with both system and user data use an `is_system` flag:
-
-```sql
-is_system BOOLEAN DEFAULT FALSE
-```
-
-**Usage:**
-- Predefined issue tags and mineral profiles
-- System records cannot be deleted by users
-- Provides starting point for new users
-
 ### Naming Conventions
 
 | Element | Convention | Example |
 |---------|------------|---------|
-| Tables | Plural, snake_case | `experiments`, `issue_tags` |
+| Tables | Plural, snake_case | `experiments`, `coffees` |
 | Columns | Singular, snake_case | `coffee_id`, `brew_date` |
 | Foreign keys | `{singular_table}_id` | `user_id`, `coffee_id` |
-| Junction tables | `{table1}_{table2}` | `experiment_tags` |
 | Indexes | `idx_{table}_{column(s)}` | `idx_experiments_brew_date` |
 
 ### Check Constraints
@@ -111,7 +97,7 @@ overall_score INTEGER CHECK (overall_score BETWEEN 1 AND 10)
 
 | Use Case | Type | Example |
 |----------|------|---------|
-| Short identifiers | `VARCHAR(50)` | tag name |
+| Short identifiers | `VARCHAR(50)` | code, abbreviation |
 | Names | `VARCHAR(255)` | coffee name, roaster |
 | Short descriptions | `VARCHAR(255)` | grind_size |
 | Long text | `TEXT` | notes, suggestions |
@@ -187,7 +173,7 @@ migrations/
 1. **Versioned Files**: Sequential numbering (001, 002, ...)
 2. **Reversible**: Each migration has up and down scripts
 3. **Atomic**: Each migration is a single logical change
-4. **Seed Data**: Separate seed files for system tags and profiles
+4. **Seed Data**: Separate seed files for reference data (e.g., mineral profiles)
 
 ### Example Migration
 
@@ -207,32 +193,70 @@ CREATE TABLE users (
 DROP TABLE IF EXISTS users;
 ```
 
-## Design Decisions
+## Soft Delete Conventions
 
-### Separate Tags Table
+### Pattern
 
-Issue tags are a separate table (not JSONB array) because:
-- Enables consistent tag vocabulary
-- Supports tag metadata (description, category)
-- Foreign key integrity
-- Efficient querying for tag-based filtering
-
-### Junction Tables for Many-to-Many
-
-Use explicit junction tables:
+Entities that need to preserve historical references use soft delete via a `deleted_at` timestamp:
 
 ```sql
-CREATE TABLE experiment_tags (
-    experiment_id UUID REFERENCES experiments(id) ON DELETE CASCADE,
-    tag_id UUID REFERENCES issue_tags(id) ON DELETE CASCADE,
-    PRIMARY KEY (experiment_id, tag_id)
-);
+deleted_at TIMESTAMP WITH TIME ZONE
 ```
 
-**Benefits:**
-- Clear relationships
-- Referential integrity
-- Easy to extend with metadata
+**Behavior:**
+- `NULL` = active record
+- Timestamp = soft deleted
+- Queries filter out deleted records by default
+- API can optionally include deleted records for admin/history views
+
+### Partial Unique Indexes
+
+When using soft delete, unique constraints should exclude deleted records:
+
+```sql
+-- Only enforce uniqueness among non-deleted records
+CREATE UNIQUE INDEX idx_filter_papers_user_name
+    ON filter_papers(user_id, name)
+    WHERE deleted_at IS NULL;
+```
+
+### Filtered Indexes
+
+Create filtered indexes for efficient querying of active records:
+
+```sql
+CREATE INDEX idx_coffees_deleted_at
+    ON coffees(deleted_at)
+    WHERE deleted_at IS NULL;
+```
+
+### Applicable Entities
+
+| Entity | Soft Delete | Archive | Reason |
+|--------|-------------|---------|--------|
+| Coffee | ✓ | ✓ | Preserve experiment history; archive for finished bags |
+| Filter Paper | ✓ | — | Preserve experiment history |
+| Experiment | — | — | Hard delete OK; user owns the data |
+| User | — | — | Account deletion handled separately |
+
+### Archive Pattern
+
+For entities that benefit from a "hidden but usable" state, add an `archived_at` timestamp:
+
+```sql
+archived_at TIMESTAMP WITH TIME ZONE
+```
+
+**Behavior:**
+- Archived records hidden from default list views
+- Can still be selected/referenced in new records
+- "Show archived" toggle in UI to reveal them
+
+Currently only `coffees` uses the archive pattern.
+
+---
+
+## Design Decisions
 
 ### Cascade Deletes
 
@@ -246,8 +270,9 @@ ON DELETE CASCADE
 -- (e.g., don't cascade delete experiments when deleting coffee)
 ```
 
-## Open Questions
+### Foreign Keys to Soft-Deleted Records
 
-1. **Soft Delete**: Should deleted records be preserved with a `deleted_at` flag?
-2. **Audit Log**: Track changes to experiments for history?
-3. **Partitioning**: Partition experiments by date if volume grows large?
+When referencing entities that use soft delete:
+- Remove `ON DELETE SET NULL` from FK constraints
+- Let experiments retain their FK to deleted coffees/filter papers
+- Display "(deleted)" indicator in UI when showing historical references

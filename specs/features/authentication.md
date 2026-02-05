@@ -1,10 +1,5 @@
 # Authentication
 
-## Status
-
-- Backend: Implemented (Go with JWT)
-- Frontend: Implemented (React login page)
-
 ## Context
 
 This specification defines the authentication system for the Coffee Experiment Tracker. The app is designed for single-user use, but implements proper authentication for:
@@ -186,13 +181,11 @@ POST /api/v1/auth/login
 
 Response 200:
 {
-  "data": {
-    "user": {
-      "id": "uuid",
-      "email": "user@example.com"
-    },
-    "access_token": "eyJ..."
-  }
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com"
+  },
+  "access_token": "eyJ..."
 }
 + Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Strict
 ```
@@ -204,9 +197,7 @@ POST /api/v1/auth/refresh
 
 Response 200:
 {
-  "data": {
-    "access_token": "eyJ..."
-  }
+  "access_token": "eyJ..."
 }
 + Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Strict
 ```
@@ -227,32 +218,8 @@ Authorization: Bearer <access_token>
 
 Response 200:
 {
-  "data": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "created_at": "2026-01-19T10:00:00Z"
-  }
+  "id": "uuid",
+  "email": "user@example.com",
+  "created_at": "2026-01-19T10:00:00Z"
 }
 ```
-
-## Frontend Implementation
-
-### Files
-
-- `src/lib/api.ts` - API client with login, logout, refresh, getMe functions
-- `src/contexts/auth-context.tsx` - Auth state management with React Context
-- `src/features/auth/login-page.tsx` - Login page component
-- `src/components/protected-route.tsx` - Route guard for authenticated routes
-
-### Auth Flow
-
-1. On app mount, attempt token refresh (uses HttpOnly cookie)
-2. If refresh succeeds, fetch user data and redirect to home
-3. If refresh fails, redirect to /login
-4. On login, store access token in memory and user in context
-5. On logout, clear token and redirect to /login
-
-### Routes
-
-- `/login` - Public login page (redirects to / if already authenticated)
-- `/` - Protected home page (redirects to /login if not authenticated)
