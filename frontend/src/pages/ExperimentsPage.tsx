@@ -635,7 +635,7 @@ export default function ExperimentsPage() {
                   </TableHead>
                   <TableHead>Coffee</TableHead>
                   <TableHead
-                    className="cursor-pointer hover:bg-muted/50 text-right"
+                    className="cursor-pointer hover:bg-muted/50 text-right hidden sm:table-cell"
                     onClick={() => handleSort('days_off_roast')}
                   >
                     <div className="flex items-center justify-end">
@@ -652,7 +652,7 @@ export default function ExperimentsPage() {
                       <SortIcon field="overall_score" />
                     </div>
                   </TableHead>
-                  <TableHead>Notes</TableHead>
+                  <TableHead className="hidden sm:table-cell">Notes</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -692,7 +692,7 @@ export default function ExperimentsPage() {
                         '—'
                       )}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="text-right tabular-nums hidden sm:table-cell">
                       {experiment.days_off_roast ?? '—'}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -700,7 +700,7 @@ export default function ExperimentsPage() {
                         ? `${experiment.overall_score}/10`
                         : '—'}
                     </TableCell>
-                    <TableCell className="max-w-[200px]">
+                    <TableCell className="max-w-[200px] hidden sm:table-cell">
                       <span className="text-muted-foreground">
                         {truncateNotes(experiment.overall_notes || '')}
                       </span>

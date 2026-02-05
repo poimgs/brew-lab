@@ -12,25 +12,38 @@ export default function RecentCarousel({ experiments }: RecentCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleCards, setVisibleCards] = useState(3);
+  const [cardWidth, setCardWidth] = useState(256);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
-  // Update visible cards based on screen width
+  // Update visible cards and card width based on container width
   useEffect(() => {
-    const updateVisibleCards = () => {
-      const width = window.innerWidth;
-      if (width < 640) {
-        setVisibleCards(1);
-      } else if (width < 1024) {
-        setVisibleCards(2);
+    const updateLayout = () => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const containerWidth = container.offsetWidth;
+      const gap = 16; // gap-4 = 16px
+
+      let newVisibleCards: number;
+      if (window.innerWidth < 640) {
+        newVisibleCards = 1;
+      } else if (window.innerWidth < 1024) {
+        newVisibleCards = 2;
       } else {
-        setVisibleCards(3);
+        newVisibleCards = 3;
       }
+
+      setVisibleCards(newVisibleCards);
+      // Calculate card width: (containerWidth - gaps) / visibleCards
+      const totalGaps = (newVisibleCards - 1) * gap;
+      const newCardWidth = (containerWidth - totalGaps) / newVisibleCards;
+      setCardWidth(newCardWidth);
     };
 
-    updateVisibleCards();
-    window.addEventListener('resize', updateVisibleCards);
-    return () => window.removeEventListener('resize', updateVisibleCards);
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+    return () => window.removeEventListener('resize', updateLayout);
   }, []);
 
   const maxIndex = Math.max(0, experiments.length - visibleCards);
@@ -128,11 +141,13 @@ export default function RecentCarousel({ experiments }: RecentCarouselProps) {
           <div
             className="flex gap-4 transition-transform duration-300 ease-out"
             style={{
-              transform: `translateX(-${currentIndex * (256 + 16)}px)`,
+              transform: `translateX(-${currentIndex * (cardWidth + 16)}px)`,
             }}
           >
             {experiments.map((experiment) => (
-              <ExperimentCard key={experiment.id} experiment={experiment} />
+              <div key={experiment.id} style={{ width: cardWidth, flexShrink: 0 }}>
+                <ExperimentCard experiment={experiment} />
+              </div>
             ))}
           </div>
         </div>

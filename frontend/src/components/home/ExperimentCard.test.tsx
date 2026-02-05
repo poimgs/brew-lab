@@ -69,8 +69,8 @@ describe('ExperimentCard', () => {
       expect(dashes.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('renders dash when notes are null', () => {
-      const experiment = createMockExperiment({ notes: null });
+    it('renders dash when notes are undefined', () => {
+      const experiment = createMockExperiment({ notes: undefined });
       render(<ExperimentCard experiment={experiment} />);
 
       const dashes = screen.getAllByText('—');
@@ -163,13 +163,13 @@ describe('ExperimentCard', () => {
       expect(notesElement).toHaveClass('line-clamp-2');
     });
 
-    it('renders with fixed card dimensions', () => {
+    it('renders with responsive card dimensions', () => {
       const experiment = createMockExperiment();
       render(<ExperimentCard experiment={experiment} />);
 
       const card = screen.getByText('Ethiopia Yirgacheffe').closest('.flex-shrink-0');
-      expect(card).toHaveClass('w-64');
-      expect(card).toHaveClass('h-40');
+      expect(card).toHaveClass('w-full');
+      expect(card).toHaveClass('min-h-[160px]');
     });
   });
 });

@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -8,6 +9,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +43,7 @@ function NavLink({ to, children }: NavLinkProps) {
 
 export default function Header() {
   const { user, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <header className="border-b bg-background">
@@ -44,6 +51,48 @@ export default function Header() {
         <div className="flex h-14 items-center justify-between">
           {/* Logo and Navigation */}
           <div className="flex items-center gap-6">
+            {/* Mobile menu button */}
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64">
+                <nav className="flex flex-col gap-4 mt-8">
+                  <Link
+                    to="/"
+                    className="text-lg font-medium hover:text-teal-600 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Home
+                  </Link>
+                  <Link
+                    to="/experiments"
+                    className="text-lg font-medium hover:text-teal-600 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Experiments
+                  </Link>
+                  <Link
+                    to="/library"
+                    className="text-lg font-medium hover:text-teal-600 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Library
+                  </Link>
+                  <Link
+                    to="/preferences"
+                    className="text-lg font-medium hover:text-teal-600 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Preferences
+                  </Link>
+                </nav>
+              </SheetContent>
+            </Sheet>
+
             <Link to="/" className="text-lg font-semibold">
               Coffee Tracker
             </Link>

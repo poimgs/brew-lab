@@ -281,7 +281,7 @@ export default function CoffeeList() {
                     </div>
                   </TableHead>
                   <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
+                    className="cursor-pointer hover:bg-muted/50 hidden sm:table-cell"
                     onClick={() => handleSort('country')}
                   >
                     <div className="flex items-center">
@@ -289,9 +289,9 @@ export default function CoffeeList() {
                       <SortIcon field="country" />
                     </div>
                   </TableHead>
-                  <TableHead>Process</TableHead>
+                  <TableHead className="hidden sm:table-cell">Process</TableHead>
                   <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
+                    className="cursor-pointer hover:bg-muted/50 hidden sm:table-cell"
                     onClick={() => handleSort('roast_date')}
                   >
                     <div className="flex items-center">
@@ -299,9 +299,9 @@ export default function CoffeeList() {
                       <SortIcon field="roast_date" />
                     </div>
                   </TableHead>
-                  <TableHead className="text-right tabular-nums">Days Off</TableHead>
+                  <TableHead className="text-right tabular-nums hidden sm:table-cell">Days Off</TableHead>
                   <TableHead
-                    className="cursor-pointer hover:bg-muted/50 text-right"
+                    className="cursor-pointer hover:bg-muted/50 text-right hidden sm:table-cell"
                     onClick={() => handleSort('experiment_count')}
                   >
                     <div className="flex items-center justify-end">
@@ -330,13 +330,13 @@ export default function CoffeeList() {
                       </div>
                     </TableCell>
                     <TableCell>{coffee.name}</TableCell>
-                    <TableCell>{coffee.country || '—'}</TableCell>
-                    <TableCell>{coffee.process || '—'}</TableCell>
-                    <TableCell>{formatDate(coffee.roast_date)}</TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="hidden sm:table-cell">{coffee.country || '—'}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{coffee.process || '—'}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{formatDate(coffee.roast_date)}</TableCell>
+                    <TableCell className="text-right tabular-nums hidden sm:table-cell">
                       {coffee.days_off_roast ?? '—'}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="text-right tabular-nums hidden sm:table-cell">
                       {coffee.experiment_count}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>

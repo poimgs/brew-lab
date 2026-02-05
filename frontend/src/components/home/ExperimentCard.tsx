@@ -29,7 +29,7 @@ function formatRelativeDate(
 
 export default function ExperimentCard({ experiment }: ExperimentCardProps) {
   return (
-    <Card className="flex-shrink-0 w-64 h-40">
+    <Card className="flex-shrink-0 w-full min-h-[160px]">
       <CardContent className="h-full flex flex-col justify-between py-4">
         <div>
           <h3 className="font-semibold text-sm truncate">{experiment.coffee_name}</h3>
