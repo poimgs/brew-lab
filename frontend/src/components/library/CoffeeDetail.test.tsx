@@ -125,6 +125,7 @@ describe('CoffeeDetail', () => {
     grind_size: 3.5,
     ratio: 15,
     water_temperature: 96,
+    is_draft: false,
     created_at: '2026-01-15T10:35:00Z',
     updated_at: '2026-01-15T10:35:00Z',
     ...overrides,

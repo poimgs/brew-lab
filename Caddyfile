@@ -9,6 +9,12 @@
         reverse_proxy backend:8080
     }
 
+    @swfiles path /sw.js /workbox-*.js /manifest.webmanifest
+    header @swfiles Cache-Control no-cache
+
+    @hashedAssets path /assets/*
+    header @hashedAssets Cache-Control "max-age=31536000, immutable"
+
     handle {
         try_files {path} /index.html
         file_server

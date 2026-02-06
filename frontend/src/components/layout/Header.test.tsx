@@ -33,16 +33,16 @@ describe('Header', () => {
     it('does not render a Home nav link', () => {
       renderAtRoute('/');
 
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex');
+      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
       expect(desktopNav).not.toBeNull();
-      expect(within(desktopNav!).queryByText('Home')).not.toBeInTheDocument();
+      expect(within(desktopNav).queryByText('Home')).not.toBeInTheDocument();
     });
 
     it('renders Coffees as the first desktop nav link pointing to /', () => {
       renderAtRoute('/');
 
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex');
-      const links = within(desktopNav!).getAllByRole('link');
+      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
+      const links = within(desktopNav).getAllByRole('link');
 
       expect(links[0]).toHaveTextContent('Coffees');
       expect(links[0]).toHaveAttribute('href', '/');
@@ -51,8 +51,8 @@ describe('Header', () => {
     it('renders all expected desktop nav items in order', () => {
       renderAtRoute('/');
 
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex');
-      const links = within(desktopNav!).getAllByRole('link');
+      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
+      const links = within(desktopNav).getAllByRole('link');
       const labels = links.map((link) => link.textContent);
 
       expect(labels).toEqual(['Coffees', 'Experiments', 'Analysis', 'Library']);
@@ -61,8 +61,8 @@ describe('Header', () => {
     it('renders the correct routes for desktop nav items', () => {
       renderAtRoute('/');
 
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex');
-      const links = within(desktopNav!).getAllByRole('link');
+      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
+      const links = within(desktopNav).getAllByRole('link');
       const hrefs = links.map((link) => link.getAttribute('href'));
 
       expect(hrefs).toEqual(['/', '/experiments', '/analysis', '/library']);
@@ -80,8 +80,8 @@ describe('Header', () => {
     it('highlights Coffees when on /', () => {
       renderAtRoute('/');
 
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex');
-      const coffeesLink = within(desktopNav!).getByText('Coffees');
+      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
+      const coffeesLink = within(desktopNav).getByText('Coffees');
 
       expect(coffeesLink).toHaveClass('text-primary');
       expect(coffeesLink).toHaveClass('border-primary');
@@ -90,8 +90,8 @@ describe('Header', () => {
     it('highlights Coffees when on /coffees/:id (detail page)', () => {
       renderAtRoute('/coffees/some-uuid');
 
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex');
-      const coffeesLink = within(desktopNav!).getByText('Coffees');
+      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
+      const coffeesLink = within(desktopNav).getByText('Coffees');
 
       expect(coffeesLink).toHaveClass('text-primary');
       expect(coffeesLink).toHaveClass('border-primary');
@@ -100,8 +100,8 @@ describe('Header', () => {
     it('does not highlight Coffees when on /experiments', () => {
       renderAtRoute('/experiments');
 
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex');
-      const coffeesLink = within(desktopNav!).getByText('Coffees');
+      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
+      const coffeesLink = within(desktopNav).getByText('Coffees');
 
       expect(coffeesLink).toHaveClass('text-muted-foreground');
       expect(coffeesLink).not.toHaveClass('text-primary');
@@ -110,8 +110,8 @@ describe('Header', () => {
     it('highlights Experiments when on /experiments', () => {
       renderAtRoute('/experiments');
 
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex');
-      const experimentsLink = within(desktopNav!).getByText('Experiments');
+      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
+      const experimentsLink = within(desktopNav).getByText('Experiments');
 
       expect(experimentsLink).toHaveClass('text-primary');
     });
@@ -119,8 +119,8 @@ describe('Header', () => {
     it('highlights Experiments when on /experiments/:id', () => {
       renderAtRoute('/experiments/some-uuid');
 
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex');
-      const experimentsLink = within(desktopNav!).getByText('Experiments');
+      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
+      const experimentsLink = within(desktopNav).getByText('Experiments');
 
       expect(experimentsLink).toHaveClass('text-primary');
     });
@@ -128,8 +128,8 @@ describe('Header', () => {
     it('does not highlight Coffees when on /analysis', () => {
       renderAtRoute('/analysis');
 
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex');
-      const coffeesLink = within(desktopNav!).getByText('Coffees');
+      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
+      const coffeesLink = within(desktopNav).getByText('Coffees');
 
       expect(coffeesLink).toHaveClass('text-muted-foreground');
     });

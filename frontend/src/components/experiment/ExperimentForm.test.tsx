@@ -313,7 +313,7 @@ describe('ExperimentForm', () => {
       const experimentWithPours = {
         ...mockExperiment,
         pours: [
-          { id: 'p-1', pour_number: 1, water_amount: 75, pour_style: 'pulse', notes: 'existing' },
+          { id: 'p-1', experiment_id: 'exp-1', pour_number: 1, water_amount: 75, pour_style: 'pulse', notes: 'existing' },
         ],
       };
 

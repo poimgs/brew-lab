@@ -22,7 +22,7 @@ export default function CoffeeSelector({ value, onChange, error }: CoffeeSelecto
   useEffect(() => {
     const loadRecentCoffees = async () => {
       try {
-        const response = await listCoffees({ per_page: 5, sort: '-updated_at' });
+        const response = await listCoffees({ per_page: 5 });
         setRecentCoffees(response.items || []);
       } catch {
         // Ignore error for recent coffees
