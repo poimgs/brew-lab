@@ -388,29 +388,31 @@ export default function ExperimentsPage() {
         </div>
 
         {/* Quick Filters */}
-        <div className="flex gap-2 flex-wrap items-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => applyQuickFilter('this_week')}
-          >
-            This week
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => applyQuickFilter('this_month')}
-          >
-            This month
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => applyQuickFilter('high_scores')}
-          >
-            High scores (8+)
-          </Button>
-          <span className="text-sm text-muted-foreground ml-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => applyQuickFilter('this_week')}
+            >
+              This week
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => applyQuickFilter('this_month')}
+            >
+              This month
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => applyQuickFilter('high_scores')}
+            >
+              High scores (8+)
+            </Button>
+          </div>
+          <span className="text-sm text-muted-foreground sm:ml-2">
             Looking for patterns?{' '}
             <Link to="/analysis" className="text-primary hover:underline">
               Try the Analysis page

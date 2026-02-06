@@ -13,6 +13,9 @@ import ThemeToggle from './ThemeToggle';
 import {
   Sheet,
   SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/AuthContext';
@@ -65,7 +68,11 @@ export default function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-64">
-                <nav className="flex flex-col gap-4 mt-8">
+                <SheetHeader>
+                  <SheetTitle>Navigation</SheetTitle>
+                  <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
+                </SheetHeader>
+                <nav className="flex flex-col gap-4">
                   <Link
                     to="/"
                     className="text-lg font-medium hover:text-primary transition-colors"
@@ -119,7 +126,7 @@ export default function Header() {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2">
+              <Button variant="ghost" className="gap-2" aria-label="User menu">
                 <User className="h-4 w-4" />
                 <span className="hidden sm:inline">{user?.email}</span>
                 <ChevronDown className="h-4 w-4" />

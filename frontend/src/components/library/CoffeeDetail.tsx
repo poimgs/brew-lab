@@ -282,7 +282,7 @@ export default function CoffeeDetail({
 
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle className="text-2xl">{coffee.name}</CardTitle>
               <p className="text-muted-foreground mt-1">
@@ -296,36 +296,38 @@ export default function CoffeeDetail({
                 </Badge>
               )}
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleNewExperiment}>
-                <Plus className="h-4 w-4 mr-1" />
-                New Experiment
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={handleNewExperiment}>
+                <Plus className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">New Experiment</span>
               </Button>
-              <Button variant="outline" onClick={onEdit}>
-                <Edit className="h-4 w-4 mr-1" />
-                Edit
+              <Button variant="outline" size="sm" onClick={onEdit}>
+                <Edit className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Edit</span>
               </Button>
               {coffee.archived_at ? (
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={handleUnarchive}
                   disabled={archiving}
                 >
                   {archiving ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    <Loader2 className="h-4 w-4 animate-spin sm:mr-1" />
                   ) : (
-                    <ArchiveRestore className="h-4 w-4 mr-1" />
+                    <ArchiveRestore className="h-4 w-4 sm:mr-1" />
                   )}
-                  Unarchive
+                  <span className="hidden sm:inline">Unarchive</span>
                 </Button>
               ) : (
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => setArchiveDialogOpen(true)}
                   disabled={archiving}
                 >
-                  <Archive className="h-4 w-4 mr-1" />
-                  Archive
+                  <Archive className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Archive</span>
                 </Button>
               )}
             </div>
@@ -333,21 +335,21 @@ export default function CoffeeDetail({
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="rounded-lg border p-4 text-center">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <div className="rounded-lg border p-3 sm:p-4 text-center">
               <Calendar className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Roasted</p>
-              <p className="font-medium">{formatDate(coffee.roast_date)}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Roasted</p>
+              <p className="font-medium text-sm sm:text-base">{formatDate(coffee.roast_date)}</p>
             </div>
-            <div className="rounded-lg border p-4 text-center">
+            <div className="rounded-lg border p-3 sm:p-4 text-center">
               <CoffeeIcon className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Days Off Roast</p>
-              <p className="font-medium tabular-nums">{coffee.days_off_roast ?? '—'}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Days Off Roast</p>
+              <p className="font-medium tabular-nums text-sm sm:text-base">{coffee.days_off_roast ?? '—'}</p>
             </div>
-            <div className="rounded-lg border p-4 text-center">
+            <div className="rounded-lg border p-3 sm:p-4 text-center">
               <FlaskConical className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Experiments</p>
-              <p className="font-medium tabular-nums">{coffee.experiment_count}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Experiments</p>
+              <p className="font-medium tabular-nums text-sm sm:text-base">{coffee.experiment_count}</p>
             </div>
           </div>
 
@@ -451,11 +453,10 @@ export default function CoffeeDetail({
                   <TableRow>
                     <TableHead className="w-8"></TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>DOR</TableHead>
                     <TableHead>Score</TableHead>
-                    <TableHead>Grind</TableHead>
-                    <TableHead>Ratio</TableHead>
-                    <TableHead>Temp</TableHead>
+                    <TableHead className="hidden sm:table-cell">Grind</TableHead>
+                    <TableHead className="hidden sm:table-cell">Ratio</TableHead>
+                    <TableHead className="hidden md:table-cell">Temp</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -478,18 +479,15 @@ export default function CoffeeDetail({
                           {formatShortDate(exp.brew_date)}
                         </TableCell>
                         <TableCell className="tabular-nums">
-                          {exp.days_off_roast ?? '—'}
-                        </TableCell>
-                        <TableCell className="tabular-nums">
                           {exp.overall_score != null ? `${exp.overall_score}/10` : '—'}
                         </TableCell>
-                        <TableCell className="tabular-nums">
+                        <TableCell className="tabular-nums hidden sm:table-cell">
                           {exp.grind_size ?? '—'}
                         </TableCell>
-                        <TableCell className="tabular-nums">
+                        <TableCell className="tabular-nums hidden sm:table-cell">
                           {exp.ratio != null ? `1:${exp.ratio}` : '—'}
                         </TableCell>
-                        <TableCell className="tabular-nums">
+                        <TableCell className="tabular-nums hidden md:table-cell">
                           {exp.water_temperature != null ? `${exp.water_temperature}°C` : '—'}
                         </TableCell>
                         <TableCell className="text-right">
@@ -506,9 +504,9 @@ export default function CoffeeDetail({
                               {settingBest === exp.id ? (
                                 <Loader2 className="h-3 w-3 animate-spin" />
                               ) : (
-                                <Star className="h-3 w-3 mr-1" />
+                                <Star className="h-3 w-3 sm:mr-1" />
                               )}
-                              Mark as Reference
+                              <span className="hidden sm:inline">Mark as Reference</span>
                             </Button>
                           )}
                         </TableCell>

@@ -49,7 +49,7 @@ function IntensityBar({ value }: { value: number | undefined | null }) {
   if (value === undefined || value === null) return <span className="text-muted-foreground">-</span>;
   return (
     <div className="flex items-center gap-2">
-      <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+      <div className="w-16 sm:w-24 h-2 bg-muted rounded-full overflow-hidden">
         <div
           className="h-full bg-primary rounded-full"
           style={{ width: `${value * 10}%` }}

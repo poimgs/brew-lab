@@ -150,8 +150,8 @@ export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive,
               variant="outline"
               onClick={handleReactivate}
             >
-              <ArchiveRestore className="h-4 w-4 mr-1" />
-              Re-activate
+              <ArchiveRestore className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Re-activate</span>
             </Button>
           ) : (
             <>
@@ -160,24 +160,24 @@ export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive,
                 variant="outline"
                 onClick={handleNewExperiment}
               >
-                <Plus className="h-4 w-4 mr-1" />
-                New Experiment
+                <Plus className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">New Experiment</span>
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handleEdit}
               >
-                <Pencil className="h-4 w-4 mr-1" />
-                Edit
+                <Pencil className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Edit</span>
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handleArchive}
               >
-                <Archive className="h-4 w-4 mr-1" />
-                Archive
+                <Archive className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Archive</span>
               </Button>
             </>
           )}
