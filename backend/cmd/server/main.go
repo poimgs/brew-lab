@@ -13,7 +13,6 @@ import (
 	"coffee-tracker/internal/domain/defaults"
 	"coffee-tracker/internal/domain/experiment"
 	"coffee-tracker/internal/domain/filter_paper"
-	"coffee-tracker/internal/domain/home"
 	"coffee-tracker/internal/domain/mineral_profile"
 	"coffee-tracker/internal/domain/user"
 	"coffee-tracker/internal/middleware"
@@ -66,9 +65,6 @@ func main() {
 
 	experimentRepo := experiment.NewRepository(db)
 	experimentHandler := experiment.NewHandler(experimentRepo)
-
-	homeRepo := home.NewRepository(db)
-	homeHandler := home.NewHandler(homeRepo)
 
 	r := chi.NewRouter()
 
@@ -148,7 +144,6 @@ func main() {
 				r.Post("/{id}/copy", experimentHandler.Copy)
 			})
 
-			r.Get("/home", homeHandler.Get)
 		})
 	})
 

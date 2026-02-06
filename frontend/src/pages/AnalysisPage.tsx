@@ -206,7 +206,7 @@ export default function AnalysisPage() {
                 {coffees.length === 0 && (
                   <p className="text-sm text-muted-foreground col-span-full text-center py-4">
                     No coffees found.{' '}
-                    <Link to="/coffees" className="text-primary hover:underline">
+                    <Link to="/" className="text-primary hover:underline">
                       Add a coffee
                     </Link>{' '}
                     to get started.

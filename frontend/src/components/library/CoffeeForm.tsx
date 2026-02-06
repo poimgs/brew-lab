@@ -29,21 +29,12 @@ const coffeeSchema = z.object({
   roaster: z.string().min(1, 'Roaster is required'),
   name: z.string().min(1, 'Name is required'),
   country: z.string().optional(),
-  region: z.string().optional(),
+  farm: z.string().optional(),
   process: z.string().optional(),
   roast_level: z.string().optional(),
   tasting_notes: z.string().optional(),
   roast_date: z.string().optional(),
-  purchase_date: z.string().optional(),
   notes: z.string().optional(),
-}).refine((data) => {
-  if (data.roast_date && data.purchase_date) {
-    return new Date(data.purchase_date) >= new Date(data.roast_date);
-  }
-  return true;
-}, {
-  message: 'Purchase date cannot be before roast date',
-  path: ['purchase_date'],
 }).refine((data) => {
   if (data.roast_date) {
     return new Date(data.roast_date) <= new Date();
@@ -86,12 +77,11 @@ export default function CoffeeForm({ coffee, onSuccess, onCancel }: CoffeeFormPr
       roaster: coffee?.roaster || '',
       name: coffee?.name || '',
       country: coffee?.country || '',
-      region: coffee?.region || '',
+      farm: coffee?.farm || '',
       process: coffee?.process || '',
       roast_level: coffee?.roast_level || '',
       tasting_notes: coffee?.tasting_notes || '',
       roast_date: coffee?.roast_date || '',
-      purchase_date: coffee?.purchase_date || '',
       notes: coffee?.notes || '',
     },
   });
@@ -160,12 +150,11 @@ export default function CoffeeForm({ coffee, onSuccess, onCancel }: CoffeeFormPr
         roaster: data.roaster,
         name: data.name,
         country: data.country || undefined,
-        region: data.region || undefined,
+        farm: data.farm || undefined,
         process: data.process || undefined,
         roast_level: data.roast_level || undefined,
         tasting_notes: data.tasting_notes || undefined,
         roast_date: data.roast_date || undefined,
-        purchase_date: data.purchase_date || undefined,
         notes: data.notes || undefined,
       };
 
@@ -290,8 +279,8 @@ export default function CoffeeForm({ coffee, onSuccess, onCancel }: CoffeeFormPr
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="region">Region</Label>
-                  <Input id="region" {...register('region')} />
+                  <Label htmlFor="farm">Farm</Label>
+                  <Input id="farm" {...register('farm')} />
                 </div>
               </div>
             </div>
@@ -347,11 +336,8 @@ export default function CoffeeForm({ coffee, onSuccess, onCancel }: CoffeeFormPr
               </div>
             </div>
 
-            {/* Dates section */}
+            {/* Roast Date */}
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-muted-foreground border-b pb-2">
-                Dates
-              </h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="roast_date">Roast Date</Label>
@@ -363,18 +349,6 @@ export default function CoffeeForm({ coffee, onSuccess, onCancel }: CoffeeFormPr
                   />
                   {errors.roast_date && (
                     <p className="text-sm text-destructive">{errors.roast_date.message}</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="purchase_date">Purchase Date</Label>
-                  <Input
-                    id="purchase_date"
-                    type="date"
-                    {...register('purchase_date')}
-                    className={errors.purchase_date ? 'border-destructive' : ''}
-                  />
-                  {errors.purchase_date && (
-                    <p className="text-sm text-destructive">{errors.purchase_date.message}</p>
                   )}
                 </div>
               </div>

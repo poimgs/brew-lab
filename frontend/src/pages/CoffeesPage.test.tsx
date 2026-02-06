@@ -28,7 +28,7 @@ const mockCoffee: coffeesApi.Coffee = {
   roaster: 'Cata Coffee',
   name: 'Kiamaina',
   country: 'Kenya',
-  region: 'Nyeri',
+  farm: 'Nyeri',
   process: 'Washed',
   roast_level: 'Light',
   tasting_notes: 'Apricot Nectar, Lemon Sorbet',
@@ -73,7 +73,6 @@ describe('CoffeesPage', () => {
     });
 
     expect(screen.getByText('Cata Coffee')).toBeInTheDocument();
-    expect(screen.getByText('Kenya')).toBeInTheDocument();
   });
 
   it('displays loading state initially', () => {
@@ -127,7 +126,7 @@ describe('CoffeesPage', () => {
     });
   });
 
-  it('navigates to coffee detail when clicking a row', async () => {
+  it('navigates to coffee detail when clicking a card', async () => {
     const user = userEvent.setup();
     renderWithRouter(<CoffeesPage />);
 
@@ -135,7 +134,7 @@ describe('CoffeesPage', () => {
       expect(screen.getByText('Kiamaina')).toBeInTheDocument();
     });
 
-    // Click on the row (coffee name)
+    // Click on the card (coffee name)
     await user.click(screen.getByText('Kiamaina'));
 
     expect(mockNavigate).toHaveBeenCalledWith('/coffees/coffee-123');
@@ -210,21 +209,19 @@ describe('CoffeesPage', () => {
     });
   });
 
-  it('displays coffee metadata columns', async () => {
+  it('displays coffee cards with name and roaster', async () => {
     renderWithRouter(<CoffeesPage />);
 
     await waitFor(() => {
       expect(screen.getByText('Kiamaina')).toBeInTheDocument();
     });
 
-    // Check table headers are present
-    expect(screen.getByText('Roaster')).toBeInTheDocument();
-    expect(screen.getByText('Name')).toBeInTheDocument();
-    expect(screen.getByText('Country')).toBeInTheDocument();
-    expect(screen.getByText('Process')).toBeInTheDocument();
-    expect(screen.getByText('Roast Date')).toBeInTheDocument();
-    expect(screen.getByText('Days Off')).toBeInTheDocument();
-    expect(screen.getByText('Brews')).toBeInTheDocument();
+    // Card shows coffee name and roaster
+    expect(screen.getByText('Cata Coffee')).toBeInTheDocument();
+    // Card shows "No experiments yet" when no best_experiment
+    expect(screen.getByText('No experiments yet')).toBeInTheDocument();
+    // Card shows "New Experiment" action button
+    expect(screen.getByRole('button', { name: /new experiment/i })).toBeInTheDocument();
   });
 
   it('displays error state when API fails', async () => {

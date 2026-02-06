@@ -25,12 +25,13 @@ const mockCoffeeGoal: CoffeeGoal = {
   tds: 1.38,
   extraction_yield: 20.5,
   aroma_intensity: 7,
-  acidity_intensity: 8,
+  brightness_intensity: 8,
   sweetness_intensity: 9,
-  bitterness_intensity: 3,
-  body_weight: 6,
+  cleanliness_intensity: 3,
+  body_intensity: 6,
   flavor_intensity: 8,
-  aftertaste_duration: 5,
+  complexity_intensity: 5,
+  balance_intensity: 7,
   aftertaste_intensity: 4,
   overall_score: 9,
   notes: 'Try finer grind to boost sweetness',
@@ -90,12 +91,13 @@ describe('coffee-goals API', () => {
       expect(result?.tds).toBe(1.38);
       expect(result?.extraction_yield).toBe(20.5);
       expect(result?.aroma_intensity).toBe(7);
-      expect(result?.acidity_intensity).toBe(8);
+      expect(result?.brightness_intensity).toBe(8);
       expect(result?.sweetness_intensity).toBe(9);
-      expect(result?.bitterness_intensity).toBe(3);
-      expect(result?.body_weight).toBe(6);
+      expect(result?.cleanliness_intensity).toBe(3);
+      expect(result?.body_intensity).toBe(6);
       expect(result?.flavor_intensity).toBe(8);
-      expect(result?.aftertaste_duration).toBe(5);
+      expect(result?.complexity_intensity).toBe(5);
+      expect(result?.balance_intensity).toBe(7);
       expect(result?.aftertaste_intensity).toBe(4);
       expect(result?.overall_score).toBe(9);
       expect(result?.notes).toBe('Try finer grind to boost sweetness');
@@ -156,12 +158,13 @@ describe('coffee-goals API', () => {
     it('handles all sensory intensity fields', async () => {
       const input: CoffeeGoalInput = {
         aroma_intensity: 7,
-        acidity_intensity: 8,
+        brightness_intensity: 8,
         sweetness_intensity: 9,
-        bitterness_intensity: 2,
-        body_weight: 6,
+        cleanliness_intensity: 2,
+        body_intensity: 6,
         flavor_intensity: 8,
-        aftertaste_duration: 5,
+        complexity_intensity: 5,
+        balance_intensity: 7,
         aftertaste_intensity: 4,
       };
       vi.mocked(client.put).mockResolvedValueOnce({

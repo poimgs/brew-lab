@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { getCoffee, getReference, type Coffee, type CoffeeReference } from '@/api/coffees';
+import { getCoffee, getReference, archiveCoffee, unarchiveCoffee, type Coffee, type CoffeeReference } from '@/api/coffees';
 import { listExperiments, type Experiment } from '@/api/experiments';
 import CoffeeDetail from '@/components/library/CoffeeDetail';
 import CoffeeForm from '@/components/library/CoffeeForm';
@@ -70,7 +70,7 @@ export default function CoffeeDetailPage() {
   };
 
   const handleBack = () => {
-    navigate('/coffees');
+    navigate('/');
   };
 
   const handleEdit = () => {
@@ -84,6 +84,18 @@ export default function CoffeeDetailPage() {
 
   const handleEditCancel = () => {
     setIsEditing(false);
+  };
+
+  const handleArchive = async () => {
+    if (!id) return;
+    await archiveCoffee(id);
+    await handleRefresh();
+  };
+
+  const handleUnarchive = async () => {
+    if (!id) return;
+    await unarchiveCoffee(id);
+    await handleRefresh();
   };
 
   if (isLoading) {
@@ -128,6 +140,8 @@ export default function CoffeeDetailPage() {
         onBack={handleBack}
         onEdit={handleEdit}
         onRefresh={handleRefresh}
+        onArchive={handleArchive}
+        onUnarchive={handleUnarchive}
       />
     </div>
   );

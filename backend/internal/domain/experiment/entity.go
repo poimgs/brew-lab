@@ -33,26 +33,32 @@ type Experiment struct {
 	MineralProfileID *uuid.UUID `json:"mineral_profile_id,omitempty"`
 
 	// Quantitative outcomes
-	FinalWeight     *float64 `json:"final_weight,omitempty"`
+	CoffeeMl        *float64 `json:"coffee_ml,omitempty"`
 	TDS             *float64 `json:"tds,omitempty"`
 	ExtractionYield *float64 `json:"extraction_yield,omitempty"`
 
+	// Draft status
+	IsDraft bool `json:"is_draft"`
+
 	// Sensory outcomes (1-10 scale)
-	AromaIntensity      *int    `json:"aroma_intensity,omitempty"`
-	AromaNotes          *string `json:"aroma_notes,omitempty"`
-	AcidityIntensity    *int    `json:"acidity_intensity,omitempty"`
-	AcidityNotes        *string `json:"acidity_notes,omitempty"`
-	SweetnessIntensity  *int    `json:"sweetness_intensity,omitempty"`
-	SweetnessNotes      *string `json:"sweetness_notes,omitempty"`
-	BitternessIntensity *int    `json:"bitterness_intensity,omitempty"`
-	BitternessNotes     *string `json:"bitterness_notes,omitempty"`
-	BodyWeight          *int    `json:"body_weight,omitempty"`
-	BodyNotes           *string `json:"body_notes,omitempty"`
-	FlavorIntensity     *int    `json:"flavor_intensity,omitempty"`
-	FlavorNotes         *string `json:"flavor_notes,omitempty"`
-	AftertasteDuration  *int    `json:"aftertaste_duration,omitempty"`
-	AftertasteIntensity *int    `json:"aftertaste_intensity,omitempty"`
-	AftertasteNotes     *string `json:"aftertaste_notes,omitempty"`
+	AromaIntensity       *int    `json:"aroma_intensity,omitempty"`
+	AromaNotes           *string `json:"aroma_notes,omitempty"`
+	BodyIntensity        *int    `json:"body_intensity,omitempty"`
+	BodyNotes            *string `json:"body_notes,omitempty"`
+	FlavorIntensity      *int    `json:"flavor_intensity,omitempty"`
+	FlavorNotes          *string `json:"flavor_notes,omitempty"`
+	BrightnessIntensity  *int    `json:"brightness_intensity,omitempty"`
+	BrightnessNotes      *string `json:"brightness_notes,omitempty"`
+	SweetnessIntensity   *int    `json:"sweetness_intensity,omitempty"`
+	SweetnessNotes       *string `json:"sweetness_notes,omitempty"`
+	CleanlinessIntensity *int    `json:"cleanliness_intensity,omitempty"`
+	CleanlinessNotes     *string `json:"cleanliness_notes,omitempty"`
+	ComplexityIntensity  *int    `json:"complexity_intensity,omitempty"`
+	ComplexityNotes      *string `json:"complexity_notes,omitempty"`
+	BalanceIntensity     *int    `json:"balance_intensity,omitempty"`
+	BalanceNotes         *string `json:"balance_notes,omitempty"`
+	AftertasteIntensity  *int    `json:"aftertaste_intensity,omitempty"`
+	AftertasteNotes      *string `json:"aftertaste_notes,omitempty"`
 
 	// Overall assessment
 	OverallScore     *int   `json:"overall_score,omitempty"`
@@ -123,26 +129,32 @@ type CreateExperimentInput struct {
 	MineralProfileID *uuid.UUID `json:"mineral_profile_id,omitempty"`
 
 	// Quantitative outcomes
-	FinalWeight     *float64 `json:"final_weight,omitempty"`
+	CoffeeMl        *float64 `json:"coffee_ml,omitempty"`
 	TDS             *float64 `json:"tds,omitempty"`
 	ExtractionYield *float64 `json:"extraction_yield,omitempty"`
 
+	// Draft status
+	IsDraft *bool `json:"is_draft,omitempty"`
+
 	// Sensory outcomes
-	AromaIntensity      *int    `json:"aroma_intensity,omitempty"`
-	AromaNotes          *string `json:"aroma_notes,omitempty"`
-	AcidityIntensity    *int    `json:"acidity_intensity,omitempty"`
-	AcidityNotes        *string `json:"acidity_notes,omitempty"`
-	SweetnessIntensity  *int    `json:"sweetness_intensity,omitempty"`
-	SweetnessNotes      *string `json:"sweetness_notes,omitempty"`
-	BitternessIntensity *int    `json:"bitterness_intensity,omitempty"`
-	BitternessNotes     *string `json:"bitterness_notes,omitempty"`
-	BodyWeight          *int    `json:"body_weight,omitempty"`
-	BodyNotes           *string `json:"body_notes,omitempty"`
-	FlavorIntensity     *int    `json:"flavor_intensity,omitempty"`
-	FlavorNotes         *string `json:"flavor_notes,omitempty"`
-	AftertasteDuration  *int    `json:"aftertaste_duration,omitempty"`
-	AftertasteIntensity *int    `json:"aftertaste_intensity,omitempty"`
-	AftertasteNotes     *string `json:"aftertaste_notes,omitempty"`
+	AromaIntensity       *int    `json:"aroma_intensity,omitempty"`
+	AromaNotes           *string `json:"aroma_notes,omitempty"`
+	BodyIntensity        *int    `json:"body_intensity,omitempty"`
+	BodyNotes            *string `json:"body_notes,omitempty"`
+	FlavorIntensity      *int    `json:"flavor_intensity,omitempty"`
+	FlavorNotes          *string `json:"flavor_notes,omitempty"`
+	BrightnessIntensity  *int    `json:"brightness_intensity,omitempty"`
+	BrightnessNotes      *string `json:"brightness_notes,omitempty"`
+	SweetnessIntensity   *int    `json:"sweetness_intensity,omitempty"`
+	SweetnessNotes       *string `json:"sweetness_notes,omitempty"`
+	CleanlinessIntensity *int    `json:"cleanliness_intensity,omitempty"`
+	CleanlinessNotes     *string `json:"cleanliness_notes,omitempty"`
+	ComplexityIntensity  *int    `json:"complexity_intensity,omitempty"`
+	ComplexityNotes      *string `json:"complexity_notes,omitempty"`
+	BalanceIntensity     *int    `json:"balance_intensity,omitempty"`
+	BalanceNotes         *string `json:"balance_notes,omitempty"`
+	AftertasteIntensity  *int    `json:"aftertaste_intensity,omitempty"`
+	AftertasteNotes      *string `json:"aftertaste_notes,omitempty"`
 
 	// Overall assessment
 	OverallScore     *int    `json:"overall_score,omitempty"`
@@ -184,26 +196,32 @@ type UpdateExperimentInput struct {
 	MineralProfileID *uuid.UUID `json:"mineral_profile_id,omitempty"`
 
 	// Quantitative outcomes
-	FinalWeight     *float64 `json:"final_weight,omitempty"`
+	CoffeeMl        *float64 `json:"coffee_ml,omitempty"`
 	TDS             *float64 `json:"tds,omitempty"`
 	ExtractionYield *float64 `json:"extraction_yield,omitempty"`
 
+	// Draft status
+	IsDraft *bool `json:"is_draft,omitempty"`
+
 	// Sensory outcomes
-	AromaIntensity      *int    `json:"aroma_intensity,omitempty"`
-	AromaNotes          *string `json:"aroma_notes,omitempty"`
-	AcidityIntensity    *int    `json:"acidity_intensity,omitempty"`
-	AcidityNotes        *string `json:"acidity_notes,omitempty"`
-	SweetnessIntensity  *int    `json:"sweetness_intensity,omitempty"`
-	SweetnessNotes      *string `json:"sweetness_notes,omitempty"`
-	BitternessIntensity *int    `json:"bitterness_intensity,omitempty"`
-	BitternessNotes     *string `json:"bitterness_notes,omitempty"`
-	BodyWeight          *int    `json:"body_weight,omitempty"`
-	BodyNotes           *string `json:"body_notes,omitempty"`
-	FlavorIntensity     *int    `json:"flavor_intensity,omitempty"`
-	FlavorNotes         *string `json:"flavor_notes,omitempty"`
-	AftertasteDuration  *int    `json:"aftertaste_duration,omitempty"`
-	AftertasteIntensity *int    `json:"aftertaste_intensity,omitempty"`
-	AftertasteNotes     *string `json:"aftertaste_notes,omitempty"`
+	AromaIntensity       *int    `json:"aroma_intensity,omitempty"`
+	AromaNotes           *string `json:"aroma_notes,omitempty"`
+	BodyIntensity        *int    `json:"body_intensity,omitempty"`
+	BodyNotes            *string `json:"body_notes,omitempty"`
+	FlavorIntensity      *int    `json:"flavor_intensity,omitempty"`
+	FlavorNotes          *string `json:"flavor_notes,omitempty"`
+	BrightnessIntensity  *int    `json:"brightness_intensity,omitempty"`
+	BrightnessNotes      *string `json:"brightness_notes,omitempty"`
+	SweetnessIntensity   *int    `json:"sweetness_intensity,omitempty"`
+	SweetnessNotes       *string `json:"sweetness_notes,omitempty"`
+	CleanlinessIntensity *int    `json:"cleanliness_intensity,omitempty"`
+	CleanlinessNotes     *string `json:"cleanliness_notes,omitempty"`
+	ComplexityIntensity  *int    `json:"complexity_intensity,omitempty"`
+	ComplexityNotes      *string `json:"complexity_notes,omitempty"`
+	BalanceIntensity     *int    `json:"balance_intensity,omitempty"`
+	BalanceNotes         *string `json:"balance_notes,omitempty"`
+	AftertasteIntensity  *int    `json:"aftertaste_intensity,omitempty"`
+	AftertasteNotes      *string `json:"aftertaste_notes,omitempty"`
 
 	// Overall assessment
 	OverallScore     *int    `json:"overall_score,omitempty"`

@@ -1,10 +1,24 @@
+import { useState } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import IntensityInput from '../../IntensityInput';
+
+const FLAVOR_CATEGORIES = [
+  { name: 'Fruity', descriptors: ['Berry', 'Citrus', 'Stone Fruit', 'Tropical', 'Dried Fruit', 'Apple', 'Grape'] },
+  { name: 'Sweet', descriptors: ['Chocolate', 'Caramel', 'Honey', 'Brown Sugar', 'Vanilla', 'Molasses', 'Maple'] },
+  { name: 'Floral', descriptors: ['Jasmine', 'Rose', 'Lavender', 'Hibiscus', 'Chamomile', 'Orange Blossom'] },
+  { name: 'Nutty / Cocoa', descriptors: ['Almond', 'Hazelnut', 'Walnut', 'Peanut', 'Cocoa', 'Dark Chocolate'] },
+  { name: 'Spicy', descriptors: ['Cinnamon', 'Clove', 'Black Pepper', 'Cardamom', 'Ginger', 'Nutmeg'] },
+  { name: 'Roasted', descriptors: ['Toasty', 'Smoky', 'Malty', 'Cereal', 'Pipe Tobacco'] },
+  { name: 'Other', descriptors: ['Wine-like', 'Tea-like', 'Earthy', 'Woody', 'Herbal', 'Fermented'] },
+];
 
 export default function SensoryStep() {
   const { register, control, watch, setValue, formState: { errors } } = useFormContext();
+  const [flavorRefOpen, setFlavorRefOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -13,6 +27,33 @@ export default function SensoryStep() {
         <p className="text-sm text-muted-foreground mb-4">
           Rate the taste characteristics of your brew. Slide to rate (0 = Not rated, 1-10 = intensity).
         </p>
+      </div>
+
+      {/* Flavor Reference */}
+      <div className="border rounded-lg">
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+          onClick={() => setFlavorRefOpen(!flavorRefOpen)}
+        >
+          Flavor Reference
+          {flavorRefOpen ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </Button>
+        {flavorRefOpen && (
+          <div className="px-4 pb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {FLAVOR_CATEGORIES.map((cat) => (
+              <div key={cat.name}>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{cat.name}</p>
+                <p className="text-sm">{cat.descriptors.join(', ')}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Overall Notes (Required) */}
@@ -64,49 +105,7 @@ export default function SensoryStep() {
         />
 
         <Controller
-          name="acidity_intensity"
-          control={control}
-          render={({ field }) => (
-            <IntensityInput
-              label="Acidity"
-              value={field.value}
-              onChange={field.onChange}
-              notesValue={watch('acidity_notes')}
-              onNotesChange={(v) => setValue('acidity_notes', v)}
-            />
-          )}
-        />
-
-        <Controller
-          name="sweetness_intensity"
-          control={control}
-          render={({ field }) => (
-            <IntensityInput
-              label="Sweetness"
-              value={field.value}
-              onChange={field.onChange}
-              notesValue={watch('sweetness_notes')}
-              onNotesChange={(v) => setValue('sweetness_notes', v)}
-            />
-          )}
-        />
-
-        <Controller
-          name="bitterness_intensity"
-          control={control}
-          render={({ field }) => (
-            <IntensityInput
-              label="Bitterness"
-              value={field.value}
-              onChange={field.onChange}
-              notesValue={watch('bitterness_notes')}
-              onNotesChange={(v) => setValue('bitterness_notes', v)}
-            />
-          )}
-        />
-
-        <Controller
-          name="body_weight"
+          name="body_intensity"
           control={control}
           render={({ field }) => (
             <IntensityInput
@@ -134,13 +133,71 @@ export default function SensoryStep() {
         />
 
         <Controller
-          name="aftertaste_duration"
+          name="brightness_intensity"
           control={control}
           render={({ field }) => (
             <IntensityInput
-              label="Aftertaste Duration"
+              label="Brightness"
               value={field.value}
               onChange={field.onChange}
+              notesValue={watch('brightness_notes')}
+              onNotesChange={(v) => setValue('brightness_notes', v)}
+            />
+          )}
+        />
+
+        <Controller
+          name="sweetness_intensity"
+          control={control}
+          render={({ field }) => (
+            <IntensityInput
+              label="Sweetness"
+              value={field.value}
+              onChange={field.onChange}
+              notesValue={watch('sweetness_notes')}
+              onNotesChange={(v) => setValue('sweetness_notes', v)}
+            />
+          )}
+        />
+
+        <Controller
+          name="cleanliness_intensity"
+          control={control}
+          render={({ field }) => (
+            <IntensityInput
+              label="Cleanliness"
+              value={field.value}
+              onChange={field.onChange}
+              notesValue={watch('cleanliness_notes')}
+              onNotesChange={(v) => setValue('cleanliness_notes', v)}
+            />
+          )}
+        />
+
+        <Controller
+          name="complexity_intensity"
+          control={control}
+          render={({ field }) => (
+            <IntensityInput
+              label="Complexity"
+              value={field.value}
+              onChange={field.onChange}
+              notesValue={watch('complexity_notes')}
+              onNotesChange={(v) => setValue('complexity_notes', v)}
+            />
+          )}
+        />
+
+        <Controller
+          name="balance_intensity"
+          control={control}
+          render={({ field }) => (
+            <IntensityInput
+              label="Balance"
+              value={field.value}
+              onChange={field.onChange}
+              notesValue={watch('balance_notes')}
+              onNotesChange={(v) => setValue('balance_notes', v)}
             />
           )}
         />
@@ -150,7 +207,7 @@ export default function SensoryStep() {
           control={control}
           render={({ field }) => (
             <IntensityInput
-              label="Aftertaste Intensity"
+              label="Aftertaste"
               value={field.value}
               onChange={field.onChange}
               notesValue={watch('aftertaste_notes')}

@@ -63,7 +63,6 @@ describe('CoffeeForm', () => {
 
       expect(screen.getByText('Origin')).toBeInTheDocument();
       expect(screen.getByText('Details')).toBeInTheDocument();
-      expect(screen.getByText('Dates')).toBeInTheDocument();
       expect(screen.getByText('Notes')).toBeInTheDocument();
     });
   });
@@ -128,28 +127,6 @@ describe('CoffeeForm', () => {
       expect(createCoffee).not.toHaveBeenCalled();
     });
 
-    it('shows error when purchase date is before roast date', async () => {
-      const user = userEvent.setup();
-      render(<CoffeeForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
-
-      await user.type(screen.getByLabelText(/roaster/i), 'Test Roaster');
-      await user.type(screen.getByLabelText(/^name/i), 'Test Coffee');
-
-      const roastDateInput = screen.getByLabelText(/roast date/i);
-      await user.type(roastDateInput, '2024-06-15');
-
-      const purchaseDateInput = screen.getByLabelText(/purchase date/i);
-      await user.type(purchaseDateInput, '2024-06-10');
-
-      const submitButton = screen.getByRole('button', { name: /add coffee/i });
-      await user.click(submitButton);
-
-      await waitFor(() => {
-        expect(screen.getByText(/purchase date cannot be before roast date/i)).toBeInTheDocument();
-      });
-
-      expect(createCoffee).not.toHaveBeenCalled();
-    });
   });
 
   describe('form submission', () => {
@@ -178,12 +155,11 @@ describe('CoffeeForm', () => {
           roaster: 'Test Roaster',
           name: 'Test Coffee',
           country: 'Ethiopia',
-          region: undefined,
+          farm: undefined,
           process: undefined,
           roast_level: undefined,
           tasting_notes: undefined,
           roast_date: undefined,
-          purchase_date: undefined,
           notes: undefined,
         });
       });

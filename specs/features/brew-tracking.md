@@ -67,37 +67,40 @@ Modifications made after brewing, before tasting.
 
 | Field | Type | Unit | Description |
 |-------|------|------|-------------|
-| final_weight | decimal | grams | Weight of brewed coffee |
+| coffee_ml | decimal | milliliters | Volume of brewed coffee |
 | tds | decimal | % | Total Dissolved Solids reading |
 | extraction_yield | decimal | % | Calculated or measured extraction |
 
 ### Sensory Outcomes
 
-All intensity fields are 1-10 scale.
+All intensity fields are 1-10 scale. Each attribute has an intensity score and optional notes.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| aroma_intensity | integer | Strength of aroma |
+| aroma_intensity | integer | Strength and quality of aroma |
 | aroma_notes | text | Aroma descriptors |
-| acidity_intensity | integer | Perceived acidity level |
-| acidity_notes | text | Acidity descriptors |
+| body_intensity | integer | Body/mouthfeel weight and texture |
+| body_notes | text | Body/mouthfeel descriptors |
+| flavor_intensity | integer | Overall flavor intensity and clarity |
+| flavor_notes | text | Taste descriptors |
+| brightness_intensity | integer | Perceived acidity quality (liveliness, sparkle) |
+| brightness_notes | text | Brightness/acidity descriptors |
 | sweetness_intensity | integer | Perceived sweetness level |
 | sweetness_notes | text | Sweetness descriptors |
-| bitterness_intensity | integer | Perceived bitterness level |
-| bitterness_notes | text | Bitterness descriptors |
-| body_weight | integer | Body/mouthfeel weight |
-| body_notes | text | Body/mouthfeel descriptors |
-| flavor_intensity | integer | Overall flavor intensity |
-| flavor_notes | text | Taste descriptors |
-| aftertaste_duration | integer | How long aftertaste persists |
-| aftertaste_intensity | integer | Strength of aftertaste |
+| cleanliness_intensity | integer | Clarity and definition of flavors |
+| cleanliness_notes | text | Cleanliness descriptors |
+| complexity_intensity | integer | Layered, evolving flavor experience |
+| complexity_notes | text | Complexity descriptors |
+| balance_intensity | integer | Harmony between all taste attributes |
+| balance_notes | text | Balance descriptors |
+| aftertaste_intensity | integer | Strength and quality of aftertaste |
 | aftertaste_notes | text | Aftertaste descriptors |
 
 ### Computed Properties
 
 - **Days Off Roast**: `brew_date - coffee.roast_date` (if roast_date provided)
 - **Calculated Ratio**: `water_weight / coffee_weight` (if both provided)
-- **Extraction Yield**: `(final_weight × tds) / coffee_weight` (if all provided)
+- **Extraction Yield**: `(coffee_ml × TDS%) / coffee_weight` (if all provided)
 
 ### Database Schema
 
@@ -107,6 +110,7 @@ CREATE TABLE experiments (
     user_id UUID NOT NULL REFERENCES users(id),
     coffee_id UUID NOT NULL REFERENCES coffees(id) ON DELETE RESTRICT,
     brew_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_draft BOOLEAN DEFAULT FALSE,
 
     -- Pre-brew variables
     coffee_weight DECIMAL(5,2),
@@ -129,24 +133,27 @@ CREATE TABLE experiments (
     mineral_profile_id UUID REFERENCES mineral_profiles(id),
 
     -- Quantitative outcomes
-    final_weight DECIMAL(6,2),
+    coffee_ml DECIMAL(6,2),
     tds DECIMAL(4,2),
     extraction_yield DECIMAL(5,2),
 
     -- Sensory outcomes (1-10 scale)
     aroma_intensity INTEGER CHECK (aroma_intensity BETWEEN 1 AND 10),
     aroma_notes TEXT,
-    acidity_intensity INTEGER CHECK (acidity_intensity BETWEEN 1 AND 10),
-    acidity_notes TEXT,
-    sweetness_intensity INTEGER CHECK (sweetness_intensity BETWEEN 1 AND 10),
-    sweetness_notes TEXT,
-    bitterness_intensity INTEGER CHECK (bitterness_intensity BETWEEN 1 AND 10),
-    bitterness_notes TEXT,
-    body_weight INTEGER CHECK (body_weight BETWEEN 1 AND 10),
+    body_intensity INTEGER CHECK (body_intensity BETWEEN 1 AND 10),
     body_notes TEXT,
     flavor_intensity INTEGER CHECK (flavor_intensity BETWEEN 1 AND 10),
     flavor_notes TEXT,
-    aftertaste_duration INTEGER CHECK (aftertaste_duration BETWEEN 1 AND 10),
+    brightness_intensity INTEGER CHECK (brightness_intensity BETWEEN 1 AND 10),
+    brightness_notes TEXT,
+    sweetness_intensity INTEGER CHECK (sweetness_intensity BETWEEN 1 AND 10),
+    sweetness_notes TEXT,
+    cleanliness_intensity INTEGER CHECK (cleanliness_intensity BETWEEN 1 AND 10),
+    cleanliness_notes TEXT,
+    complexity_intensity INTEGER CHECK (complexity_intensity BETWEEN 1 AND 10),
+    complexity_notes TEXT,
+    balance_intensity INTEGER CHECK (balance_intensity BETWEEN 1 AND 10),
+    balance_notes TEXT,
     aftertaste_intensity INTEGER CHECK (aftertaste_intensity BETWEEN 1 AND 10),
     aftertaste_notes TEXT,
 
@@ -309,6 +316,26 @@ Creates a new experiment with same parameters:
 
 For defaults API endpoints and database schema, see [User Preferences](user-preferences.md).
 
+### Pour Defaults
+
+Users can configure default pour templates that are applied when entering the Brew step for new experiments.
+
+**Structure:**
+- Pour defaults are stored as a JSON string containing an array of pour templates
+- Each template specifies: `water_amount`, `pour_style`, and optional `notes`
+- When the user enters the Brew step, the pours field is pre-populated with these defaults
+- Users can modify, add, or remove pours as needed for each experiment
+
+**Example JSON:**
+```json
+{
+  "pours": [
+    { "water_amount": 90, "pour_style": "circular", "notes": "" },
+    { "water_amount": 90, "pour_style": "circular", "notes": "" }
+  ]
+}
+```
+
 ---
 
 ## User Interface
@@ -368,11 +395,13 @@ For defaults API endpoints and database schema, see [User Preferences](user-pref
 │                                         │
 │ Coffee Weight    [15    ] g             │
 │ Ratio            [15    ] (1:15)        │
-│ Water Weight     [225   ] g (calculated)│
+│ Water Weight     [225   ] g             │
 │ Grind Size       [3.5   ]               │
 │ Temperature      [90    ] °C            │
 │ Filter           [Select filter... ▼]   │
 ```
+
+Note: Water weight is auto-calculated from coffee_weight × ratio but the "(auto-calculated)" indicator is not displayed. The calculation still happens automatically when coffee weight and ratio are entered.
 
 ### Field Sections
 
@@ -393,29 +422,43 @@ For defaults API endpoints and database schema, see [User Preferences](user-pref
   - Pour Style (dropdown: circular, center, pulse)
   - Notes (text)
   - [+ Add Pour] button
+  - Pre-populated from user's pour defaults (if configured)
 - Total Brew Time (seconds)
 - Drawdown Time (seconds)
 - Technique Notes (text)
 
+**Water Weight Validation:**
+- Non-blocking warning when `bloom_water + sum(pour amounts) ≠ water_weight`
+- Displayed as informational warning, does not prevent saving
+- Helps users catch input errors
+
 **Post-Brew Variables:**
-- Water Bypass (ml)
-- Mineral Profile (dropdown, see [Library](library.md))
+- Water Bypass (ml) - with equal spacing to mineral profile
+- Mineral Profile (dropdown with "None" option, see [Library](library.md))
 
 **Quantitative Outcomes:**
-- Final Weight (g)
+- Coffee (ml) - volume of brewed coffee
 - TDS (%)
 - Extraction Yield (%)
 
 **Sensory Outcomes:**
-- Aroma Intensity (1-10) + Notes
-- Acidity Intensity (1-10) + Notes
-- Sweetness Intensity (1-10) + Notes
-- Bitterness Intensity (1-10) + Notes
-- Body Weight (1-10) + Notes
-- Flavor Intensity (1-10) + Notes
-- Aftertaste Duration (1-10)
-- Aftertaste Intensity (1-10)
-- Aftertaste Notes (text)
+
+Nine sensory attributes, each with intensity (1-10) and optional notes:
+
+1. Aroma - strength and quality of smell
+2. Body - weight and texture of mouthfeel
+3. Flavor - overall taste intensity and clarity
+4. Brightness - perceived acidity quality (liveliness, sparkle)
+5. Sweetness - perceived sweetness level
+6. Cleanliness - clarity and definition of flavors
+7. Complexity - layered, evolving flavor experience
+8. Balance - harmony between all taste attributes
+9. Aftertaste - strength and quality of finish
+
+**Flavor Wheel Reference:**
+- Collapsible image showing SCA/common flavor wheel
+- Helps users identify and describe flavor notes
+- Displayed in a collapsible section to save space
 
 ### Defaults System
 
@@ -451,8 +494,8 @@ Navigate to: User menu → Preferences → Brew Defaults section
 - Example: 15g coffee × 15 ratio = 225g water
 
 **Extraction Yield:**
-- If TDS, coffee weight, and final weight entered:
-- `EY = (final_weight × TDS) / coffee_weight`
+- If TDS, coffee weight, and coffee_ml entered:
+- `EY = (coffee_ml × TDS%) / coffee_weight`
 - Display calculated value with "calculated" indicator
 
 **Days Off Roast:**
@@ -463,17 +506,39 @@ Navigate to: User menu → Preferences → Brew Defaults section
 
 **Required:**
 - Coffee selection
-- Overall notes (minimum 10 characters)
+- Overall notes (minimum 10 characters) - required only for final save, not drafts
 
 **Format Validation:**
 - Weights: Positive decimals
 - Temperature: 0-100°C
 - Intensity scores: 1-10 integers
 - Times: Positive integers (seconds)
+- Volume: Positive decimals for coffee_ml
 
 **Warnings (not blocking):**
 - Unusual values: "Temperature 50°C seems low for brewing"
 - Missing common fields: "Consider adding brew time for better analysis"
+- Water weight mismatch: "Bloom + pours (X g) differs from water weight (Y g)"
+
+### Navigation & Save Behavior
+
+**Multi-Step Wizard Navigation:**
+- Next button available on ALL steps (Pre-Brew, Brew, Post-Brew, Quantitative, Sensory, Improvement Notes)
+- Next button works even with partial/empty optional fields
+- Back button returns to previous step
+- Users can reach Improvement Notes step before final save
+
+**Save Draft Feature:**
+- "Save Draft" button available alongside Next/Back navigation on all steps
+- Saves current experiment state with `is_draft: true`
+- Draft experiments can be resumed later from the experiments list
+- Prevents data loss if user navigates away mid-entry
+- Draft experiments are marked with a visual indicator in lists
+
+**Final Save:**
+- Only available on the last step (Improvement Notes)
+- Validates required fields (coffee selection, overall notes)
+- Sets `is_draft: false` on save
 
 ---
 
@@ -502,9 +567,10 @@ When logging an experiment, users can view reference information for the selecte
 │ Bloom (s)   [30        ]            │ TARGET GOALS              [✏️]  │
 │ ...                                 │ • TDS: 1.35-1.40                │
 │                                     │ • Extraction: 20-22%            │
-│ ─── Outcomes ───                    │ • Acidity: 7/10                 │
+│ ─── Outcomes ───                    │ • Brightness: 7/10              │
 │ TDS         [1.38      ]            │ • Sweetness: 8/10               │
-│ Extraction  [20.1      ]            │ • Overall: 9/10                 │
+│ Extraction  [20.1      ]            │ • Balance: 8/10                 │
+│ ...                                 │ • Overall: 9/10                 │
 │ ...                                 │                                 │
 │                                     │ ─────────────────────────────── │
 │                                     │ IMPROVEMENT NOTES         [✏️]  │

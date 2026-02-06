@@ -126,9 +126,27 @@ const compareRows: CompareRow[] = [
   },
   // Outcomes section
   {
-    label: 'Acidity',
-    field: 'acidity_intensity',
-    getValue: (exp) => exp.acidity_intensity,
+    label: 'Aroma',
+    field: 'aroma_intensity',
+    getValue: (exp) => exp.aroma_intensity,
+    section: 'outcomes',
+  },
+  {
+    label: 'Body',
+    field: 'body_intensity',
+    getValue: (exp) => exp.body_intensity,
+    section: 'outcomes',
+  },
+  {
+    label: 'Flavor',
+    field: 'flavor_intensity',
+    getValue: (exp) => exp.flavor_intensity,
+    section: 'outcomes',
+  },
+  {
+    label: 'Brightness',
+    field: 'brightness_intensity',
+    getValue: (exp) => exp.brightness_intensity,
     section: 'outcomes',
   },
   {
@@ -138,21 +156,27 @@ const compareRows: CompareRow[] = [
     section: 'outcomes',
   },
   {
-    label: 'Bitterness',
-    field: 'bitterness_intensity',
-    getValue: (exp) => exp.bitterness_intensity,
+    label: 'Cleanliness',
+    field: 'cleanliness_intensity',
+    getValue: (exp) => exp.cleanliness_intensity,
     section: 'outcomes',
   },
   {
-    label: 'Body',
-    field: 'body_weight',
-    getValue: (exp) => exp.body_weight,
+    label: 'Complexity',
+    field: 'complexity_intensity',
+    getValue: (exp) => exp.complexity_intensity,
     section: 'outcomes',
   },
   {
-    label: 'Aroma',
-    field: 'aroma_intensity',
-    getValue: (exp) => exp.aroma_intensity,
+    label: 'Balance',
+    field: 'balance_intensity',
+    getValue: (exp) => exp.balance_intensity,
+    section: 'outcomes',
+  },
+  {
+    label: 'Aftertaste',
+    field: 'aftertaste_intensity',
+    getValue: (exp) => exp.aftertaste_intensity,
     section: 'outcomes',
   },
   {

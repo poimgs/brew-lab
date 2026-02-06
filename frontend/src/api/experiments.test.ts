@@ -28,6 +28,7 @@ const mockExperiment: Experiment = {
   user_id: 'user-456',
   coffee_id: 'coffee-789',
   brew_date: '2026-01-15T10:30:00Z',
+  is_draft: false,
   coffee_weight: 15.0,
   water_weight: 225.0,
   ratio: 15.0,
@@ -178,22 +179,25 @@ describe('experiments API', () => {
         technique_notes: 'Swirl after bloom',
         water_bypass_ml: 30,
         mineral_profile_id: 'mineral-123',
-        final_weight: 200.0,
+        coffee_ml: 200.0,
         tds: 1.35,
         extraction_yield: 18.0,
         aroma_intensity: 7,
         aroma_notes: 'Floral',
-        acidity_intensity: 8,
-        acidity_notes: 'Bright, citrus',
-        sweetness_intensity: 6,
-        sweetness_notes: 'Subtle',
-        bitterness_intensity: 3,
-        bitterness_notes: 'Clean finish',
-        body_weight: 5,
+        body_intensity: 5,
         body_notes: 'Medium',
         flavor_intensity: 7,
         flavor_notes: 'Lemon, floral',
-        aftertaste_duration: 6,
+        brightness_intensity: 8,
+        brightness_notes: 'Bright, citrus',
+        sweetness_intensity: 6,
+        sweetness_notes: 'Subtle',
+        cleanliness_intensity: 7,
+        cleanliness_notes: 'Clean finish',
+        complexity_intensity: 6,
+        complexity_notes: 'Layered',
+        balance_intensity: 7,
+        balance_notes: 'Well balanced',
         aftertaste_intensity: 5,
         aftertaste_notes: 'Lingering citrus',
         overall_score: 8,
@@ -268,6 +272,120 @@ describe('experiments API', () => {
 
       expect(client.post).toHaveBeenCalledWith('/experiments/exp-123/copy');
       expect(result).toEqual(copiedExperiment);
+    });
+  });
+
+  describe('experiment type fields', () => {
+    it('Experiment type includes coffee_ml instead of final_weight', () => {
+      const exp: Experiment = {
+        ...mockExperiment,
+        coffee_ml: 200.0,
+        is_draft: false,
+      };
+      expect(exp.coffee_ml).toBe(200.0);
+      // Verify final_weight is not a valid key
+      expect('final_weight' in exp).toBe(false);
+    });
+
+    it('Experiment type includes is_draft field', () => {
+      const exp: Experiment = { ...mockExperiment, is_draft: false };
+      expect(exp.is_draft).toBe(false);
+
+      const draftExp: Experiment = { ...mockExperiment, is_draft: true };
+      expect(draftExp.is_draft).toBe(true);
+    });
+
+    it('Experiment type includes all 9 sensory attributes', () => {
+      const exp: Experiment = {
+        ...mockExperiment,
+        is_draft: false,
+        aroma_intensity: 7,
+        aroma_notes: 'Floral',
+        body_intensity: 6,
+        body_notes: 'Medium',
+        flavor_intensity: 8,
+        flavor_notes: 'Citrus',
+        brightness_intensity: 7,
+        brightness_notes: 'Lively',
+        sweetness_intensity: 6,
+        sweetness_notes: 'Honey',
+        cleanliness_intensity: 8,
+        cleanliness_notes: 'Clean',
+        complexity_intensity: 7,
+        complexity_notes: 'Layered',
+        balance_intensity: 8,
+        balance_notes: 'Harmonious',
+        aftertaste_intensity: 6,
+        aftertaste_notes: 'Lingering',
+      };
+
+      // Verify all 9 sensory intensity fields exist
+      expect(exp.aroma_intensity).toBe(7);
+      expect(exp.body_intensity).toBe(6);
+      expect(exp.flavor_intensity).toBe(8);
+      expect(exp.brightness_intensity).toBe(7);
+      expect(exp.sweetness_intensity).toBe(6);
+      expect(exp.cleanliness_intensity).toBe(8);
+      expect(exp.complexity_intensity).toBe(7);
+      expect(exp.balance_intensity).toBe(8);
+      expect(exp.aftertaste_intensity).toBe(6);
+
+      // Verify all 9 sensory notes fields exist
+      expect(exp.aroma_notes).toBe('Floral');
+      expect(exp.body_notes).toBe('Medium');
+      expect(exp.flavor_notes).toBe('Citrus');
+      expect(exp.brightness_notes).toBe('Lively');
+      expect(exp.sweetness_notes).toBe('Honey');
+      expect(exp.cleanliness_notes).toBe('Clean');
+      expect(exp.complexity_notes).toBe('Layered');
+      expect(exp.balance_notes).toBe('Harmonious');
+      expect(exp.aftertaste_notes).toBe('Lingering');
+    });
+
+    it('Experiment type excludes removed fields', () => {
+      const exp: Experiment = { ...mockExperiment, is_draft: false };
+      // These fields were removed in Phase 8.1 migration
+      expect('acidity_intensity' in exp).toBe(false);
+      expect('acidity_notes' in exp).toBe(false);
+      expect('bitterness_intensity' in exp).toBe(false);
+      expect('bitterness_notes' in exp).toBe(false);
+      expect('body_weight' in exp).toBe(false);
+      expect('aftertaste_duration' in exp).toBe(false);
+      expect('final_weight' in exp).toBe(false);
+    });
+
+    it('CreateExperimentInput uses body_intensity not body_weight', () => {
+      const input: CreateExperimentInput = {
+        coffee_id: 'coffee-789',
+        overall_notes: 'Test brew',
+        body_intensity: 7,
+        body_notes: 'Full',
+      };
+      expect(input.body_intensity).toBe(7);
+      expect('body_weight' in input).toBe(false);
+    });
+
+    it('CreateExperimentInput supports is_draft', () => {
+      const input: CreateExperimentInput = {
+        coffee_id: 'coffee-789',
+        overall_notes: 'Draft brew',
+        is_draft: true,
+      };
+      expect(input.is_draft).toBe(true);
+    });
+
+    it('UpdateExperimentInput supports new sensory fields', () => {
+      const input: UpdateExperimentInput = {
+        brightness_intensity: 8,
+        brightness_notes: 'Bright and lively',
+        cleanliness_intensity: 7,
+        complexity_intensity: 6,
+        balance_intensity: 8,
+      };
+      expect(input.brightness_intensity).toBe(8);
+      expect(input.cleanliness_intensity).toBe(7);
+      expect(input.complexity_intensity).toBe(6);
+      expect(input.balance_intensity).toBe(8);
     });
   });
 });

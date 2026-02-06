@@ -10,6 +10,8 @@ import {
   Star,
   Loader2,
   Pencil,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +40,8 @@ interface CoffeeDetailProps {
   onBack: () => void;
   onEdit: () => void;
   onRefresh: () => void;
+  onArchive: () => Promise<void>;
+  onUnarchive: () => Promise<void>;
 }
 
 export default function CoffeeDetail({
@@ -48,10 +52,14 @@ export default function CoffeeDetail({
   onBack,
   onEdit,
   onRefresh,
+  onArchive,
+  onUnarchive,
 }: CoffeeDetailProps) {
   const navigate = useNavigate();
   const [goalsDialogOpen, setGoalsDialogOpen] = useState(false);
   const [changeBestDialogOpen, setChangeBestDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [savingGoals, setSavingGoals] = useState(false);
   const [settingBest, setSettingBest] = useState<string | null>(null);
   const [goalsForm, setGoalsForm] = useState<CoffeeGoalInput>({});
@@ -88,7 +96,7 @@ export default function CoffeeDetail({
     setGoalsForm({
       tds: reference?.goals?.tds,
       extraction_yield: reference?.goals?.extraction_yield,
-      acidity_intensity: reference?.goals?.acidity_intensity,
+      brightness_intensity: reference?.goals?.brightness_intensity,
       sweetness_intensity: reference?.goals?.sweetness_intensity,
       overall_score: reference?.goals?.overall_score,
       notes: reference?.goals?.notes,
@@ -119,6 +127,29 @@ export default function CoffeeDetail({
       console.error('Failed to set best experiment:', error);
     } finally {
       setSettingBest(null);
+    }
+  };
+
+  const handleArchive = async () => {
+    setArchiving(true);
+    try {
+      await onArchive();
+      setArchiveDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to archive coffee:', error);
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  const handleUnarchive = async () => {
+    setArchiving(true);
+    try {
+      await onUnarchive();
+    } catch (error) {
+      console.error('Failed to unarchive coffee:', error);
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -191,7 +222,7 @@ export default function CoffeeDetail({
     const targets: string[] = [];
     if (goals.tds != null) targets.push(`TDS: ${goals.tds}%`);
     if (goals.extraction_yield != null) targets.push(`EY: ${goals.extraction_yield}%`);
-    if (goals.acidity_intensity != null) targets.push(`Acidity: ${goals.acidity_intensity}/10`);
+    if (goals.brightness_intensity != null) targets.push(`Brightness: ${goals.brightness_intensity}/10`);
     if (goals.sweetness_intensity != null) targets.push(`Sweetness: ${goals.sweetness_intensity}/10`);
     if (goals.overall_score != null) targets.push(`Overall: ${goals.overall_score}/10`);
 
@@ -242,6 +273,29 @@ export default function CoffeeDetail({
                 <Edit className="h-4 w-4 mr-1" />
                 Edit
               </Button>
+              {coffee.archived_at ? (
+                <Button
+                  variant="outline"
+                  onClick={handleUnarchive}
+                  disabled={archiving}
+                >
+                  {archiving ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <ArchiveRestore className="h-4 w-4 mr-1" />
+                  )}
+                  Unarchive
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setArchiveDialogOpen(true)}
+                  disabled={archiving}
+                >
+                  <Archive className="h-4 w-4 mr-1" />
+                  Archive
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -267,22 +321,16 @@ export default function CoffeeDetail({
 
           {/* Details */}
           <div className="grid gap-6 sm:grid-cols-2">
-            {coffee.region && (
+            {coffee.farm && (
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Region</h3>
-                <p className="mt-1">{coffee.region}</p>
+                <h3 className="text-sm font-medium text-muted-foreground">Farm</h3>
+                <p className="mt-1">{coffee.farm}</p>
               </div>
             )}
             {coffee.roast_level && (
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Roast Level</h3>
                 <p className="mt-1">{coffee.roast_level}</p>
-              </div>
-            )}
-            {coffee.purchase_date && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Purchase Date</h3>
-                <p className="mt-1">{formatDate(coffee.purchase_date)}</p>
               </div>
             )}
             {coffee.last_brewed && (
@@ -469,18 +517,18 @@ export default function CoffeeDetail({
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="acidity_intensity">Acidity (1-10)</Label>
+                <Label htmlFor="brightness_intensity">Brightness (1-10)</Label>
                 <Input
-                  id="acidity_intensity"
+                  id="brightness_intensity"
                   type="number"
                   min="1"
                   max="10"
                   placeholder="7"
-                  value={goalsForm.acidity_intensity ?? ''}
+                  value={goalsForm.brightness_intensity ?? ''}
                   onChange={(e) =>
                     setGoalsForm({
                       ...goalsForm,
-                      acidity_intensity: e.target.value ? parseInt(e.target.value) : null,
+                      brightness_intensity: e.target.value ? parseInt(e.target.value) : null,
                     })
                   }
                 />
@@ -539,6 +587,27 @@ export default function CoffeeDetail({
             <Button onClick={handleSaveGoals} disabled={savingGoals}>
               {savingGoals && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Save Goals
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Archive Confirmation Dialog */}
+      <Dialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Archive Coffee</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to archive "{coffee.name}" by {coffee.roaster}? Archived coffees are hidden from the main list but can still be referenced in experiments.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setArchiveDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleArchive} disabled={archiving}>
+              {archiving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Archive
             </Button>
           </DialogFooter>
         </DialogContent>

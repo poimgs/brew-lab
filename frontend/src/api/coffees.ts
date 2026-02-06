@@ -1,16 +1,28 @@
 import client from './client';
 
+export interface BestExperimentSummary {
+  id: string;
+  brew_date: string;
+  overall_score?: number;
+  ratio?: number;
+  water_temperature?: number;
+  filter_paper_name?: string;
+  mineral_profile_name?: string;
+  bloom_time?: number;
+  pour_count: number;
+  pour_styles: string[];
+}
+
 export interface Coffee {
   id: string;
   roaster: string;
   name: string;
   country?: string;
-  region?: string;
+  farm?: string;
   process?: string;
   roast_level?: string;
   tasting_notes?: string;
   roast_date?: string;
-  purchase_date?: string;
   notes?: string;
   best_experiment_id?: string;
   archived_at?: string;
@@ -21,6 +33,9 @@ export interface Coffee {
   days_off_roast?: number;
   experiment_count: number;
   last_brewed?: string;
+  // Enrichment fields (from list endpoint)
+  best_experiment?: BestExperimentSummary;
+  improvement_note?: string;
 }
 
 export interface FilterPaperSummary {
@@ -52,12 +67,13 @@ export interface CoffeeGoalSummary {
   tds?: number;
   extraction_yield?: number;
   aroma_intensity?: number;
-  acidity_intensity?: number;
   sweetness_intensity?: number;
-  bitterness_intensity?: number;
-  body_weight?: number;
+  body_intensity?: number;
   flavor_intensity?: number;
-  aftertaste_duration?: number;
+  brightness_intensity?: number;
+  cleanliness_intensity?: number;
+  complexity_intensity?: number;
+  balance_intensity?: number;
   aftertaste_intensity?: number;
   overall_score?: number;
   notes?: string;
@@ -72,12 +88,11 @@ export interface CoffeeInput {
   roaster: string;
   name: string;
   country?: string;
-  region?: string;
+  farm?: string;
   process?: string;
   roast_level?: string;
   tasting_notes?: string;
   roast_date?: string;
-  purchase_date?: string;
   notes?: string;
 }
 

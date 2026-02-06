@@ -71,15 +71,16 @@ func (h *Handler) Upsert(w http.ResponseWriter, r *http.Request) {
 
 	// Validate intensity fields
 	intensityFields := map[string]*int{
-		"aroma_intensity":      input.AromaIntensity,
-		"acidity_intensity":    input.AcidityIntensity,
-		"sweetness_intensity":  input.SweetnessIntensity,
-		"bitterness_intensity": input.BitternessIntensity,
-		"body_weight":          input.BodyWeight,
-		"flavor_intensity":     input.FlavorIntensity,
-		"aftertaste_duration":  input.AftertasteDuration,
-		"aftertaste_intensity": input.AftertasteIntensity,
-		"overall_score":        input.OverallScore,
+		"aroma_intensity":       input.AromaIntensity,
+		"sweetness_intensity":   input.SweetnessIntensity,
+		"body_intensity":        input.BodyIntensity,
+		"flavor_intensity":      input.FlavorIntensity,
+		"brightness_intensity":  input.BrightnessIntensity,
+		"cleanliness_intensity": input.CleanlinessIntensity,
+		"complexity_intensity":  input.ComplexityIntensity,
+		"balance_intensity":     input.BalanceIntensity,
+		"aftertaste_intensity":  input.AftertasteIntensity,
+		"overall_score":         input.OverallScore,
 	}
 
 	for field, value := range intensityFields {

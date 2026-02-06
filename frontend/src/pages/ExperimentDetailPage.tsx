@@ -174,12 +174,13 @@ export default function ExperimentDetailPage() {
     );
   }
 
-  const hasSensoryData = experiment.aroma_intensity || experiment.acidity_intensity ||
-    experiment.sweetness_intensity || experiment.bitterness_intensity ||
-    experiment.body_weight || experiment.flavor_intensity ||
-    experiment.aftertaste_duration || experiment.aftertaste_intensity;
+  const hasSensoryData = experiment.aroma_intensity || experiment.body_intensity ||
+    experiment.flavor_intensity || experiment.brightness_intensity ||
+    experiment.sweetness_intensity || experiment.cleanliness_intensity ||
+    experiment.complexity_intensity || experiment.balance_intensity ||
+    experiment.aftertaste_intensity;
 
-  const hasQuantitativeData = experiment.final_weight || experiment.tds || experiment.extraction_yield;
+  const hasQuantitativeData = experiment.coffee_ml || experiment.tds || experiment.extraction_yield;
 
   const hasPreBrewData = experiment.coffee_weight || experiment.water_weight ||
     experiment.ratio || experiment.grind_size || experiment.water_temperature || experiment.filter_paper;
@@ -203,9 +204,9 @@ export default function ExperimentDetailPage() {
             {isCopying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
             <span className="ml-2 hidden sm:inline">Use as Template</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+          <Button variant={experiment.is_draft ? 'default' : 'outline'} size="sm" onClick={() => setIsEditing(true)}>
             <Edit className="h-4 w-4" />
-            <span className="ml-2 hidden sm:inline">Edit</span>
+            <span className="ml-2 hidden sm:inline">{experiment.is_draft ? 'Continue Editing' : 'Edit'}</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowDeleteDialog(true)} className="text-destructive hover:text-destructive">
             <Trash2 className="h-4 w-4" />
@@ -221,6 +222,9 @@ export default function ExperimentDetailPage() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 {experiment.coffee?.name || 'Unknown Coffee'}
+                {experiment.is_draft && (
+                  <Badge variant="outline">Draft</Badge>
+                )}
                 {experiment.overall_score && (
                   <Badge variant="secondary" className="text-lg px-2">
                     {experiment.overall_score}/10
@@ -325,7 +329,7 @@ export default function ExperimentDetailPage() {
             <div>
               <h3 className="font-medium mb-3 pb-2 border-b">Quantitative Outcomes</h3>
               <div className="space-y-0">
-                <DetailRow label="Final Weight" value={experiment.final_weight} unit="g" />
+                <DetailRow label="Coffee" value={experiment.coffee_ml} unit="ml" />
                 <DetailRow label="TDS" value={experiment.tds} unit="%" />
                 <DetailRow label="Extraction Yield" value={experiment.extraction_yield} unit="%" />
               </div>
@@ -338,13 +342,14 @@ export default function ExperimentDetailPage() {
               <h3 className="font-medium mb-3 pb-2 border-b">Sensory Outcomes</h3>
               <div className="space-y-0">
                 <SensoryRow label="Aroma" intensity={experiment.aroma_intensity} notes={experiment.aroma_notes} />
-                <SensoryRow label="Acidity" intensity={experiment.acidity_intensity} notes={experiment.acidity_notes} />
-                <SensoryRow label="Sweetness" intensity={experiment.sweetness_intensity} notes={experiment.sweetness_notes} />
-                <SensoryRow label="Bitterness" intensity={experiment.bitterness_intensity} notes={experiment.bitterness_notes} />
-                <SensoryRow label="Body" intensity={experiment.body_weight} notes={experiment.body_notes} />
+                <SensoryRow label="Body" intensity={experiment.body_intensity} notes={experiment.body_notes} />
                 <SensoryRow label="Flavor" intensity={experiment.flavor_intensity} notes={experiment.flavor_notes} />
-                <SensoryRow label="Aftertaste Duration" intensity={experiment.aftertaste_duration} />
-                <SensoryRow label="Aftertaste Intensity" intensity={experiment.aftertaste_intensity} notes={experiment.aftertaste_notes} />
+                <SensoryRow label="Brightness" intensity={experiment.brightness_intensity} notes={experiment.brightness_notes} />
+                <SensoryRow label="Sweetness" intensity={experiment.sweetness_intensity} notes={experiment.sweetness_notes} />
+                <SensoryRow label="Cleanliness" intensity={experiment.cleanliness_intensity} notes={experiment.cleanliness_notes} />
+                <SensoryRow label="Complexity" intensity={experiment.complexity_intensity} notes={experiment.complexity_notes} />
+                <SensoryRow label="Balance" intensity={experiment.balance_intensity} notes={experiment.balance_notes} />
+                <SensoryRow label="Aftertaste" intensity={experiment.aftertaste_intensity} notes={experiment.aftertaste_notes} />
               </div>
             </div>
           )}

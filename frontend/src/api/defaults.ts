@@ -13,9 +13,17 @@ export const SUPPORTED_FIELDS = [
   'filter_paper_id',
   'bloom_water',
   'bloom_time',
+  'pour_defaults',
 ] as const;
 
 export type DefaultField = (typeof SUPPORTED_FIELDS)[number];
+
+// Pour default template stored as JSON string in pour_defaults field
+export interface PourDefault {
+  water_amount?: number;
+  pour_style?: string;
+  notes?: string;
+}
 
 export async function getDefaults(): Promise<Defaults> {
   const response = await client.get<Defaults>('/defaults');

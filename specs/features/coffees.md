@@ -7,7 +7,7 @@ The Coffees feature manages coffee bean metadata as a first-class entity, indepe
 - **Best Brew** tracking - mark an experiment as your best brew for each coffee
 - **Target Goals** - set desired outcome targets and improvement notes
 
-**Route:** `/coffees`
+**Route:** `/` (landing page)
 
 **Dependencies:** authentication
 
@@ -21,14 +21,13 @@ The Coffees feature manages coffee bean metadata as a first-class entity, indepe
 |-------|------|----------|-------------|
 | id | UUID | Auto | Unique identifier |
 | roaster | string | Yes | Company/person who roasted the beans |
-| name | string | Yes | Coffee name (farm, blend name, etc.) |
+| name | string | Yes | Coffee name (blend name, varietal, etc.) |
 | country | string | No | Origin country |
-| region | string | No | Specific region within country |
+| farm | string | No | Farm or estate name |
 | process | string | No | Processing method (Washed, Natural, Honey, etc.) |
 | roast_level | enum | No | Light, Medium, Medium-Dark, Dark |
 | tasting_notes | string | No | Roaster's described flavor notes |
 | roast_date | date | No | Date the coffee was roasted |
-| purchase_date | date | No | Date acquired |
 | notes | text | No | Personal notes about this coffee |
 | best_experiment_id | UUID | No | FK to experiment marked as "best" |
 | archived_at | timestamp | No | When coffee was archived (hidden but still usable) |
@@ -40,9 +39,8 @@ The Coffees feature manages coffee bean metadata as a first-class entity, indepe
 
 1. `roaster` and `name` together should be treated as a logical identifier (not enforced unique, but used for display)
 2. `roast_date` cannot be in the future
-3. `purchase_date` cannot be before `roast_date` if both are provided
-4. `best_experiment_id` must reference an experiment belonging to this coffee
-5. `process` is free-text but UI may suggest common values:
+3. `best_experiment_id` must reference an experiment belonging to this coffee
+4. `process` is free-text but UI may suggest common values:
    - Washed
    - Natural
    - Honey (Yellow, Red, Black)
@@ -74,12 +72,11 @@ CREATE TABLE coffees (
     roaster VARCHAR(255) NOT NULL,
     name VARCHAR(255) NOT NULL,
     country VARCHAR(100),
-    region VARCHAR(255),
+    farm VARCHAR(255),
     process VARCHAR(100),
     roast_level VARCHAR(50),
     tasting_notes TEXT,
     roast_date DATE,
-    purchase_date DATE,
     notes TEXT,
     best_experiment_id UUID REFERENCES experiments(id) ON DELETE SET NULL,
     archived_at TIMESTAMP WITH TIME ZONE,
@@ -110,12 +107,13 @@ Target outcomes for a coffee. One set of goals per coffee.
 | tds | decimal | No | Target TDS |
 | extraction_yield | decimal | No | Target extraction % |
 | aroma_intensity | int 1-10 | No | Target aroma |
-| acidity_intensity | int 1-10 | No | Target acidity |
 | sweetness_intensity | int 1-10 | No | Target sweetness |
-| bitterness_intensity | int 1-10 | No | Target bitterness |
-| body_weight | int 1-10 | No | Target body |
+| body_intensity | int 1-10 | No | Target body |
 | flavor_intensity | int 1-10 | No | Target flavor |
-| aftertaste_duration | int 1-10 | No | Target aftertaste duration |
+| brightness_intensity | int 1-10 | No | Target brightness (perceived acidity quality) |
+| cleanliness_intensity | int 1-10 | No | Target cleanliness (clarity of flavors) |
+| complexity_intensity | int 1-10 | No | Target complexity (layered flavors) |
+| balance_intensity | int 1-10 | No | Target balance (harmony of attributes) |
 | aftertaste_intensity | int 1-10 | No | Target aftertaste intensity |
 | overall_score | int 1-10 | No | Target overall |
 | notes | text | No | What to change to achieve goals |
@@ -131,12 +129,13 @@ CREATE TABLE coffee_goals (
     tds DECIMAL(4,2),
     extraction_yield DECIMAL(5,2),
     aroma_intensity INTEGER CHECK (aroma_intensity BETWEEN 1 AND 10),
-    acidity_intensity INTEGER CHECK (acidity_intensity BETWEEN 1 AND 10),
     sweetness_intensity INTEGER CHECK (sweetness_intensity BETWEEN 1 AND 10),
-    bitterness_intensity INTEGER CHECK (bitterness_intensity BETWEEN 1 AND 10),
-    body_weight INTEGER CHECK (body_weight BETWEEN 1 AND 10),
+    body_intensity INTEGER CHECK (body_intensity BETWEEN 1 AND 10),
     flavor_intensity INTEGER CHECK (flavor_intensity BETWEEN 1 AND 10),
-    aftertaste_duration INTEGER CHECK (aftertaste_duration BETWEEN 1 AND 10),
+    brightness_intensity INTEGER CHECK (brightness_intensity BETWEEN 1 AND 10),
+    cleanliness_intensity INTEGER CHECK (cleanliness_intensity BETWEEN 1 AND 10),
+    complexity_intensity INTEGER CHECK (complexity_intensity BETWEEN 1 AND 10),
+    balance_intensity INTEGER CHECK (balance_intensity BETWEEN 1 AND 10),
     aftertaste_intensity INTEGER CHECK (aftertaste_intensity BETWEEN 1 AND 10),
     overall_score INTEGER CHECK (overall_score BETWEEN 1 AND 10),
     notes TEXT,
@@ -178,12 +177,11 @@ GET /api/v1/coffees
       "roaster": "Cata Coffee",
       "name": "Kiamaina",
       "country": "Kenya",
-      "region": "Nyeri",
+      "farm": "Kiamaina Estate",
       "process": "Washed",
       "roast_level": "Light",
       "tasting_notes": "Apricot Nectar, Lemon Sorbet, Raw Honey",
       "roast_date": "2025-11-19",
-      "purchase_date": "2025-11-22",
       "notes": "Best around 3-4 weeks off roast",
       "best_experiment_id": "uuid",
       "days_off_roast": 61,
@@ -213,12 +211,11 @@ POST /api/v1/coffees
   "roaster": "Cata Coffee",
   "name": "Kiamaina",
   "country": "Kenya",
-  "region": "Nyeri",
+  "farm": "Kiamaina Estate",
   "process": "Washed",
   "roast_level": "Light",
   "tasting_notes": "Apricot Nectar, Lemon Sorbet, Raw Honey",
   "roast_date": "2025-11-19",
-  "purchase_date": "2025-11-22",
   "notes": "Best around 3-4 weeks off roast"
 }
 ```
@@ -443,26 +440,39 @@ Returns the best experiment (or latest if none marked as best) along with target
 
 ## User Interface
 
-### Coffee List View
+### Coffee Grid View
 
-**Route:** `/coffees`
+**Route:** `/` (landing page)
 
-**Display Columns:**
-- Roaster
-- Name
-- Country
-- Process
-- Roast Date
-- Days Since Roast (calculated)
-- Experiment Count
-- Last Brewed
+**Layout:** Responsive grid of coffee cards
 
-**Interactions:**
-- Click row → Coffee detail view
-- Sort by any column
-- Filter by roaster, country, process
-- Search by name/roaster
-- "Add Coffee" button
+**Responsive Card Count:**
+- Mobile (< 640px): 1 column
+- Tablet (640px - 1024px): 2 columns
+- Desktop (> 1024px): 3 columns
+
+**Card Content:**
+- Coffee name (bold, primary)
+- Roaster name (muted)
+- Archived badge (if archived)
+- Best Brew section:
+  - "Best Brew (date)" + score badge
+  - Params: ratio, temperature, filter, minerals
+  - Pour info: bloom time, pour count, pour style(s)
+  - Improvement note snippet (from coffee goals)
+- Quick action button:
+  - Normal view: "+ New Experiment" button
+  - Archived view: "Re-activate" button
+
+**Card Behavior:**
+- Click card → Coffee detail view (`/coffees/:id`)
+- Click quick action button → Respective action (new experiment or unarchive)
+
+**Toolbar (above grid):**
+- Search input with icon
+- "Show Archived" toggle button
+- Sort dropdown (roaster, name, country, roast_date, experiment_count, created_at)
+- "+ Add Coffee" button
 
 **Empty State:**
 - Message: "No coffees in your library yet"
@@ -480,16 +490,13 @@ Returns the best experiment (or latest if none marked as best) along with target
 │                                         │
 │ ─── Origin ───                          │
 │ Country          [________________]     │
-│ Region           [________________]     │
+│ Farm             [________________]     │
 │                                         │
 │ ─── Details ───                         │
 │ Process          [________________]     │
 │ Roast Level      [Light ▼        ]     │
 │ Tasting Notes    [________________]     │
-│                                         │
-│ ─── Dates ───                           │
 │ Roast Date       [____/____/____]       │
-│ Purchase Date    [____/____/____]       │
 │                                         │
 │ ─── Notes ───                           │
 │ Personal Notes   [                ]     │
@@ -502,6 +509,7 @@ Returns the best experiment (or latest if none marked as best) along with target
 **Field Behavior:**
 - Roaster: Autocomplete from existing roasters
 - Country: Autocomplete from existing + common list
+- Farm: Free text for farm/estate name
 - Process: Autocomplete from existing + common list
 - Roast Level: Dropdown (Light, Medium, Medium-Dark, Dark)
 - Roast Date: Date picker, defaults empty
@@ -515,6 +523,9 @@ Returns the best experiment (or latest if none marked as best) along with target
 **Header Actions:**
 - **[+ New Experiment]** - Navigates to `/experiments/new?coffee_id=:id` with coffee pre-selected
 - **[Edit]** - Opens edit form for coffee metadata
+- **[Archive]** / **[Unarchive]** - Archives or unarchives the coffee
+
+Note: Delete functionality is not exposed in the UI. Use archive to hide coffees while preserving experiment history.
 
 **Layout:**
 ```
@@ -522,7 +533,7 @@ Returns the best experiment (or latest if none marked as best) along with target
 │ ← Back to Coffees                                   │
 │                                                     │
 │ Kiamaina                    [+ New Experiment] [Edit] │
-│ Cata Coffee · Kenya · Washed                        │
+│ Cata Coffee · Kenya · Kiamaina Estate · Washed      │
 │                                                     │
 │ ┌──────────┬──────────┬──────────────────┐          │
 │ │ Roasted  │ Days Off │ Experiments      │          │

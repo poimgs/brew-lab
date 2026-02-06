@@ -1,11 +1,14 @@
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, ArchiveRestore } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { RecentCoffee } from '@/api/home';
+import { Badge } from '@/components/ui/badge';
+import type { Coffee } from '@/api/coffees';
 
 interface CoffeeCardProps {
-  coffee: RecentCoffee;
+  coffee: Coffee;
+  onNewExperiment: (coffeeId: string) => void;
+  onReactivate?: (coffeeId: string) => void;
 }
 
 function formatDate(dateStr: string): string {
@@ -13,7 +16,7 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-function formatPourInfo(bloomTime?: number | null, pourCount?: number, pourStyles?: string[]): string {
+function formatPourInfo(bloomTime?: number, pourCount?: number, pourStyles?: string[]): string {
   const parts: string[] = [];
 
   if (bloomTime) {
@@ -35,17 +38,22 @@ function formatPourInfo(bloomTime?: number | null, pourCount?: number, pourStyle
   return parts.join(' \u2192 ');
 }
 
-export default function CoffeeCard({ coffee }: CoffeeCardProps) {
+export default function CoffeeCard({ coffee, onNewExperiment, onReactivate }: CoffeeCardProps) {
   const navigate = useNavigate();
   const { best_experiment, improvement_note } = coffee;
+  const isArchived = !!coffee.archived_at;
 
   const handleCardClick = () => {
     navigate(`/coffees/${coffee.id}`);
   };
 
-  const handleNewBrew = (e: React.MouseEvent) => {
+  const handleAction = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/experiments/new?coffee_id=${coffee.id}`);
+    if (isArchived && onReactivate) {
+      onReactivate(coffee.id);
+    } else {
+      onNewExperiment(coffee.id);
+    }
   };
 
   // Build params string: ratio, temp, filter, minerals
@@ -70,45 +78,48 @@ export default function CoffeeCard({ coffee }: CoffeeCardProps) {
 
   return (
     <Card
-      className="flex-shrink-0 w-full min-h-[200px] cursor-pointer hover:shadow-md transition-shadow"
+      className="cursor-pointer hover:shadow-md transition-shadow"
       onClick={handleCardClick}
     >
-      <CardContent className="h-full flex flex-col py-4">
+      <CardContent className="flex flex-col h-full py-4">
         {/* Header: Coffee name and roaster */}
         <div className="mb-3">
-          <h3 className="font-semibold text-base truncate">{coffee.name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-base truncate">{coffee.name}</h3>
+            {isArchived && (
+              <Badge variant="secondary" className="text-xs shrink-0">
+                Archived
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground truncate">{coffee.roaster}</p>
         </div>
 
         {/* Best Brew info */}
         {best_experiment ? (
           <div className="flex-1 space-y-1 text-sm">
-            {/* Best brew date and score */}
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
                 Best Brew ({formatDate(best_experiment.brew_date)})
               </span>
-              <span className="font-bold text-primary">
-                {best_experiment.overall_score !== null
-                  ? `${best_experiment.overall_score}/10`
-                  : '\u2014'}
-              </span>
+              {best_experiment.overall_score != null && (
+                <Badge variant="outline" className="font-bold">
+                  {best_experiment.overall_score}/10
+                </Badge>
+              )}
             </div>
 
-            {/* Params line */}
             {paramsLine && (
               <p className="text-muted-foreground truncate">{paramsLine}</p>
             )}
 
-            {/* Pour info */}
             {pourInfo && (
               <p className="text-muted-foreground truncate">{pourInfo}</p>
             )}
 
-            {/* Improvement note */}
             {improvement_note && (
               <p className="text-muted-foreground italic line-clamp-2 mt-2">
-                "{improvement_note}"
+                &ldquo;{improvement_note}&rdquo;
               </p>
             )}
           </div>
@@ -118,17 +129,27 @@ export default function CoffeeCard({ coffee }: CoffeeCardProps) {
           </div>
         )}
 
-        {/* New Brew button */}
+        {/* Action button */}
         <div className="mt-3 flex justify-end">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleNewBrew}
-            className="text-primary border-primary hover:bg-primary/10"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            New Brew
-          </Button>
+          {isArchived ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleAction}
+            >
+              <ArchiveRestore className="h-4 w-4 mr-1" />
+              Re-activate
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleAction}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              New Experiment
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -1,6 +1,8 @@
 package defaults
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +21,43 @@ type UserDefault struct {
 // Defaults represents the map of all user defaults
 type Defaults map[string]string
 
+// PourDefault represents a single pour template in user defaults
+type PourDefault struct {
+	WaterAmount *float64 `json:"water_amount,omitempty"`
+	PourStyle   *string  `json:"pour_style,omitempty"`
+	Notes       *string  `json:"notes,omitempty"`
+}
+
+// ValidPourStyles lists acceptable pour style values
+var ValidPourStyles = map[string]bool{
+	"circular": true,
+	"center":   true,
+	"pulse":    true,
+}
+
+// ValidatePourDefaults validates a JSON string representing pour defaults
+func ValidatePourDefaults(value string) error {
+	var pours []PourDefault
+	if err := json.Unmarshal([]byte(value), &pours); err != nil {
+		return fmt.Errorf("pour_defaults must be a valid JSON array of pour objects")
+	}
+	if len(pours) == 0 {
+		return fmt.Errorf("pour_defaults must contain at least one pour")
+	}
+	if len(pours) > 10 {
+		return fmt.Errorf("pour_defaults cannot have more than 10 pours")
+	}
+	for i, p := range pours {
+		if p.WaterAmount != nil && *p.WaterAmount <= 0 {
+			return fmt.Errorf("pour %d: water_amount must be positive", i+1)
+		}
+		if p.PourStyle != nil && *p.PourStyle != "" && !ValidPourStyles[*p.PourStyle] {
+			return fmt.Errorf("pour %d: invalid pour_style '%s'", i+1, *p.PourStyle)
+		}
+	}
+	return nil
+}
+
 // SupportedFields lists all fields that can have defaults
 var SupportedFields = map[string]bool{
 	"coffee_weight":      true,
@@ -29,6 +68,7 @@ var SupportedFields = map[string]bool{
 	"filter_paper_id":    true,
 	"bloom_water":        true,
 	"bloom_time":         true,
+	"pour_defaults":      true,
 }
 
 // IsValidField checks if a field name is supported for defaults

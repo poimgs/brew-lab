@@ -1039,6 +1039,374 @@ func TestHandler_Export_EmptyResult(t *testing.T) {
 	}
 }
 
+func TestHandler_Create_NewSensoryFields(t *testing.T) {
+	repo := newMockRepository()
+	repo.createFunc = func(ctx context.Context, userID uuid.UUID, input CreateExperimentInput) (*Experiment, error) {
+		exp := &Experiment{
+			ID:                   uuid.New(),
+			UserID:               userID,
+			CoffeeID:             input.CoffeeID,
+			BrewDate:             time.Now(),
+			OverallNotes:         input.OverallNotes,
+			OverallScore:         input.OverallScore,
+			BrightnessIntensity:  input.BrightnessIntensity,
+			BrightnessNotes:      input.BrightnessNotes,
+			CleanlinessIntensity: input.CleanlinessIntensity,
+			CleanlinessNotes:     input.CleanlinessNotes,
+			ComplexityIntensity:  input.ComplexityIntensity,
+			ComplexityNotes:      input.ComplexityNotes,
+			BalanceIntensity:     input.BalanceIntensity,
+			BalanceNotes:         input.BalanceNotes,
+			CoffeeMl:             input.CoffeeMl,
+			CreatedAt:            time.Now(),
+			UpdatedAt:            time.Now(),
+			Coffee: &CoffeeSummary{
+				ID:      input.CoffeeID,
+				Roaster: "Test Roaster",
+				Name:    "Test Coffee",
+			},
+		}
+		if input.IsDraft != nil {
+			exp.IsDraft = *input.IsDraft
+		}
+		return exp, nil
+	}
+
+	handler := NewHandler(repo)
+	userID := uuid.New()
+	coffeeID := uuid.New()
+
+	tests := []struct {
+		name           string
+		body           CreateExperimentInput
+		expectedStatus int
+	}{
+		{
+			name: "valid with all new sensory fields",
+			body: CreateExperimentInput{
+				CoffeeID:             coffeeID,
+				OverallNotes:         "A well-balanced cup with complex flavors",
+				OverallScore:         intPtr(8),
+				BrightnessIntensity:  intPtr(7),
+				BrightnessNotes:      strPtr("Citric brightness"),
+				CleanlinessIntensity: intPtr(8),
+				CleanlinessNotes:     strPtr("Very clean finish"),
+				ComplexityIntensity:  intPtr(6),
+				ComplexityNotes:      strPtr("Multiple flavor layers"),
+				BalanceIntensity:     intPtr(9),
+				BalanceNotes:         strPtr("Harmonious overall"),
+			},
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name: "valid with coffee_ml and is_draft",
+			body: CreateExperimentInput{
+				CoffeeID:     coffeeID,
+				OverallNotes: "Draft experiment for testing purposes",
+				CoffeeMl:     floatPtr(180.5),
+				IsDraft:      boolPtr(true),
+			},
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name: "brightness_intensity too high",
+			body: CreateExperimentInput{
+				CoffeeID:            coffeeID,
+				OverallNotes:        "Testing brightness validation with high value",
+				BrightnessIntensity: intPtr(11),
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "brightness_intensity too low",
+			body: CreateExperimentInput{
+				CoffeeID:            coffeeID,
+				OverallNotes:        "Testing brightness validation with low value",
+				BrightnessIntensity: intPtr(0),
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "cleanliness_intensity out of range",
+			body: CreateExperimentInput{
+				CoffeeID:             coffeeID,
+				OverallNotes:         "Testing cleanliness validation boundary",
+				CleanlinessIntensity: intPtr(15),
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "complexity_intensity out of range",
+			body: CreateExperimentInput{
+				CoffeeID:            coffeeID,
+				OverallNotes:        "Testing complexity validation boundary",
+				ComplexityIntensity: intPtr(-1),
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "balance_intensity out of range",
+			body: CreateExperimentInput{
+				CoffeeID:         coffeeID,
+				OverallNotes:     "Testing balance validation boundary value",
+				BalanceIntensity: intPtr(0),
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "valid boundary values at 1 and 10",
+			body: CreateExperimentInput{
+				CoffeeID:             coffeeID,
+				OverallNotes:         "Testing boundary values one and ten",
+				BrightnessIntensity:  intPtr(1),
+				CleanlinessIntensity: intPtr(10),
+				ComplexityIntensity:  intPtr(1),
+				BalanceIntensity:     intPtr(10),
+			},
+			expectedStatus: http.StatusCreated,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, _ := json.Marshal(tt.body)
+			req := createRequestWithUser("POST", "/experiments", body, userID)
+			rr := httptest.NewRecorder()
+
+			handler.Create(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+
+			// For successful creates, verify the response includes the new fields
+			if tt.expectedStatus == http.StatusCreated {
+				var exp Experiment
+				if err := json.NewDecoder(rr.Body).Decode(&exp); err != nil {
+					t.Fatalf("failed to decode response: %v", err)
+				}
+
+				if tt.body.BrightnessIntensity != nil && (exp.BrightnessIntensity == nil || *exp.BrightnessIntensity != *tt.body.BrightnessIntensity) {
+					t.Errorf("brightness_intensity mismatch: got %v, want %v", exp.BrightnessIntensity, *tt.body.BrightnessIntensity)
+				}
+				if tt.body.CleanlinessIntensity != nil && (exp.CleanlinessIntensity == nil || *exp.CleanlinessIntensity != *tt.body.CleanlinessIntensity) {
+					t.Errorf("cleanliness_intensity mismatch: got %v, want %v", exp.CleanlinessIntensity, *tt.body.CleanlinessIntensity)
+				}
+				if tt.body.ComplexityIntensity != nil && (exp.ComplexityIntensity == nil || *exp.ComplexityIntensity != *tt.body.ComplexityIntensity) {
+					t.Errorf("complexity_intensity mismatch: got %v, want %v", exp.ComplexityIntensity, *tt.body.ComplexityIntensity)
+				}
+				if tt.body.BalanceIntensity != nil && (exp.BalanceIntensity == nil || *exp.BalanceIntensity != *tt.body.BalanceIntensity) {
+					t.Errorf("balance_intensity mismatch: got %v, want %v", exp.BalanceIntensity, *tt.body.BalanceIntensity)
+				}
+				if tt.body.CoffeeMl != nil && (exp.CoffeeMl == nil || *exp.CoffeeMl != *tt.body.CoffeeMl) {
+					t.Errorf("coffee_ml mismatch: got %v, want %v", exp.CoffeeMl, *tt.body.CoffeeMl)
+				}
+				if tt.body.IsDraft != nil && exp.IsDraft != *tt.body.IsDraft {
+					t.Errorf("is_draft mismatch: got %v, want %v", exp.IsDraft, *tt.body.IsDraft)
+				}
+			}
+		})
+	}
+}
+
+func TestHandler_Create_Draft(t *testing.T) {
+	repo := newMockRepository()
+	repo.createFunc = func(ctx context.Context, userID uuid.UUID, input CreateExperimentInput) (*Experiment, error) {
+		exp := &Experiment{
+			ID:           uuid.New(),
+			UserID:       userID,
+			CoffeeID:     input.CoffeeID,
+			BrewDate:     time.Now(),
+			OverallNotes: input.OverallNotes,
+			OverallScore: input.OverallScore,
+			CoffeeWeight: input.CoffeeWeight,
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
+			Coffee: &CoffeeSummary{
+				ID:      input.CoffeeID,
+				Roaster: "Test Roaster",
+				Name:    "Test Coffee",
+			},
+		}
+		if input.IsDraft != nil {
+			exp.IsDraft = *input.IsDraft
+		}
+		return exp, nil
+	}
+
+	handler := NewHandler(repo)
+	userID := uuid.New()
+	coffeeID := uuid.New()
+
+	tests := []struct {
+		name           string
+		body           CreateExperimentInput
+		expectedStatus int
+		checkResponse  func(t *testing.T, exp *Experiment)
+	}{
+		{
+			name: "draft with empty overall_notes is allowed",
+			body: CreateExperimentInput{
+				CoffeeID:     coffeeID,
+				OverallNotes: "",
+				IsDraft:      boolPtr(true),
+				CoffeeWeight: floatPtr(15.0),
+			},
+			expectedStatus: http.StatusCreated,
+			checkResponse: func(t *testing.T, exp *Experiment) {
+				if !exp.IsDraft {
+					t.Error("expected is_draft to be true")
+				}
+				if exp.OverallNotes != "" {
+					t.Errorf("expected empty overall_notes, got %q", exp.OverallNotes)
+				}
+			},
+		},
+		{
+			name: "draft with short overall_notes is allowed",
+			body: CreateExperimentInput{
+				CoffeeID:     coffeeID,
+				OverallNotes: "Short",
+				IsDraft:      boolPtr(true),
+			},
+			expectedStatus: http.StatusCreated,
+			checkResponse: func(t *testing.T, exp *Experiment) {
+				if !exp.IsDraft {
+					t.Error("expected is_draft to be true")
+				}
+				if exp.OverallNotes != "Short" {
+					t.Errorf("expected overall_notes 'Short', got %q", exp.OverallNotes)
+				}
+			},
+		},
+		{
+			name: "non-draft with short overall_notes is rejected",
+			body: CreateExperimentInput{
+				CoffeeID:     coffeeID,
+				OverallNotes: "Short",
+				IsDraft:      boolPtr(false),
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "non-draft without is_draft field still validates notes",
+			body: CreateExperimentInput{
+				CoffeeID:     coffeeID,
+				OverallNotes: "Too short",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "draft still validates intensity scores",
+			body: CreateExperimentInput{
+				CoffeeID:       coffeeID,
+				OverallNotes:   "",
+				IsDraft:        boolPtr(true),
+				AromaIntensity: intPtr(15),
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "draft still requires coffee_id",
+			body: CreateExperimentInput{
+				OverallNotes: "",
+				IsDraft:      boolPtr(true),
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, _ := json.Marshal(tt.body)
+			req := createRequestWithUser("POST", "/experiments", body, userID)
+			rr := httptest.NewRecorder()
+
+			handler.Create(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+
+			if tt.checkResponse != nil && rr.Code == tt.expectedStatus {
+				var exp Experiment
+				if err := json.NewDecoder(rr.Body).Decode(&exp); err != nil {
+					t.Fatalf("failed to decode response: %v", err)
+				}
+				tt.checkResponse(t, &exp)
+			}
+		})
+	}
+}
+
+func TestHandler_Update_Draft(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	experimentID := uuid.New()
+	coffeeID := uuid.New()
+
+	// Add an experiment to the mock repo
+	repo.experiments[experimentID] = &Experiment{
+		ID:           experimentID,
+		UserID:       userID,
+		CoffeeID:     coffeeID,
+		BrewDate:     time.Now(),
+		IsDraft:      true,
+		OverallNotes: "",
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+
+	tests := []struct {
+		name           string
+		body           UpdateExperimentInput
+		expectedStatus int
+	}{
+		{
+			name: "update draft with short notes is allowed",
+			body: UpdateExperimentInput{
+				OverallNotes: strPtr("Short"),
+				IsDraft:      boolPtr(true),
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name: "finalize draft with valid notes succeeds",
+			body: UpdateExperimentInput{
+				OverallNotes: strPtr("This is a valid note with enough characters"),
+				IsDraft:      boolPtr(false),
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name: "finalize draft with short notes is rejected",
+			body: UpdateExperimentInput{
+				OverallNotes: strPtr("Short"),
+				IsDraft:      boolPtr(false),
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, _ := json.Marshal(tt.body)
+			req := createRequestWithUser("PUT", "/experiments/"+experimentID.String(), body, userID)
+			rr := httptest.NewRecorder()
+
+			r := chi.NewRouter()
+			r.Put("/experiments/{id}", handler.Update)
+			r.ServeHTTP(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+		})
+	}
+}
+
 // Helper function for string contains check
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
@@ -1064,4 +1432,8 @@ func floatPtr(f float64) *float64 {
 
 func strPtr(s string) *string {
 	return &s
+}
+
+func boolPtr(b bool) *bool {
+	return &b
 }

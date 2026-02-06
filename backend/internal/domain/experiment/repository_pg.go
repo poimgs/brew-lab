@@ -57,47 +57,56 @@ func (r *PostgresRepository) Create(ctx context.Context, userID uuid.UUID, input
 		brewDate = *input.BrewDate
 	}
 
+	isDraft := false
+	if input.IsDraft != nil {
+		isDraft = *input.IsDraft
+	}
+
 	experiment := &Experiment{
-		ID:                  uuid.New(),
-		UserID:              userID,
-		CoffeeID:            input.CoffeeID,
-		BrewDate:            brewDate,
-		CoffeeWeight:        input.CoffeeWeight,
-		WaterWeight:         waterWeight,
-		Ratio:               input.Ratio,
-		GrindSize:           input.GrindSize,
-		WaterTemperature:    input.WaterTemperature,
-		FilterPaperID:       input.FilterPaperID,
-		BloomWater:          input.BloomWater,
-		BloomTime:           input.BloomTime,
-		TotalBrewTime:       input.TotalBrewTime,
-		DrawdownTime:        input.DrawdownTime,
-		TechniqueNotes:      input.TechniqueNotes,
-		WaterBypassML:       input.WaterBypassML,
-		MineralProfileID:    input.MineralProfileID,
-		FinalWeight:         input.FinalWeight,
-		TDS:                 input.TDS,
-		ExtractionYield:     input.ExtractionYield,
-		AromaIntensity:      input.AromaIntensity,
-		AromaNotes:          input.AromaNotes,
-		AcidityIntensity:    input.AcidityIntensity,
-		AcidityNotes:        input.AcidityNotes,
-		SweetnessIntensity:  input.SweetnessIntensity,
-		SweetnessNotes:      input.SweetnessNotes,
-		BitternessIntensity: input.BitternessIntensity,
-		BitternessNotes:     input.BitternessNotes,
-		BodyWeight:          input.BodyWeight,
-		BodyNotes:           input.BodyNotes,
-		FlavorIntensity:     input.FlavorIntensity,
-		FlavorNotes:         input.FlavorNotes,
-		AftertasteDuration:  input.AftertasteDuration,
-		AftertasteIntensity: input.AftertasteIntensity,
-		AftertasteNotes:     input.AftertasteNotes,
-		OverallScore:        input.OverallScore,
-		OverallNotes:        input.OverallNotes,
-		ImprovementNotes:    input.ImprovementNotes,
-		CreatedAt:           time.Now(),
-		UpdatedAt:           time.Now(),
+		ID:                   uuid.New(),
+		UserID:               userID,
+		CoffeeID:             input.CoffeeID,
+		BrewDate:             brewDate,
+		CoffeeWeight:         input.CoffeeWeight,
+		WaterWeight:          waterWeight,
+		Ratio:                input.Ratio,
+		GrindSize:            input.GrindSize,
+		WaterTemperature:     input.WaterTemperature,
+		FilterPaperID:        input.FilterPaperID,
+		BloomWater:           input.BloomWater,
+		BloomTime:            input.BloomTime,
+		TotalBrewTime:        input.TotalBrewTime,
+		DrawdownTime:         input.DrawdownTime,
+		TechniqueNotes:       input.TechniqueNotes,
+		WaterBypassML:        input.WaterBypassML,
+		MineralProfileID:     input.MineralProfileID,
+		CoffeeMl:             input.CoffeeMl,
+		TDS:                  input.TDS,
+		ExtractionYield:      input.ExtractionYield,
+		IsDraft:              isDraft,
+		AromaIntensity:       input.AromaIntensity,
+		AromaNotes:           input.AromaNotes,
+		BodyIntensity:        input.BodyIntensity,
+		BodyNotes:            input.BodyNotes,
+		FlavorIntensity:      input.FlavorIntensity,
+		FlavorNotes:          input.FlavorNotes,
+		BrightnessIntensity:  input.BrightnessIntensity,
+		BrightnessNotes:      input.BrightnessNotes,
+		SweetnessIntensity:   input.SweetnessIntensity,
+		SweetnessNotes:       input.SweetnessNotes,
+		CleanlinessIntensity: input.CleanlinessIntensity,
+		CleanlinessNotes:     input.CleanlinessNotes,
+		ComplexityIntensity:  input.ComplexityIntensity,
+		ComplexityNotes:      input.ComplexityNotes,
+		BalanceIntensity:     input.BalanceIntensity,
+		BalanceNotes:         input.BalanceNotes,
+		AftertasteIntensity:  input.AftertasteIntensity,
+		AftertasteNotes:      input.AftertasteNotes,
+		OverallScore:         input.OverallScore,
+		OverallNotes:         input.OverallNotes,
+		ImprovementNotes:     input.ImprovementNotes,
+		CreatedAt:            time.Now(),
+		UpdatedAt:            time.Now(),
 	}
 
 	query := `
@@ -106,11 +115,12 @@ func (r *PostgresRepository) Create(ctx context.Context, userID uuid.UUID, input
 			coffee_weight, water_weight, ratio, grind_size, water_temperature, filter_paper_id,
 			bloom_water, bloom_time, total_brew_time, drawdown_time, technique_notes,
 			water_bypass_ml, mineral_profile_id,
-			final_weight, tds, extraction_yield,
-			aroma_intensity, aroma_notes, acidity_intensity, acidity_notes,
-			sweetness_intensity, sweetness_notes, bitterness_intensity, bitterness_notes,
-			body_weight, body_notes, flavor_intensity, flavor_notes,
-			aftertaste_duration, aftertaste_intensity, aftertaste_notes,
+			coffee_ml, tds, extraction_yield, is_draft,
+			aroma_intensity, aroma_notes, body_intensity, body_notes,
+			flavor_intensity, flavor_notes, brightness_intensity, brightness_notes,
+			sweetness_intensity, sweetness_notes, cleanliness_intensity, cleanliness_notes,
+			complexity_intensity, complexity_notes, balance_intensity, balance_notes,
+			aftertaste_intensity, aftertaste_notes,
 			overall_score, overall_notes, improvement_notes,
 			created_at, updated_at
 		) VALUES (
@@ -118,13 +128,14 @@ func (r *PostgresRepository) Create(ctx context.Context, userID uuid.UUID, input
 			$5, $6, $7, $8, $9, $10,
 			$11, $12, $13, $14, $15,
 			$16, $17,
-			$18, $19, $20,
-			$21, $22, $23, $24,
-			$25, $26, $27, $28,
-			$29, $30, $31, $32,
-			$33, $34, $35,
-			$36, $37, $38,
-			$39, $40
+			$18, $19, $20, $21,
+			$22, $23, $24, $25,
+			$26, $27, $28, $29,
+			$30, $31, $32, $33,
+			$34, $35, $36, $37,
+			$38, $39,
+			$40, $41, $42,
+			$43, $44
 		)
 	`
 
@@ -133,11 +144,12 @@ func (r *PostgresRepository) Create(ctx context.Context, userID uuid.UUID, input
 		experiment.CoffeeWeight, experiment.WaterWeight, experiment.Ratio, experiment.GrindSize, experiment.WaterTemperature, experiment.FilterPaperID,
 		experiment.BloomWater, experiment.BloomTime, experiment.TotalBrewTime, experiment.DrawdownTime, experiment.TechniqueNotes,
 		experiment.WaterBypassML, experiment.MineralProfileID,
-		experiment.FinalWeight, experiment.TDS, experiment.ExtractionYield,
-		experiment.AromaIntensity, experiment.AromaNotes, experiment.AcidityIntensity, experiment.AcidityNotes,
-		experiment.SweetnessIntensity, experiment.SweetnessNotes, experiment.BitternessIntensity, experiment.BitternessNotes,
-		experiment.BodyWeight, experiment.BodyNotes, experiment.FlavorIntensity, experiment.FlavorNotes,
-		experiment.AftertasteDuration, experiment.AftertasteIntensity, experiment.AftertasteNotes,
+		experiment.CoffeeMl, experiment.TDS, experiment.ExtractionYield, experiment.IsDraft,
+		experiment.AromaIntensity, experiment.AromaNotes, experiment.BodyIntensity, experiment.BodyNotes,
+		experiment.FlavorIntensity, experiment.FlavorNotes, experiment.BrightnessIntensity, experiment.BrightnessNotes,
+		experiment.SweetnessIntensity, experiment.SweetnessNotes, experiment.CleanlinessIntensity, experiment.CleanlinessNotes,
+		experiment.ComplexityIntensity, experiment.ComplexityNotes, experiment.BalanceIntensity, experiment.BalanceNotes,
+		experiment.AftertasteIntensity, experiment.AftertasteNotes,
 		experiment.OverallScore, experiment.OverallNotes, experiment.ImprovementNotes,
 		experiment.CreatedAt, experiment.UpdatedAt,
 	)
@@ -183,11 +195,12 @@ func (r *PostgresRepository) GetByID(ctx context.Context, userID, experimentID u
 			e.coffee_weight, e.water_weight, e.ratio, e.grind_size, e.water_temperature, e.filter_paper_id,
 			e.bloom_water, e.bloom_time, e.total_brew_time, e.drawdown_time, e.technique_notes,
 			e.water_bypass_ml, e.mineral_profile_id,
-			e.final_weight, e.tds, e.extraction_yield,
-			e.aroma_intensity, e.aroma_notes, e.acidity_intensity, e.acidity_notes,
-			e.sweetness_intensity, e.sweetness_notes, e.bitterness_intensity, e.bitterness_notes,
-			e.body_weight, e.body_notes, e.flavor_intensity, e.flavor_notes,
-			e.aftertaste_duration, e.aftertaste_intensity, e.aftertaste_notes,
+			e.coffee_ml, e.tds, e.extraction_yield, e.is_draft,
+			e.aroma_intensity, e.aroma_notes, e.body_intensity, e.body_notes,
+			e.flavor_intensity, e.flavor_notes, e.brightness_intensity, e.brightness_notes,
+			e.sweetness_intensity, e.sweetness_notes, e.cleanliness_intensity, e.cleanliness_notes,
+			e.complexity_intensity, e.complexity_notes, e.balance_intensity, e.balance_notes,
+			e.aftertaste_intensity, e.aftertaste_notes,
 			e.overall_score, e.overall_notes, e.improvement_notes,
 			e.created_at, e.updated_at,
 			c.id, c.roaster, c.name, c.roast_date,
@@ -208,11 +221,12 @@ func (r *PostgresRepository) GetByID(ctx context.Context, userID, experimentID u
 		&exp.CoffeeWeight, &exp.WaterWeight, &exp.Ratio, &exp.GrindSize, &exp.WaterTemperature, &exp.FilterPaperID,
 		&exp.BloomWater, &exp.BloomTime, &exp.TotalBrewTime, &exp.DrawdownTime, &exp.TechniqueNotes,
 		&exp.WaterBypassML, &exp.MineralProfileID,
-		&exp.FinalWeight, &exp.TDS, &exp.ExtractionYield,
-		&exp.AromaIntensity, &exp.AromaNotes, &exp.AcidityIntensity, &exp.AcidityNotes,
-		&exp.SweetnessIntensity, &exp.SweetnessNotes, &exp.BitternessIntensity, &exp.BitternessNotes,
-		&exp.BodyWeight, &exp.BodyNotes, &exp.FlavorIntensity, &exp.FlavorNotes,
-		&exp.AftertasteDuration, &exp.AftertasteIntensity, &exp.AftertasteNotes,
+		&exp.CoffeeMl, &exp.TDS, &exp.ExtractionYield, &exp.IsDraft,
+		&exp.AromaIntensity, &exp.AromaNotes, &exp.BodyIntensity, &exp.BodyNotes,
+		&exp.FlavorIntensity, &exp.FlavorNotes, &exp.BrightnessIntensity, &exp.BrightnessNotes,
+		&exp.SweetnessIntensity, &exp.SweetnessNotes, &exp.CleanlinessIntensity, &exp.CleanlinessNotes,
+		&exp.ComplexityIntensity, &exp.ComplexityNotes, &exp.BalanceIntensity, &exp.BalanceNotes,
+		&exp.AftertasteIntensity, &exp.AftertasteNotes,
 		&exp.OverallScore, &exp.OverallNotes, &exp.ImprovementNotes,
 		&exp.CreatedAt, &exp.UpdatedAt,
 		&coffee.ID, &coffee.Roaster, &coffee.Name, &coffee.RoastDate,
@@ -356,11 +370,12 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 			e.coffee_weight, e.water_weight, e.ratio, e.grind_size, e.water_temperature, e.filter_paper_id,
 			e.bloom_water, e.bloom_time, e.total_brew_time, e.drawdown_time, e.technique_notes,
 			e.water_bypass_ml, e.mineral_profile_id,
-			e.final_weight, e.tds, e.extraction_yield,
-			e.aroma_intensity, e.aroma_notes, e.acidity_intensity, e.acidity_notes,
-			e.sweetness_intensity, e.sweetness_notes, e.bitterness_intensity, e.bitterness_notes,
-			e.body_weight, e.body_notes, e.flavor_intensity, e.flavor_notes,
-			e.aftertaste_duration, e.aftertaste_intensity, e.aftertaste_notes,
+			e.coffee_ml, e.tds, e.extraction_yield, e.is_draft,
+			e.aroma_intensity, e.aroma_notes, e.body_intensity, e.body_notes,
+			e.flavor_intensity, e.flavor_notes, e.brightness_intensity, e.brightness_notes,
+			e.sweetness_intensity, e.sweetness_notes, e.cleanliness_intensity, e.cleanliness_notes,
+			e.complexity_intensity, e.complexity_notes, e.balance_intensity, e.balance_notes,
+			e.aftertaste_intensity, e.aftertaste_notes,
 			e.overall_score, e.overall_notes, e.improvement_notes,
 			e.created_at, e.updated_at,
 			c.id, c.roaster, c.name, c.roast_date,
@@ -392,11 +407,12 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 			&exp.CoffeeWeight, &exp.WaterWeight, &exp.Ratio, &exp.GrindSize, &exp.WaterTemperature, &exp.FilterPaperID,
 			&exp.BloomWater, &exp.BloomTime, &exp.TotalBrewTime, &exp.DrawdownTime, &exp.TechniqueNotes,
 			&exp.WaterBypassML, &exp.MineralProfileID,
-			&exp.FinalWeight, &exp.TDS, &exp.ExtractionYield,
-			&exp.AromaIntensity, &exp.AromaNotes, &exp.AcidityIntensity, &exp.AcidityNotes,
-			&exp.SweetnessIntensity, &exp.SweetnessNotes, &exp.BitternessIntensity, &exp.BitternessNotes,
-			&exp.BodyWeight, &exp.BodyNotes, &exp.FlavorIntensity, &exp.FlavorNotes,
-			&exp.AftertasteDuration, &exp.AftertasteIntensity, &exp.AftertasteNotes,
+			&exp.CoffeeMl, &exp.TDS, &exp.ExtractionYield, &exp.IsDraft,
+			&exp.AromaIntensity, &exp.AromaNotes, &exp.BodyIntensity, &exp.BodyNotes,
+			&exp.FlavorIntensity, &exp.FlavorNotes, &exp.BrightnessIntensity, &exp.BrightnessNotes,
+			&exp.SweetnessIntensity, &exp.SweetnessNotes, &exp.CleanlinessIntensity, &exp.CleanlinessNotes,
+			&exp.ComplexityIntensity, &exp.ComplexityNotes, &exp.BalanceIntensity, &exp.BalanceNotes,
+			&exp.AftertasteIntensity, &exp.AftertasteNotes,
 			&exp.OverallScore, &exp.OverallNotes, &exp.ImprovementNotes,
 			&exp.CreatedAt, &exp.UpdatedAt,
 			&coffee.ID, &coffee.Roaster, &coffee.Name, &coffee.RoastDate,
@@ -514,8 +530,8 @@ func (r *PostgresRepository) Update(ctx context.Context, userID, experimentID uu
 	if input.MineralProfileID != nil {
 		exp.MineralProfileID = input.MineralProfileID
 	}
-	if input.FinalWeight != nil {
-		exp.FinalWeight = input.FinalWeight
+	if input.CoffeeMl != nil {
+		exp.CoffeeMl = input.CoffeeMl
 	}
 	if input.TDS != nil {
 		exp.TDS = input.TDS
@@ -523,32 +539,17 @@ func (r *PostgresRepository) Update(ctx context.Context, userID, experimentID uu
 	if input.ExtractionYield != nil {
 		exp.ExtractionYield = input.ExtractionYield
 	}
+	if input.IsDraft != nil {
+		exp.IsDraft = *input.IsDraft
+	}
 	if input.AromaIntensity != nil {
 		exp.AromaIntensity = input.AromaIntensity
 	}
 	if input.AromaNotes != nil {
 		exp.AromaNotes = input.AromaNotes
 	}
-	if input.AcidityIntensity != nil {
-		exp.AcidityIntensity = input.AcidityIntensity
-	}
-	if input.AcidityNotes != nil {
-		exp.AcidityNotes = input.AcidityNotes
-	}
-	if input.SweetnessIntensity != nil {
-		exp.SweetnessIntensity = input.SweetnessIntensity
-	}
-	if input.SweetnessNotes != nil {
-		exp.SweetnessNotes = input.SweetnessNotes
-	}
-	if input.BitternessIntensity != nil {
-		exp.BitternessIntensity = input.BitternessIntensity
-	}
-	if input.BitternessNotes != nil {
-		exp.BitternessNotes = input.BitternessNotes
-	}
-	if input.BodyWeight != nil {
-		exp.BodyWeight = input.BodyWeight
+	if input.BodyIntensity != nil {
+		exp.BodyIntensity = input.BodyIntensity
 	}
 	if input.BodyNotes != nil {
 		exp.BodyNotes = input.BodyNotes
@@ -559,8 +560,35 @@ func (r *PostgresRepository) Update(ctx context.Context, userID, experimentID uu
 	if input.FlavorNotes != nil {
 		exp.FlavorNotes = input.FlavorNotes
 	}
-	if input.AftertasteDuration != nil {
-		exp.AftertasteDuration = input.AftertasteDuration
+	if input.BrightnessIntensity != nil {
+		exp.BrightnessIntensity = input.BrightnessIntensity
+	}
+	if input.BrightnessNotes != nil {
+		exp.BrightnessNotes = input.BrightnessNotes
+	}
+	if input.SweetnessIntensity != nil {
+		exp.SweetnessIntensity = input.SweetnessIntensity
+	}
+	if input.SweetnessNotes != nil {
+		exp.SweetnessNotes = input.SweetnessNotes
+	}
+	if input.CleanlinessIntensity != nil {
+		exp.CleanlinessIntensity = input.CleanlinessIntensity
+	}
+	if input.CleanlinessNotes != nil {
+		exp.CleanlinessNotes = input.CleanlinessNotes
+	}
+	if input.ComplexityIntensity != nil {
+		exp.ComplexityIntensity = input.ComplexityIntensity
+	}
+	if input.ComplexityNotes != nil {
+		exp.ComplexityNotes = input.ComplexityNotes
+	}
+	if input.BalanceIntensity != nil {
+		exp.BalanceIntensity = input.BalanceIntensity
+	}
+	if input.BalanceNotes != nil {
+		exp.BalanceNotes = input.BalanceNotes
 	}
 	if input.AftertasteIntensity != nil {
 		exp.AftertasteIntensity = input.AftertasteIntensity
@@ -586,14 +614,15 @@ func (r *PostgresRepository) Update(ctx context.Context, userID, experimentID uu
 			coffee_weight = $3, water_weight = $4, ratio = $5, grind_size = $6, water_temperature = $7, filter_paper_id = $8,
 			bloom_water = $9, bloom_time = $10, total_brew_time = $11, drawdown_time = $12, technique_notes = $13,
 			water_bypass_ml = $14, mineral_profile_id = $15,
-			final_weight = $16, tds = $17, extraction_yield = $18,
-			aroma_intensity = $19, aroma_notes = $20, acidity_intensity = $21, acidity_notes = $22,
-			sweetness_intensity = $23, sweetness_notes = $24, bitterness_intensity = $25, bitterness_notes = $26,
-			body_weight = $27, body_notes = $28, flavor_intensity = $29, flavor_notes = $30,
-			aftertaste_duration = $31, aftertaste_intensity = $32, aftertaste_notes = $33,
-			overall_score = $34, overall_notes = $35, improvement_notes = $36,
-			updated_at = $37
-		WHERE id = $38 AND user_id = $39
+			coffee_ml = $16, tds = $17, extraction_yield = $18, is_draft = $19,
+			aroma_intensity = $20, aroma_notes = $21, body_intensity = $22, body_notes = $23,
+			flavor_intensity = $24, flavor_notes = $25, brightness_intensity = $26, brightness_notes = $27,
+			sweetness_intensity = $28, sweetness_notes = $29, cleanliness_intensity = $30, cleanliness_notes = $31,
+			complexity_intensity = $32, complexity_notes = $33, balance_intensity = $34, balance_notes = $35,
+			aftertaste_intensity = $36, aftertaste_notes = $37,
+			overall_score = $38, overall_notes = $39, improvement_notes = $40,
+			updated_at = $41
+		WHERE id = $42 AND user_id = $43
 	`
 
 	result, err := tx.ExecContext(ctx, query,
@@ -601,11 +630,12 @@ func (r *PostgresRepository) Update(ctx context.Context, userID, experimentID uu
 		exp.CoffeeWeight, exp.WaterWeight, exp.Ratio, exp.GrindSize, exp.WaterTemperature, exp.FilterPaperID,
 		exp.BloomWater, exp.BloomTime, exp.TotalBrewTime, exp.DrawdownTime, exp.TechniqueNotes,
 		exp.WaterBypassML, exp.MineralProfileID,
-		exp.FinalWeight, exp.TDS, exp.ExtractionYield,
-		exp.AromaIntensity, exp.AromaNotes, exp.AcidityIntensity, exp.AcidityNotes,
-		exp.SweetnessIntensity, exp.SweetnessNotes, exp.BitternessIntensity, exp.BitternessNotes,
-		exp.BodyWeight, exp.BodyNotes, exp.FlavorIntensity, exp.FlavorNotes,
-		exp.AftertasteDuration, exp.AftertasteIntensity, exp.AftertasteNotes,
+		exp.CoffeeMl, exp.TDS, exp.ExtractionYield, exp.IsDraft,
+		exp.AromaIntensity, exp.AromaNotes, exp.BodyIntensity, exp.BodyNotes,
+		exp.FlavorIntensity, exp.FlavorNotes, exp.BrightnessIntensity, exp.BrightnessNotes,
+		exp.SweetnessIntensity, exp.SweetnessNotes, exp.CleanlinessIntensity, exp.CleanlinessNotes,
+		exp.ComplexityIntensity, exp.ComplexityNotes, exp.BalanceIntensity, exp.BalanceNotes,
+		exp.AftertasteIntensity, exp.AftertasteNotes,
 		exp.OverallScore, exp.OverallNotes, exp.ImprovementNotes,
 		exp.UpdatedAt, experimentID, userID,
 	)
@@ -699,11 +729,12 @@ func (r *PostgresRepository) GetByIDs(ctx context.Context, userID uuid.UUID, exp
 			e.coffee_weight, e.water_weight, e.ratio, e.grind_size, e.water_temperature, e.filter_paper_id,
 			e.bloom_water, e.bloom_time, e.total_brew_time, e.drawdown_time, e.technique_notes,
 			e.water_bypass_ml, e.mineral_profile_id,
-			e.final_weight, e.tds, e.extraction_yield,
-			e.aroma_intensity, e.aroma_notes, e.acidity_intensity, e.acidity_notes,
-			e.sweetness_intensity, e.sweetness_notes, e.bitterness_intensity, e.bitterness_notes,
-			e.body_weight, e.body_notes, e.flavor_intensity, e.flavor_notes,
-			e.aftertaste_duration, e.aftertaste_intensity, e.aftertaste_notes,
+			e.coffee_ml, e.tds, e.extraction_yield, e.is_draft,
+			e.aroma_intensity, e.aroma_notes, e.body_intensity, e.body_notes,
+			e.flavor_intensity, e.flavor_notes, e.brightness_intensity, e.brightness_notes,
+			e.sweetness_intensity, e.sweetness_notes, e.cleanliness_intensity, e.cleanliness_notes,
+			e.complexity_intensity, e.complexity_notes, e.balance_intensity, e.balance_notes,
+			e.aftertaste_intensity, e.aftertaste_notes,
 			e.overall_score, e.overall_notes, e.improvement_notes,
 			e.created_at, e.updated_at,
 			c.id, c.roaster, c.name, c.roast_date,
@@ -732,11 +763,12 @@ func (r *PostgresRepository) GetByIDs(ctx context.Context, userID uuid.UUID, exp
 			&exp.CoffeeWeight, &exp.WaterWeight, &exp.Ratio, &exp.GrindSize, &exp.WaterTemperature, &exp.FilterPaperID,
 			&exp.BloomWater, &exp.BloomTime, &exp.TotalBrewTime, &exp.DrawdownTime, &exp.TechniqueNotes,
 			&exp.WaterBypassML, &exp.MineralProfileID,
-			&exp.FinalWeight, &exp.TDS, &exp.ExtractionYield,
-			&exp.AromaIntensity, &exp.AromaNotes, &exp.AcidityIntensity, &exp.AcidityNotes,
-			&exp.SweetnessIntensity, &exp.SweetnessNotes, &exp.BitternessIntensity, &exp.BitternessNotes,
-			&exp.BodyWeight, &exp.BodyNotes, &exp.FlavorIntensity, &exp.FlavorNotes,
-			&exp.AftertasteDuration, &exp.AftertasteIntensity, &exp.AftertasteNotes,
+			&exp.CoffeeMl, &exp.TDS, &exp.ExtractionYield, &exp.IsDraft,
+			&exp.AromaIntensity, &exp.AromaNotes, &exp.BodyIntensity, &exp.BodyNotes,
+			&exp.FlavorIntensity, &exp.FlavorNotes, &exp.BrightnessIntensity, &exp.BrightnessNotes,
+			&exp.SweetnessIntensity, &exp.SweetnessNotes, &exp.CleanlinessIntensity, &exp.CleanlinessNotes,
+			&exp.ComplexityIntensity, &exp.ComplexityNotes, &exp.BalanceIntensity, &exp.BalanceNotes,
+			&exp.AftertasteIntensity, &exp.AftertasteNotes,
 			&exp.OverallScore, &exp.OverallNotes, &exp.ImprovementNotes,
 			&exp.CreatedAt, &exp.UpdatedAt,
 			&coffee.ID, &coffee.Roaster, &coffee.Name, &coffee.RoastDate,
@@ -855,11 +887,12 @@ func (r *PostgresRepository) ListAll(ctx context.Context, userID uuid.UUID, para
 			e.coffee_weight, e.water_weight, e.ratio, e.grind_size, e.water_temperature, e.filter_paper_id,
 			e.bloom_water, e.bloom_time, e.total_brew_time, e.drawdown_time, e.technique_notes,
 			e.water_bypass_ml, e.mineral_profile_id,
-			e.final_weight, e.tds, e.extraction_yield,
-			e.aroma_intensity, e.aroma_notes, e.acidity_intensity, e.acidity_notes,
-			e.sweetness_intensity, e.sweetness_notes, e.bitterness_intensity, e.bitterness_notes,
-			e.body_weight, e.body_notes, e.flavor_intensity, e.flavor_notes,
-			e.aftertaste_duration, e.aftertaste_intensity, e.aftertaste_notes,
+			e.coffee_ml, e.tds, e.extraction_yield, e.is_draft,
+			e.aroma_intensity, e.aroma_notes, e.body_intensity, e.body_notes,
+			e.flavor_intensity, e.flavor_notes, e.brightness_intensity, e.brightness_notes,
+			e.sweetness_intensity, e.sweetness_notes, e.cleanliness_intensity, e.cleanliness_notes,
+			e.complexity_intensity, e.complexity_notes, e.balance_intensity, e.balance_notes,
+			e.aftertaste_intensity, e.aftertaste_notes,
 			e.overall_score, e.overall_notes, e.improvement_notes,
 			e.created_at, e.updated_at,
 			c.id, c.roaster, c.name, c.roast_date,
@@ -888,11 +921,12 @@ func (r *PostgresRepository) ListAll(ctx context.Context, userID uuid.UUID, para
 			&exp.CoffeeWeight, &exp.WaterWeight, &exp.Ratio, &exp.GrindSize, &exp.WaterTemperature, &exp.FilterPaperID,
 			&exp.BloomWater, &exp.BloomTime, &exp.TotalBrewTime, &exp.DrawdownTime, &exp.TechniqueNotes,
 			&exp.WaterBypassML, &exp.MineralProfileID,
-			&exp.FinalWeight, &exp.TDS, &exp.ExtractionYield,
-			&exp.AromaIntensity, &exp.AromaNotes, &exp.AcidityIntensity, &exp.AcidityNotes,
-			&exp.SweetnessIntensity, &exp.SweetnessNotes, &exp.BitternessIntensity, &exp.BitternessNotes,
-			&exp.BodyWeight, &exp.BodyNotes, &exp.FlavorIntensity, &exp.FlavorNotes,
-			&exp.AftertasteDuration, &exp.AftertasteIntensity, &exp.AftertasteNotes,
+			&exp.CoffeeMl, &exp.TDS, &exp.ExtractionYield, &exp.IsDraft,
+			&exp.AromaIntensity, &exp.AromaNotes, &exp.BodyIntensity, &exp.BodyNotes,
+			&exp.FlavorIntensity, &exp.FlavorNotes, &exp.BrightnessIntensity, &exp.BrightnessNotes,
+			&exp.SweetnessIntensity, &exp.SweetnessNotes, &exp.CleanlinessIntensity, &exp.CleanlinessNotes,
+			&exp.ComplexityIntensity, &exp.ComplexityNotes, &exp.BalanceIntensity, &exp.BalanceNotes,
+			&exp.AftertasteIntensity, &exp.AftertasteNotes,
 			&exp.OverallScore, &exp.OverallNotes, &exp.ImprovementNotes,
 			&exp.CreatedAt, &exp.UpdatedAt,
 			&coffee.ID, &coffee.Roaster, &coffee.Name, &coffee.RoastDate,

@@ -100,7 +100,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(input.OverallNotes) < 10 {
+	// Skip overall_notes validation for drafts
+	isDraft := input.IsDraft != nil && *input.IsDraft
+	if !isDraft && len(input.OverallNotes) < 10 {
 		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "overall_notes must be at least 10 characters")
 		return
 	}
@@ -112,12 +114,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}{
 		{input.OverallScore, "overall_score"},
 		{input.AromaIntensity, "aroma_intensity"},
-		{input.AcidityIntensity, "acidity_intensity"},
-		{input.SweetnessIntensity, "sweetness_intensity"},
-		{input.BitternessIntensity, "bitterness_intensity"},
-		{input.BodyWeight, "body_weight"},
+		{input.BodyIntensity, "body_intensity"},
 		{input.FlavorIntensity, "flavor_intensity"},
-		{input.AftertasteDuration, "aftertaste_duration"},
+		{input.BrightnessIntensity, "brightness_intensity"},
+		{input.SweetnessIntensity, "sweetness_intensity"},
+		{input.CleanlinessIntensity, "cleanliness_intensity"},
+		{input.ComplexityIntensity, "complexity_intensity"},
+		{input.BalanceIntensity, "balance_intensity"},
 		{input.AftertasteIntensity, "aftertaste_intensity"},
 	}
 
@@ -206,8 +209,9 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate overall_notes if provided
-	if input.OverallNotes != nil && len(*input.OverallNotes) < 10 {
+	// Validate overall_notes if provided (skip for drafts)
+	isDraft := input.IsDraft != nil && *input.IsDraft
+	if !isDraft && input.OverallNotes != nil && len(*input.OverallNotes) < 10 {
 		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "overall_notes must be at least 10 characters")
 		return
 	}
@@ -219,12 +223,13 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}{
 		{input.OverallScore, "overall_score"},
 		{input.AromaIntensity, "aroma_intensity"},
-		{input.AcidityIntensity, "acidity_intensity"},
-		{input.SweetnessIntensity, "sweetness_intensity"},
-		{input.BitternessIntensity, "bitterness_intensity"},
-		{input.BodyWeight, "body_weight"},
+		{input.BodyIntensity, "body_intensity"},
 		{input.FlavorIntensity, "flavor_intensity"},
-		{input.AftertasteDuration, "aftertaste_duration"},
+		{input.BrightnessIntensity, "brightness_intensity"},
+		{input.SweetnessIntensity, "sweetness_intensity"},
+		{input.CleanlinessIntensity, "cleanliness_intensity"},
+		{input.ComplexityIntensity, "complexity_intensity"},
+		{input.BalanceIntensity, "balance_intensity"},
 		{input.AftertasteIntensity, "aftertaste_intensity"},
 	}
 
@@ -397,20 +402,32 @@ func (h *Handler) Compare(w http.ResponseWriter, r *http.Request) {
 	if vals := collectInts(func(e *Experiment) *int { return e.OverallScore }); len(vals) == len(experiments) {
 		deltas["overall_score"] = CalculateDelta(vals)
 	}
-	if vals := collectInts(func(e *Experiment) *int { return e.AcidityIntensity }); len(vals) == len(experiments) {
-		deltas["acidity_intensity"] = CalculateDelta(vals)
+	if vals := collectInts(func(e *Experiment) *int { return e.AromaIntensity }); len(vals) == len(experiments) {
+		deltas["aroma_intensity"] = CalculateDelta(vals)
+	}
+	if vals := collectInts(func(e *Experiment) *int { return e.BodyIntensity }); len(vals) == len(experiments) {
+		deltas["body_intensity"] = CalculateDelta(vals)
+	}
+	if vals := collectInts(func(e *Experiment) *int { return e.FlavorIntensity }); len(vals) == len(experiments) {
+		deltas["flavor_intensity"] = CalculateDelta(vals)
+	}
+	if vals := collectInts(func(e *Experiment) *int { return e.BrightnessIntensity }); len(vals) == len(experiments) {
+		deltas["brightness_intensity"] = CalculateDelta(vals)
 	}
 	if vals := collectInts(func(e *Experiment) *int { return e.SweetnessIntensity }); len(vals) == len(experiments) {
 		deltas["sweetness_intensity"] = CalculateDelta(vals)
 	}
-	if vals := collectInts(func(e *Experiment) *int { return e.BitternessIntensity }); len(vals) == len(experiments) {
-		deltas["bitterness_intensity"] = CalculateDelta(vals)
+	if vals := collectInts(func(e *Experiment) *int { return e.CleanlinessIntensity }); len(vals) == len(experiments) {
+		deltas["cleanliness_intensity"] = CalculateDelta(vals)
 	}
-	if vals := collectInts(func(e *Experiment) *int { return e.BodyWeight }); len(vals) == len(experiments) {
-		deltas["body_weight"] = CalculateDelta(vals)
+	if vals := collectInts(func(e *Experiment) *int { return e.ComplexityIntensity }); len(vals) == len(experiments) {
+		deltas["complexity_intensity"] = CalculateDelta(vals)
 	}
-	if vals := collectInts(func(e *Experiment) *int { return e.AromaIntensity }); len(vals) == len(experiments) {
-		deltas["aroma_intensity"] = CalculateDelta(vals)
+	if vals := collectInts(func(e *Experiment) *int { return e.BalanceIntensity }); len(vals) == len(experiments) {
+		deltas["balance_intensity"] = CalculateDelta(vals)
+	}
+	if vals := collectInts(func(e *Experiment) *int { return e.AftertasteIntensity }); len(vals) == len(experiments) {
+		deltas["aftertaste_intensity"] = CalculateDelta(vals)
 	}
 
 	response.JSON(w, http.StatusOK, CompareResponse{
@@ -705,9 +722,11 @@ func (h *Handler) exportCSV(w http.ResponseWriter, experiments []Experiment) {
 		"coffee_weight", "water_weight", "ratio", "grind_size", "water_temperature",
 		"filter_paper", "bloom_water", "bloom_time", "total_brew_time", "drawdown_time",
 		"water_bypass_ml", "mineral_profile_id",
-		"final_weight", "tds", "extraction_yield",
-		"aroma_intensity", "acidity_intensity", "sweetness_intensity", "bitterness_intensity",
-		"body_weight", "flavor_intensity", "aftertaste_duration", "aftertaste_intensity",
+		"coffee_ml", "tds", "extraction_yield", "is_draft",
+		"aroma_intensity", "body_intensity", "flavor_intensity",
+		"brightness_intensity", "sweetness_intensity",
+		"cleanliness_intensity", "complexity_intensity",
+		"balance_intensity", "aftertaste_intensity",
 		"overall_score", "overall_notes", "improvement_notes",
 	}
 
@@ -715,6 +734,10 @@ func (h *Handler) exportCSV(w http.ResponseWriter, experiments []Experiment) {
 
 	// Write each experiment as a row
 	for _, exp := range experiments {
+		isDraftStr := "false"
+		if exp.IsDraft {
+			isDraftStr = "true"
+		}
 		row := []string{
 			exp.ID.String(),
 			exp.BrewDate.Format(time.RFC3339),
@@ -733,16 +756,18 @@ func (h *Handler) exportCSV(w http.ResponseWriter, experiments []Experiment) {
 			csvIntPtr(exp.DrawdownTime),
 			csvIntPtr(exp.WaterBypassML),
 			csvUUIDPtr(exp.MineralProfileID),
-			csvFloatPtr(exp.FinalWeight),
+			csvFloatPtr(exp.CoffeeMl),
 			csvFloatPtr(exp.TDS),
 			csvFloatPtr(exp.ExtractionYield),
+			isDraftStr,
 			csvIntPtr(exp.AromaIntensity),
-			csvIntPtr(exp.AcidityIntensity),
-			csvIntPtr(exp.SweetnessIntensity),
-			csvIntPtr(exp.BitternessIntensity),
-			csvIntPtr(exp.BodyWeight),
+			csvIntPtr(exp.BodyIntensity),
 			csvIntPtr(exp.FlavorIntensity),
-			csvIntPtr(exp.AftertasteDuration),
+			csvIntPtr(exp.BrightnessIntensity),
+			csvIntPtr(exp.SweetnessIntensity),
+			csvIntPtr(exp.CleanlinessIntensity),
+			csvIntPtr(exp.ComplexityIntensity),
+			csvIntPtr(exp.BalanceIntensity),
 			csvIntPtr(exp.AftertasteIntensity),
 			csvIntPtr(exp.OverallScore),
 			csvEscape(exp.OverallNotes),

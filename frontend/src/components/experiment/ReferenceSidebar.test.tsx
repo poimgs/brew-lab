@@ -39,7 +39,7 @@ describe('ReferenceSidebar', () => {
     id: 'goal-123',
     tds: 1.4,
     extraction_yield: 21,
-    acidity_intensity: 7,
+    brightness_intensity: 7,
     sweetness_intensity: 8,
     overall_score: 9,
     notes: 'Try finer grind to boost sweetness',
@@ -359,7 +359,7 @@ describe('ReferenceSidebar', () => {
       // Goals values - since no experiment, these are unique
       expect(screen.getByText('1.4%')).toBeInTheDocument(); // TDS goal
       expect(screen.getByText('21%')).toBeInTheDocument(); // Extraction goal
-      expect(screen.getByText('7/10')).toBeInTheDocument(); // Acidity
+      expect(screen.getByText('7/10')).toBeInTheDocument(); // Brightness
       expect(screen.getByText('8/10')).toBeInTheDocument(); // Sweetness
       expect(screen.getByText('9/10')).toBeInTheDocument(); // Overall
     });
@@ -384,14 +384,15 @@ describe('ReferenceSidebar', () => {
         goals: createMockGoals({
           tds: undefined,
           extraction_yield: undefined,
-          acidity_intensity: undefined,
+          brightness_intensity: undefined,
           sweetness_intensity: undefined,
-          bitterness_intensity: undefined,
-          body_weight: undefined,
+          cleanliness_intensity: undefined,
+          body_intensity: undefined,
           flavor_intensity: undefined,
           overall_score: undefined,
           aroma_intensity: undefined,
-          aftertaste_duration: undefined,
+          complexity_intensity: undefined,
+          balance_intensity: undefined,
           aftertaste_intensity: undefined,
           notes: undefined,
         }),

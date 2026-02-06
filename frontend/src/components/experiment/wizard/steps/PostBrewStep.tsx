@@ -29,15 +29,12 @@ export default function PostBrewStep({ mineralProfiles }: PostBrewStepProps) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="water_bypass_ml">Water Bypass (ml)</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="water_bypass_ml"
-              type="number"
-              placeholder="e.g., 30"
-              {...register('water_bypass_ml', { valueAsNumber: true })}
-            />
-            <span className="text-sm text-muted-foreground">ml</span>
-          </div>
+          <Input
+            id="water_bypass_ml"
+            type="number"
+            placeholder="e.g., 30"
+            {...register('water_bypass_ml', { valueAsNumber: true })}
+          />
           <p className="text-xs text-muted-foreground">
             Amount of water added after brewing to adjust strength
           </p>
@@ -49,11 +46,15 @@ export default function PostBrewStep({ mineralProfiles }: PostBrewStepProps) {
             name="mineral_profile_id"
             control={control}
             render={({ field }) => (
-              <Select value={field.value || ''} onValueChange={field.onChange}>
+              <Select
+                value={field.value || 'none'}
+                onValueChange={(value) => field.onChange(value === 'none' ? null : value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select mineral profile" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
                   {mineralProfiles.map((profile) => (
                     <SelectItem key={profile.id} value={profile.id}>
                       {profile.name} {profile.brand && `(${profile.brand})`}

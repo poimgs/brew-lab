@@ -38,6 +38,7 @@ const mockExperiment: experimentsApi.Experiment = {
   coffee_weight: 15.0,
   water_weight: 225.0,
   ratio: 15.0,
+  is_draft: false,
   overall_notes: 'Bright acidity with lemon notes',
   overall_score: 7,
   days_off_roast: 57,
@@ -326,5 +327,35 @@ describe('ExperimentsPage', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith('/experiments/exp-new');
+  });
+
+  it('shows Draft badge for draft experiments', async () => {
+    const draftExperiment = {
+      ...mockExperiment,
+      id: 'exp-draft',
+      is_draft: true,
+      overall_notes: 'Work in progress',
+    };
+
+    vi.mocked(experimentsApi.listExperiments).mockResolvedValue({
+      items: [draftExperiment],
+      pagination: { page: 1, per_page: 20, total: 1, total_pages: 1 },
+    });
+
+    renderWithRouter(<ExperimentsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Draft')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show Draft badge for non-draft experiments', async () => {
+    renderWithRouter(<ExperimentsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Kiamaina')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Draft')).not.toBeInTheDocument();
   });
 });

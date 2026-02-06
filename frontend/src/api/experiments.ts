@@ -64,24 +64,30 @@ export interface Experiment {
   mineral_profile_id?: string;
 
   // Quantitative outcomes
-  final_weight?: number;
+  coffee_ml?: number;
   tds?: number;
   extraction_yield?: number;
+
+  // Draft status
+  is_draft: boolean;
 
   // Sensory outcomes (1-10 scale)
   aroma_intensity?: number;
   aroma_notes?: string;
-  acidity_intensity?: number;
-  acidity_notes?: string;
-  sweetness_intensity?: number;
-  sweetness_notes?: string;
-  bitterness_intensity?: number;
-  bitterness_notes?: string;
-  body_weight?: number;
+  body_intensity?: number;
   body_notes?: string;
   flavor_intensity?: number;
   flavor_notes?: string;
-  aftertaste_duration?: number;
+  brightness_intensity?: number;
+  brightness_notes?: string;
+  sweetness_intensity?: number;
+  sweetness_notes?: string;
+  cleanliness_intensity?: number;
+  cleanliness_notes?: string;
+  complexity_intensity?: number;
+  complexity_notes?: string;
+  balance_intensity?: number;
+  balance_notes?: string;
   aftertaste_intensity?: number;
   aftertaste_notes?: string;
 
@@ -130,24 +136,30 @@ export interface CreateExperimentInput {
   mineral_profile_id?: string;
 
   // Quantitative outcomes
-  final_weight?: number;
+  coffee_ml?: number;
   tds?: number;
   extraction_yield?: number;
+
+  // Draft status
+  is_draft?: boolean;
 
   // Sensory outcomes
   aroma_intensity?: number;
   aroma_notes?: string;
-  acidity_intensity?: number;
-  acidity_notes?: string;
-  sweetness_intensity?: number;
-  sweetness_notes?: string;
-  bitterness_intensity?: number;
-  bitterness_notes?: string;
-  body_weight?: number;
+  body_intensity?: number;
   body_notes?: string;
   flavor_intensity?: number;
   flavor_notes?: string;
-  aftertaste_duration?: number;
+  brightness_intensity?: number;
+  brightness_notes?: string;
+  sweetness_intensity?: number;
+  sweetness_notes?: string;
+  cleanliness_intensity?: number;
+  cleanliness_notes?: string;
+  complexity_intensity?: number;
+  complexity_notes?: string;
+  balance_intensity?: number;
+  balance_notes?: string;
   aftertaste_intensity?: number;
   aftertaste_notes?: string;
 
@@ -183,24 +195,30 @@ export interface UpdateExperimentInput {
   mineral_profile_id?: string;
 
   // Quantitative outcomes
-  final_weight?: number;
+  coffee_ml?: number;
   tds?: number;
   extraction_yield?: number;
+
+  // Draft status
+  is_draft?: boolean;
 
   // Sensory outcomes
   aroma_intensity?: number;
   aroma_notes?: string;
-  acidity_intensity?: number;
-  acidity_notes?: string;
-  sweetness_intensity?: number;
-  sweetness_notes?: string;
-  bitterness_intensity?: number;
-  bitterness_notes?: string;
-  body_weight?: number;
+  body_intensity?: number;
   body_notes?: string;
   flavor_intensity?: number;
   flavor_notes?: string;
-  aftertaste_duration?: number;
+  brightness_intensity?: number;
+  brightness_notes?: string;
+  sweetness_intensity?: number;
+  sweetness_notes?: string;
+  cleanliness_intensity?: number;
+  cleanliness_notes?: string;
+  complexity_intensity?: number;
+  complexity_notes?: string;
+  balance_intensity?: number;
+  balance_notes?: string;
   aftertaste_intensity?: number;
   aftertaste_notes?: string;
 

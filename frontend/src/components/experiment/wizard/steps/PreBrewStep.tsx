@@ -15,9 +15,7 @@ interface PreBrewStepProps {
 }
 
 export default function PreBrewStep({ filterPapers }: PreBrewStepProps) {
-  const { register, control, watch } = useFormContext();
-  const coffeeWeight = watch('coffee_weight');
-  const ratio = watch('ratio');
+  const { register, control } = useFormContext();
 
   return (
     <div className="space-y-6">
@@ -52,12 +50,7 @@ export default function PreBrewStep({ filterPapers }: PreBrewStepProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="water_weight">
-            Water Weight (g)
-            {coffeeWeight && ratio && (
-              <span className="ml-2 text-xs text-muted-foreground">(auto-calculated)</span>
-            )}
-          </Label>
+          <Label htmlFor="water_weight">Water Weight (g)</Label>
           <Input
             id="water_weight"
             type="number"

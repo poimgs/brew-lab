@@ -4,7 +4,6 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import Layout from '@/components/layout/Layout';
 import LoginPage from '@/pages/LoginPage';
-import HomePage from '@/pages/HomePage';
 import LibraryPage from '@/pages/LibraryPage';
 import PreferencesPage from '@/pages/PreferencesPage';
 import ExperimentsPage from '@/pages/ExperimentsPage';
@@ -23,16 +22,6 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <HomePage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/coffees"
             element={
               <ProtectedRoute>
                 <Layout>

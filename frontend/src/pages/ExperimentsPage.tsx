@@ -640,7 +640,12 @@ export default function ExperimentsPage() {
                       </TableCell>
                     )}
                     <TableCell className="font-medium">
-                      {formatDate(experiment.brew_date)}
+                      <span className="flex items-center gap-2">
+                        {formatDate(experiment.brew_date)}
+                        {experiment.is_draft && (
+                          <Badge variant="outline" className="text-xs">Draft</Badge>
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell>
                       {experiment.coffee ? (

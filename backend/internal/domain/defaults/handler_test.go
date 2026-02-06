@@ -344,6 +344,126 @@ func TestHandler_Update_MergesWithExisting(t *testing.T) {
 	}
 }
 
+func TestHandler_Update_PourDefaults(t *testing.T) {
+	tests := []struct {
+		name           string
+		pourJSON       string
+		expectedStatus int
+	}{
+		{
+			name:           "valid pour defaults with two pours",
+			pourJSON:       `[{"water_amount":90,"pour_style":"circular","notes":""},{"water_amount":90,"pour_style":"center"}]`,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "valid pour defaults minimal",
+			pourJSON:       `[{"water_amount":90}]`,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "valid pour defaults with null fields",
+			pourJSON:       `[{}]`,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "invalid JSON",
+			pourJSON:       `not json`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "empty array",
+			pourJSON:       `[]`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "negative water amount",
+			pourJSON:       `[{"water_amount":-5}]`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "invalid pour style",
+			pourJSON:       `[{"pour_style":"swirl"}]`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "too many pours",
+			pourJSON:       `[{},{},{},{},{},{},{},{},{},{},{}]`,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := newMockRepository()
+			handler := NewHandler(repo)
+			userID := uuid.New()
+
+			body, _ := json.Marshal(UpdateDefaultsInput{
+				"pour_defaults": tt.pourJSON,
+			})
+
+			req := createRequestWithUser("PUT", "/defaults", body, userID)
+			rr := httptest.NewRecorder()
+
+			handler.Update(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+		})
+	}
+}
+
+func TestHandler_Update_PourDefaultsStored(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+	userID := uuid.New()
+
+	pourJSON := `[{"water_amount":90,"pour_style":"circular"},{"water_amount":90,"pour_style":"center"}]`
+	body, _ := json.Marshal(UpdateDefaultsInput{
+		"pour_defaults": pourJSON,
+	})
+
+	req := createRequestWithUser("PUT", "/defaults", body, userID)
+	rr := httptest.NewRecorder()
+
+	handler.Update(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	var result Defaults
+	if err := json.NewDecoder(rr.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+
+	if result["pour_defaults"] != pourJSON {
+		t.Errorf("expected pour_defaults to be stored, got '%s'", result["pour_defaults"])
+	}
+}
+
+func TestHandler_DeleteField_PourDefaults(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+	userID := uuid.New()
+
+	repo.defaults[userID] = Defaults{
+		"pour_defaults": `[{"water_amount":90}]`,
+	}
+
+	req := createRequestWithUser("DELETE", "/defaults/pour_defaults", nil, userID)
+	rr := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Delete("/defaults/{field}", handler.DeleteField)
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Errorf("expected status %d, got %d: %s", http.StatusNoContent, rr.Code, rr.Body.String())
+	}
+}
+
 func TestIsValidField(t *testing.T) {
 	validFields := []string{
 		"coffee_weight",
@@ -354,6 +474,7 @@ func TestIsValidField(t *testing.T) {
 		"filter_paper_id",
 		"bloom_water",
 		"bloom_time",
+		"pour_defaults",
 	}
 
 	invalidFields := []string{

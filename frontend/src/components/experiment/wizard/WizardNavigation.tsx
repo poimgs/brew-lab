@@ -1,10 +1,12 @@
-import { Loader2 } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWizard, TOTAL_STEPS } from './WizardContext';
 
 interface WizardNavigationProps {
   onNext?: () => Promise<boolean> | boolean;
+  onSaveDraft?: () => void;
   isSubmitting?: boolean;
+  isSavingDraft?: boolean;
   isEditMode?: boolean;
   showSkip?: boolean;
   submitLabel?: string;
@@ -12,7 +14,9 @@ interface WizardNavigationProps {
 
 export default function WizardNavigation({
   onNext,
+  onSaveDraft,
   isSubmitting = false,
+  isSavingDraft = false,
   isEditMode = false,
   showSkip = false,
   submitLabel = 'Save Experiment',
@@ -36,7 +40,7 @@ export default function WizardNavigation({
 
   return (
     <div className="flex items-center justify-between pt-6 border-t">
-      <div>
+      <div className="flex gap-2">
         {!isFirstStep && (
           <Button type="button" variant="outline" onClick={prevStep}>
             Back
@@ -49,6 +53,22 @@ export default function WizardNavigation({
       </span>
 
       <div className="flex gap-2">
+        {onSaveDraft && !isEditMode && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onSaveDraft}
+            disabled={isSavingDraft || isSubmitting}
+          >
+            {isSavingDraft ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Save Draft
+          </Button>
+        )}
+
         {showSkip && !isLastStep && (
           <Button type="button" variant="ghost" onClick={handleSkip}>
             Skip
@@ -56,7 +76,7 @@ export default function WizardNavigation({
         )}
 
         {isLastStep || isEditMode ? (
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting || isSavingDraft}>
             {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {submitLabel}
           </Button>

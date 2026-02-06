@@ -5,10 +5,10 @@ import { Label } from '@/components/ui/label';
 export default function QuantitativeStep() {
   const { register, watch } = useFormContext();
   const tds = watch('tds');
-  const finalWeight = watch('final_weight');
+  const coffeeMl = watch('coffee_ml');
   const coffeeWeight = watch('coffee_weight');
 
-  const hasCalculatedEY = tds && finalWeight && coffeeWeight;
+  const hasCalculatedEY = tds && coffeeMl && coffeeWeight;
 
   return (
     <div className="space-y-6">
@@ -21,16 +21,16 @@ export default function QuantitativeStep() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="final_weight">Final Weight (g)</Label>
+          <Label htmlFor="coffee_ml">Coffee (ml)</Label>
           <Input
-            id="final_weight"
+            id="coffee_ml"
             type="number"
             step="0.1"
             placeholder="e.g., 200"
-            {...register('final_weight', { valueAsNumber: true })}
+            {...register('coffee_ml', { valueAsNumber: true })}
           />
           <p className="text-xs text-muted-foreground">
-            Weight of brewed coffee in the cup
+            Volume of brewed coffee in milliliters
           </p>
         </div>
 
@@ -63,7 +63,7 @@ export default function QuantitativeStep() {
             {...register('extraction_yield', { valueAsNumber: true })}
           />
           <p className="text-xs text-muted-foreground">
-            Calculated from TDS, final weight, and coffee weight
+            Calculated from TDS, coffee volume, and coffee weight
           </p>
         </div>
 

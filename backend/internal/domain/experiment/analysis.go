@@ -347,21 +347,25 @@ func GenerateInsights(correlations map[string]map[string]*CorrelationResult) []I
 // formatVariableName converts snake_case to human-readable format
 func formatVariableName(name string) string {
 	labels := map[string]string{
-		"coffee_weight":        "Dose",
-		"water_weight":         "Water weight",
-		"water_temperature":    "Temperature",
-		"grind_size":           "Grind size",
-		"bloom_time":           "Bloom time",
-		"total_brew_time":      "Total brew time",
-		"days_off_roast":       "Days off roast",
-		"overall_score":        "Overall score",
-		"acidity_intensity":    "Acidity",
-		"sweetness_intensity":  "Sweetness",
-		"bitterness_intensity": "Bitterness",
-		"body_weight":          "Body",
-		"aroma_intensity":      "Aroma",
-		"tds":                  "TDS",
-		"extraction_yield":     "Extraction yield",
+		"coffee_weight":         "Dose",
+		"water_weight":          "Water weight",
+		"water_temperature":     "Temperature",
+		"grind_size":            "Grind size",
+		"bloom_time":            "Bloom time",
+		"total_brew_time":       "Total brew time",
+		"days_off_roast":        "Days off roast",
+		"overall_score":         "Overall score",
+		"aroma_intensity":       "Aroma",
+		"body_intensity":        "Body",
+		"flavor_intensity":      "Flavor",
+		"brightness_intensity":  "Brightness",
+		"sweetness_intensity":   "Sweetness",
+		"cleanliness_intensity": "Cleanliness",
+		"complexity_intensity":  "Complexity",
+		"balance_intensity":     "Balance",
+		"aftertaste_intensity":  "Aftertaste",
+		"tds":                   "TDS",
+		"extraction_yield":      "Extraction yield",
 	}
 
 	if label, ok := labels[name]; ok {
@@ -435,11 +439,15 @@ func InputVariables() []string {
 func OutcomeVariables() []string {
 	return []string{
 		"overall_score",
-		"acidity_intensity",
-		"sweetness_intensity",
-		"bitterness_intensity",
-		"body_weight",
 		"aroma_intensity",
+		"body_intensity",
+		"flavor_intensity",
+		"brightness_intensity",
+		"sweetness_intensity",
+		"cleanliness_intensity",
+		"complexity_intensity",
+		"balance_intensity",
+		"aftertaste_intensity",
 		"tds",
 		"extraction_yield",
 	}
@@ -483,9 +491,24 @@ func ExtractOutcomeValue(exp *Experiment, variable string) *float64 {
 			v := float64(*exp.OverallScore)
 			return &v
 		}
-	case "acidity_intensity":
-		if exp.AcidityIntensity != nil {
-			v := float64(*exp.AcidityIntensity)
+	case "aroma_intensity":
+		if exp.AromaIntensity != nil {
+			v := float64(*exp.AromaIntensity)
+			return &v
+		}
+	case "body_intensity":
+		if exp.BodyIntensity != nil {
+			v := float64(*exp.BodyIntensity)
+			return &v
+		}
+	case "flavor_intensity":
+		if exp.FlavorIntensity != nil {
+			v := float64(*exp.FlavorIntensity)
+			return &v
+		}
+	case "brightness_intensity":
+		if exp.BrightnessIntensity != nil {
+			v := float64(*exp.BrightnessIntensity)
 			return &v
 		}
 	case "sweetness_intensity":
@@ -493,19 +516,24 @@ func ExtractOutcomeValue(exp *Experiment, variable string) *float64 {
 			v := float64(*exp.SweetnessIntensity)
 			return &v
 		}
-	case "bitterness_intensity":
-		if exp.BitternessIntensity != nil {
-			v := float64(*exp.BitternessIntensity)
+	case "cleanliness_intensity":
+		if exp.CleanlinessIntensity != nil {
+			v := float64(*exp.CleanlinessIntensity)
 			return &v
 		}
-	case "body_weight":
-		if exp.BodyWeight != nil {
-			v := float64(*exp.BodyWeight)
+	case "complexity_intensity":
+		if exp.ComplexityIntensity != nil {
+			v := float64(*exp.ComplexityIntensity)
 			return &v
 		}
-	case "aroma_intensity":
-		if exp.AromaIntensity != nil {
-			v := float64(*exp.AromaIntensity)
+	case "balance_intensity":
+		if exp.BalanceIntensity != nil {
+			v := float64(*exp.BalanceIntensity)
+			return &v
+		}
+	case "aftertaste_intensity":
+		if exp.AftertasteIntensity != nil {
+			v := float64(*exp.AftertasteIntensity)
 			return &v
 		}
 	case "tds":

@@ -74,12 +74,6 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate purchase_date is not before roast_date
-	if input.RoastDate != nil && input.PurchaseDate != nil && input.PurchaseDate.Before(*input.RoastDate) {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "purchase date cannot be before roast date")
-		return
-	}
-
 	coffee, err := h.repo.Create(r.Context(), userID, input)
 	if err != nil {
 		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create coffee")

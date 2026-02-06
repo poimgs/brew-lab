@@ -1,5 +1,5 @@
 import { useFormContext, Controller, useFieldArray } from 'react-hook-form';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,11 +15,28 @@ import {
 const POUR_STYLES = ['circular', 'center', 'pulse'] as const;
 
 export default function BrewStep() {
-  const { register, control } = useFormContext();
+  const { register, control, watch } = useFormContext();
   const { fields: pourFields, append: appendPour, remove: removePour } = useFieldArray({
     control,
     name: 'pours',
   });
+
+  const waterWeight = watch('water_weight');
+  const bloomWater = watch('bloom_water');
+  const pours = watch('pours');
+
+  // Calculate water weight mismatch warning
+  const pourTotal = (pours || []).reduce(
+    (sum: number, p: { water_amount?: number | null }) =>
+      sum + (p.water_amount || 0),
+    0
+  );
+  const bloomAmount = bloomWater || 0;
+  const totalPourWater = bloomAmount + pourTotal;
+  const showWaterWarning =
+    waterWeight > 0 &&
+    totalPourWater > 0 &&
+    Math.abs(waterWeight - totalPourWater) > 0.1;
 
   const addPour = () => {
     appendPour({
@@ -125,6 +142,15 @@ export default function BrewStep() {
           </div>
         ))}
       </div>
+
+      {showWaterWarning && (
+        <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 p-3 text-amber-800 dark:text-amber-200 text-sm" role="alert">
+          <TriangleAlert className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>
+            Bloom + pours ({totalPourWater}g) differs from water weight ({waterWeight}g)
+          </span>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">

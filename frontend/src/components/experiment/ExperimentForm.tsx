@@ -20,7 +20,7 @@ import {
   ImprovementStep,
 } from './wizard/steps';
 import { type Experiment, type CreateExperimentInput, createExperiment, updateExperiment } from '@/api/experiments';
-import { getDefaults, type Defaults } from '@/api/defaults';
+import { getDefaults, type Defaults, type PourDefault } from '@/api/defaults';
 import { listFilterPapers, type FilterPaper } from '@/api/filter-papers';
 import { listMineralProfiles, type MineralProfile } from '@/api/mineral-profiles';
 import { type Coffee, type CoffeeReference, type ReferenceExperiment, getReference, getCoffee } from '@/api/coffees';
@@ -55,7 +55,7 @@ const experimentSchema = z.object({
   mineral_profile_id: z.string().optional().nullable(),
 
   // Quantitative outcomes
-  final_weight: z.number().positive().optional().nullable(),
+  coffee_ml: z.number().positive().optional().nullable(),
   tds: z.number().min(0).max(30).optional().nullable(),
   extraction_yield: z.number().min(0).max(30).optional().nullable(),
   drawdown_time: z.number().int().positive().optional().nullable(),
@@ -63,17 +63,20 @@ const experimentSchema = z.object({
   // Sensory outcomes (1-10 scale)
   aroma_intensity: z.number().int().min(1).max(10).optional().nullable(),
   aroma_notes: z.string().optional().nullable(),
-  acidity_intensity: z.number().int().min(1).max(10).optional().nullable(),
-  acidity_notes: z.string().optional().nullable(),
-  sweetness_intensity: z.number().int().min(1).max(10).optional().nullable(),
-  sweetness_notes: z.string().optional().nullable(),
-  bitterness_intensity: z.number().int().min(1).max(10).optional().nullable(),
-  bitterness_notes: z.string().optional().nullable(),
-  body_weight: z.number().int().min(1).max(10).optional().nullable(),
+  body_intensity: z.number().int().min(1).max(10).optional().nullable(),
   body_notes: z.string().optional().nullable(),
   flavor_intensity: z.number().int().min(1).max(10).optional().nullable(),
   flavor_notes: z.string().optional().nullable(),
-  aftertaste_duration: z.number().int().min(1).max(10).optional().nullable(),
+  brightness_intensity: z.number().int().min(1).max(10).optional().nullable(),
+  brightness_notes: z.string().optional().nullable(),
+  sweetness_intensity: z.number().int().min(1).max(10).optional().nullable(),
+  sweetness_notes: z.string().optional().nullable(),
+  cleanliness_intensity: z.number().int().min(1).max(10).optional().nullable(),
+  cleanliness_notes: z.string().optional().nullable(),
+  complexity_intensity: z.number().int().min(1).max(10).optional().nullable(),
+  complexity_notes: z.string().optional().nullable(),
+  balance_intensity: z.number().int().min(1).max(10).optional().nullable(),
+  balance_notes: z.string().optional().nullable(),
   aftertaste_intensity: z.number().int().min(1).max(10).optional().nullable(),
   aftertaste_notes: z.string().optional().nullable(),
 
@@ -91,8 +94,8 @@ const STEP_FIELDS: Record<number, (keyof ExperimentFormData)[]> = {
   2: ['coffee_weight', 'ratio', 'water_weight', 'grind_size', 'water_temperature', 'filter_paper_id'],
   3: ['bloom_water', 'bloom_time', 'pours', 'total_brew_time', 'technique_notes'],
   4: ['water_bypass_ml', 'mineral_profile_id'],
-  5: ['final_weight', 'tds', 'extraction_yield', 'drawdown_time'],
-  6: ['aroma_intensity', 'aroma_notes', 'acidity_intensity', 'acidity_notes', 'sweetness_intensity', 'sweetness_notes', 'bitterness_intensity', 'bitterness_notes', 'body_weight', 'body_notes', 'flavor_intensity', 'flavor_notes', 'aftertaste_duration', 'aftertaste_intensity', 'aftertaste_notes', 'overall_score', 'overall_notes'],
+  5: ['coffee_ml', 'tds', 'extraction_yield', 'drawdown_time'],
+  6: ['aroma_intensity', 'aroma_notes', 'body_intensity', 'body_notes', 'flavor_intensity', 'flavor_notes', 'brightness_intensity', 'brightness_notes', 'sweetness_intensity', 'sweetness_notes', 'cleanliness_intensity', 'cleanliness_notes', 'complexity_intensity', 'complexity_notes', 'balance_intensity', 'balance_notes', 'aftertaste_intensity', 'aftertaste_notes', 'overall_score', 'overall_notes'],
   7: ['improvement_notes'],
 };
 
@@ -108,6 +111,7 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
   const isEditMode = !!experiment;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [selectedCoffee, setSelectedCoffee] = useState<Coffee | null>(null);
   const [filterPapers, setFilterPapers] = useState<FilterPaper[]>([]);
@@ -141,23 +145,26 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
       technique_notes: experiment?.technique_notes || '',
       water_bypass_ml: experiment?.water_bypass_ml ?? null,
       mineral_profile_id: experiment?.mineral_profile_id || '',
-      final_weight: experiment?.final_weight ?? null,
+      coffee_ml: experiment?.coffee_ml ?? null,
       tds: experiment?.tds ?? null,
       extraction_yield: experiment?.extraction_yield ?? null,
       drawdown_time: experiment?.drawdown_time ?? null,
       aroma_intensity: experiment?.aroma_intensity ?? null,
       aroma_notes: experiment?.aroma_notes || '',
-      acidity_intensity: experiment?.acidity_intensity ?? null,
-      acidity_notes: experiment?.acidity_notes || '',
-      sweetness_intensity: experiment?.sweetness_intensity ?? null,
-      sweetness_notes: experiment?.sweetness_notes || '',
-      bitterness_intensity: experiment?.bitterness_intensity ?? null,
-      bitterness_notes: experiment?.bitterness_notes || '',
-      body_weight: experiment?.body_weight ?? null,
+      body_intensity: experiment?.body_intensity ?? null,
       body_notes: experiment?.body_notes || '',
       flavor_intensity: experiment?.flavor_intensity ?? null,
       flavor_notes: experiment?.flavor_notes || '',
-      aftertaste_duration: experiment?.aftertaste_duration ?? null,
+      brightness_intensity: experiment?.brightness_intensity ?? null,
+      brightness_notes: experiment?.brightness_notes || '',
+      sweetness_intensity: experiment?.sweetness_intensity ?? null,
+      sweetness_notes: experiment?.sweetness_notes || '',
+      cleanliness_intensity: experiment?.cleanliness_intensity ?? null,
+      cleanliness_notes: experiment?.cleanliness_notes || '',
+      complexity_intensity: experiment?.complexity_intensity ?? null,
+      complexity_notes: experiment?.complexity_notes || '',
+      balance_intensity: experiment?.balance_intensity ?? null,
+      balance_notes: experiment?.balance_notes || '',
       aftertaste_intensity: experiment?.aftertaste_intensity ?? null,
       aftertaste_notes: experiment?.aftertaste_notes || '',
       overall_score: experiment?.overall_score ?? null,
@@ -170,7 +177,7 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
   const coffeeWeight = watch('coffee_weight');
   const ratio = watch('ratio');
   const tds = watch('tds');
-  const finalWeight = watch('final_weight');
+  const coffeeMl = watch('coffee_ml');
 
   // Load filter papers, mineral profiles, defaults, and initial coffee
   useEffect(() => {
@@ -257,6 +264,24 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
       if (defaults.bloom_time && !watch('bloom_time')) {
         setValue('bloom_time', parseInt(defaults.bloom_time));
       }
+      // Pour defaults - only apply if pours array is empty
+      const currentPours = watch('pours');
+      if (defaults.pour_defaults && (!currentPours || currentPours.length === 0)) {
+        try {
+          const pourTemplates = JSON.parse(defaults.pour_defaults) as PourDefault[];
+          if (Array.isArray(pourTemplates) && pourTemplates.length > 0) {
+            const pours = pourTemplates.map((p, i) => ({
+              pour_number: i + 1,
+              water_amount: p.water_amount ?? null,
+              pour_style: p.pour_style ?? null,
+              notes: p.notes ?? null,
+            }));
+            setValue('pours', pours);
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
     }
   }, [currentStep, defaults, experiment, setValue, watch]);
 
@@ -268,13 +293,13 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
     }
   }, [coffeeWeight, ratio, waterWeightManuallySet, setValue]);
 
-  // Calculate extraction yield from TDS, final weight, and coffee weight
+  // Calculate extraction yield from TDS, coffee_ml, and coffee weight
   useEffect(() => {
-    if (tds && finalWeight && coffeeWeight) {
-      const ey = (finalWeight * (tds / 100)) / coffeeWeight * 100;
+    if (tds && coffeeMl && coffeeWeight) {
+      const ey = (coffeeMl * (tds / 100)) / coffeeWeight * 100;
       setValue('extraction_yield', Math.round(ey * 100) / 100);
     }
-  }, [tds, finalWeight, coffeeWeight, setValue]);
+  }, [tds, coffeeMl, coffeeWeight, setValue]);
 
   const handleCoffeeChange = (coffeeId: string, coffee: Coffee) => {
     setValue('coffee_id', coffeeId);
@@ -294,6 +319,59 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
     if (exp.filter_paper?.id) setValue('filter_paper_id', exp.filter_paper.id);
     if (exp.bloom_water) setValue('bloom_water', exp.bloom_water);
     if (exp.bloom_time) setValue('bloom_time', exp.bloom_time);
+  };
+
+  // Save as draft without full validation
+  const handleSaveDraft = async () => {
+    setIsSavingDraft(true);
+    setSubmitError(null);
+
+    try {
+      // Only validate coffee_id is set
+      const coffeeId = methods.getValues('coffee_id');
+      if (!coffeeId) {
+        setSubmitError('Please select a coffee before saving a draft');
+        setIsSavingDraft(false);
+        return;
+      }
+
+      const data = methods.getValues();
+
+      // Convert null/empty values for the API
+      const cleanData = (obj: Record<string, unknown>): Record<string, unknown> => {
+        const result: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (value === null || value === '') {
+            continue;
+          }
+          if (Array.isArray(value)) {
+            result[key] = value.map((item) =>
+              typeof item === 'object' && item !== null ? cleanData(item as Record<string, unknown>) : item
+            );
+          } else if (typeof value === 'object' && value !== null) {
+            result[key] = cleanData(value as Record<string, unknown>);
+          } else {
+            result[key] = value;
+          }
+        }
+        return result;
+      };
+
+      const input = cleanData(data as unknown as Record<string, unknown>) as unknown as CreateExperimentInput;
+      input.is_draft = true;
+
+      if (experiment) {
+        await updateExperiment(experiment.id, input);
+      } else {
+        await createExperiment(input);
+      }
+      onSuccess();
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setSubmitError(error.response?.data?.error || 'Failed to save draft');
+    } finally {
+      setIsSavingDraft(false);
+    }
   };
 
   // Validate current step fields before proceeding
@@ -456,7 +534,9 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
                 {/* Navigation */}
                 <WizardNavigation
                   onNext={validateCurrentStep}
+                  onSaveDraft={handleSaveDraft}
                   isSubmitting={isSubmitting}
+                  isSavingDraft={isSavingDraft}
                   isEditMode={isEditMode}
                   showSkip={currentStep >= 2 && currentStep <= 5}
                   submitLabel={experiment ? 'Save Changes' : 'Save Experiment'}

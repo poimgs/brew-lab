@@ -1,36 +1,34 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Archive, ArchiveRestore, Trash2, Loader2, ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Search, Archive, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   type Coffee,
   type ListCoffeesParams,
   listCoffees,
-  archiveCoffee,
   unarchiveCoffee,
-  deleteCoffee,
 } from '@/api/coffees';
+import CoffeeCard from '@/components/coffees/CoffeeCard';
 import CoffeeForm from './CoffeeForm';
-import DeleteConfirmDialog from './DeleteConfirmDialog';
 
-type SortField = 'roaster' | 'name' | 'country' | 'roast_date' | 'experiment_count' | 'created_at';
-type SortDirection = 'asc' | 'desc';
+type SortOption = '-created_at' | 'roaster' | 'name' | 'country' | '-roast_date' | '-experiment_count';
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: '-created_at', label: 'Newest' },
+  { value: 'roaster', label: 'Roaster' },
+  { value: 'name', label: 'Name' },
+  { value: 'country', label: 'Country' },
+  { value: '-roast_date', label: 'Roast Date' },
+  { value: '-experiment_count', label: 'Most Brewed' },
+];
 
 export default function CoffeeList() {
   const navigate = useNavigate();
@@ -43,8 +41,7 @@ export default function CoffeeList() {
   const [showArchived, setShowArchived] = useState(false);
 
   // Sorting
-  const [sortField, setSortField] = useState<SortField>('created_at');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [sort, setSort] = useState<SortOption>('-created_at');
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -55,8 +52,6 @@ export default function CoffeeList() {
   // UI state
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingCoffee, setEditingCoffee] = useState<Coffee | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<Coffee | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchCoffees = useCallback(async () => {
     setIsLoading(true);
@@ -66,7 +61,7 @@ export default function CoffeeList() {
       const params: ListCoffeesParams = {
         page,
         per_page: perPage,
-        sort: sortDirection === 'desc' ? `-${sortField}` : sortField,
+        sort,
         include_archived: showArchived,
       };
 
@@ -84,7 +79,7 @@ export default function CoffeeList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, perPage, sortField, sortDirection, showArchived, search]);
+  }, [page, perPage, sort, showArchived, search]);
 
   useEffect(() => {
     fetchCoffees();
@@ -98,65 +93,23 @@ export default function CoffeeList() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-    setPage(1);
-  };
-
-  const handleArchive = async (coffee: Coffee) => {
-    setActionLoading(coffee.id);
+  const handleReactivate = async (coffeeId: string) => {
     try {
-      if (coffee.archived_at) {
-        await unarchiveCoffee(coffee.id);
-      } else {
-        await archiveCoffee(coffee.id);
-      }
+      await unarchiveCoffee(coffeeId);
       await fetchCoffees();
     } catch (err) {
-      console.error('Error archiving coffee:', err);
-    } finally {
-      setActionLoading(null);
+      console.error('Error unarchiving coffee:', err);
     }
   };
 
-  const handleDelete = async (coffee: Coffee) => {
-    setActionLoading(coffee.id);
-    try {
-      await deleteCoffee(coffee.id);
-      setDeleteConfirm(null);
-      await fetchCoffees();
-    } catch (err) {
-      console.error('Error deleting coffee:', err);
-    } finally {
-      setActionLoading(null);
-    }
+  const handleNewExperiment = (coffeeId: string) => {
+    navigate(`/experiments/new?coffee_id=${coffeeId}`);
   };
 
   const handleFormSuccess = () => {
     setShowAddForm(false);
     setEditingCoffee(null);
     fetchCoffees();
-  };
-
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />;
-    }
-    return sortDirection === 'asc' ? (
-      <ChevronUp className="ml-1 h-4 w-4" />
-    ) : (
-      <ChevronDown className="ml-1 h-4 w-4" />
-    );
-  };
-
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '—';
-    return new Date(dateStr).toLocaleDateString();
   };
 
   if (showAddForm) {
@@ -204,10 +157,24 @@ export default function CoffeeList() {
             {showArchived ? 'Showing Archived' : 'Show Archived'}
           </Button>
         </div>
-        <Button onClick={() => setShowAddForm(true)}>
-          <Plus className="h-4 w-4 mr-1" />
-          Add Coffee
-        </Button>
+        <div className="flex gap-2">
+          <Select value={sort} onValueChange={(value) => { setSort(value as SortOption); setPage(1); }}>
+            <SelectTrigger size="sm">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setShowAddForm(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Coffee
+          </Button>
+        </div>
       </div>
 
       {/* Error state */}
@@ -242,145 +209,18 @@ export default function CoffeeList() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Card Grid */}
       {!isLoading && !error && coffees.length > 0 && (
         <>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('roaster')}
-                  >
-                    <div className="flex items-center">
-                      Roaster
-                      <SortIcon field="roaster" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort('name')}
-                  >
-                    <div className="flex items-center">
-                      Name
-                      <SortIcon field="name" />
-                    </div>
-                  </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50 hidden sm:table-cell"
-                    onClick={() => handleSort('country')}
-                  >
-                    <div className="flex items-center">
-                      Country
-                      <SortIcon field="country" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="hidden sm:table-cell">Process</TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50 hidden sm:table-cell"
-                    onClick={() => handleSort('roast_date')}
-                  >
-                    <div className="flex items-center">
-                      Roast Date
-                      <SortIcon field="roast_date" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-right tabular-nums hidden sm:table-cell">Days Off</TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50 text-right hidden sm:table-cell"
-                    onClick={() => handleSort('experiment_count')}
-                  >
-                    <div className="flex items-center justify-end">
-                      Brews
-                      <SortIcon field="experiment_count" />
-                    </div>
-                  </TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {coffees.map((coffee) => (
-                  <TableRow
-                    key={coffee.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/coffees/${coffee.id}`)}
-                  >
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {coffee.roaster}
-                        {coffee.archived_at && (
-                          <Badge variant="secondary" className="text-xs">
-                            Archived
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{coffee.name}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{coffee.country || '—'}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{coffee.process || '—'}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{formatDate(coffee.roast_date)}</TableCell>
-                    <TableCell className="text-right tabular-nums hidden sm:table-cell">
-                      {coffee.days_off_roast ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums hidden sm:table-cell">
-                      {coffee.experiment_count}
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="h-4 w-4"
-                            >
-                              <circle cx="12" cy="12" r="1" />
-                              <circle cx="12" cy="5" r="1" />
-                              <circle cx="12" cy="19" r="1" />
-                            </svg>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setEditingCoffee(coffee)}>
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleArchive(coffee)}
-                            disabled={actionLoading === coffee.id}
-                          >
-                            {coffee.archived_at ? (
-                              <>
-                                <ArchiveRestore className="h-4 w-4 mr-2" />
-                                Unarchive
-                              </>
-                            ) : (
-                              <>
-                                <Archive className="h-4 w-4 mr-2" />
-                                Archive
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setDeleteConfirm(coffee)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {coffees.map((coffee) => (
+              <CoffeeCard
+                key={coffee.id}
+                coffee={coffee}
+                onNewExperiment={handleNewExperiment}
+                onReactivate={showArchived ? handleReactivate : undefined}
+              />
+            ))}
           </div>
 
           {/* Pagination */}
@@ -411,16 +251,6 @@ export default function CoffeeList() {
           )}
         </>
       )}
-
-      {/* Delete confirmation dialog */}
-      <DeleteConfirmDialog
-        open={!!deleteConfirm}
-        onOpenChange={(open) => !open && setDeleteConfirm(null)}
-        title="Delete Coffee?"
-        description={`Delete "${deleteConfirm?.name}" by ${deleteConfirm?.roaster}? This coffee will be hidden but your experiment history will be preserved.`}
-        onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
-        isLoading={!!actionLoading}
-      />
     </div>
   );
 }

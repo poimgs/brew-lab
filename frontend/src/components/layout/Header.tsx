@@ -21,11 +21,15 @@ import { cn } from '@/lib/utils';
 interface NavLinkProps {
   to: string;
   children: React.ReactNode;
+  matchPrefix?: string;
 }
 
-function NavLink({ to, children }: NavLinkProps) {
+function NavLink({ to, children, matchPrefix }: NavLinkProps) {
   const location = useLocation();
-  const isActive = location.pathname === to || location.pathname.startsWith(to + '/');
+  const isActive =
+    location.pathname === to ||
+    (to !== '/' && location.pathname.startsWith(to + '/')) ||
+    (matchPrefix != null && (location.pathname === matchPrefix || location.pathname.startsWith(matchPrefix + '/')));
 
   return (
     <Link
@@ -67,7 +71,7 @@ export default function Header() {
                     className="text-lg font-medium hover:text-primary transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Home
+                    Coffees
                   </Link>
                   <Link
                     to="/experiments"
@@ -82,13 +86,6 @@ export default function Header() {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Analysis
-                  </Link>
-                  <Link
-                    to="/coffees"
-                    className="text-lg font-medium hover:text-primary transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Coffees
                   </Link>
                   <Link
                     to="/library"
@@ -112,10 +109,9 @@ export default function Header() {
               Coffee Tracker
             </Link>
             <nav className="hidden md:flex items-center gap-1">
-              <NavLink to="/">Home</NavLink>
+              <NavLink to="/" matchPrefix="/coffees">Coffees</NavLink>
               <NavLink to="/experiments">Experiments</NavLink>
               <NavLink to="/analysis">Analysis</NavLink>
-              <NavLink to="/coffees">Coffees</NavLink>
               <NavLink to="/library">Library</NavLink>
             </nav>
           </div>

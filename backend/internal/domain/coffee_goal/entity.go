@@ -13,14 +13,15 @@ type CoffeeGoal struct {
 	UserID              uuid.UUID `json:"user_id"`
 	TDS                 *float64  `json:"tds,omitempty"`
 	ExtractionYield     *float64  `json:"extraction_yield,omitempty"`
-	AromaIntensity      *int      `json:"aroma_intensity,omitempty"`
-	AcidityIntensity    *int      `json:"acidity_intensity,omitempty"`
-	SweetnessIntensity  *int      `json:"sweetness_intensity,omitempty"`
-	BitternessIntensity *int      `json:"bitterness_intensity,omitempty"`
-	BodyWeight          *int      `json:"body_weight,omitempty"`
-	FlavorIntensity     *int      `json:"flavor_intensity,omitempty"`
-	AftertasteDuration  *int      `json:"aftertaste_duration,omitempty"`
-	AftertasteIntensity *int      `json:"aftertaste_intensity,omitempty"`
+	AromaIntensity       *int      `json:"aroma_intensity,omitempty"`
+	SweetnessIntensity   *int      `json:"sweetness_intensity,omitempty"`
+	BodyIntensity        *int      `json:"body_intensity,omitempty"`
+	FlavorIntensity      *int      `json:"flavor_intensity,omitempty"`
+	BrightnessIntensity  *int      `json:"brightness_intensity,omitempty"`
+	CleanlinessIntensity *int      `json:"cleanliness_intensity,omitempty"`
+	ComplexityIntensity  *int      `json:"complexity_intensity,omitempty"`
+	BalanceIntensity     *int      `json:"balance_intensity,omitempty"`
+	AftertasteIntensity  *int      `json:"aftertaste_intensity,omitempty"`
 	OverallScore        *int      `json:"overall_score,omitempty"`
 	Notes               *string   `json:"notes,omitempty"`
 	CreatedAt           time.Time `json:"created_at"`
@@ -31,14 +32,15 @@ type CoffeeGoal struct {
 type UpsertInput struct {
 	TDS                 *float64 `json:"tds,omitempty"`
 	ExtractionYield     *float64 `json:"extraction_yield,omitempty"`
-	AromaIntensity      *int     `json:"aroma_intensity,omitempty"`
-	AcidityIntensity    *int     `json:"acidity_intensity,omitempty"`
-	SweetnessIntensity  *int     `json:"sweetness_intensity,omitempty"`
-	BitternessIntensity *int     `json:"bitterness_intensity,omitempty"`
-	BodyWeight          *int     `json:"body_weight,omitempty"`
-	FlavorIntensity     *int     `json:"flavor_intensity,omitempty"`
-	AftertasteDuration  *int     `json:"aftertaste_duration,omitempty"`
-	AftertasteIntensity *int     `json:"aftertaste_intensity,omitempty"`
+	AromaIntensity       *int     `json:"aroma_intensity,omitempty"`
+	SweetnessIntensity   *int     `json:"sweetness_intensity,omitempty"`
+	BodyIntensity        *int     `json:"body_intensity,omitempty"`
+	FlavorIntensity      *int     `json:"flavor_intensity,omitempty"`
+	BrightnessIntensity  *int     `json:"brightness_intensity,omitempty"`
+	CleanlinessIntensity *int     `json:"cleanliness_intensity,omitempty"`
+	ComplexityIntensity  *int     `json:"complexity_intensity,omitempty"`
+	BalanceIntensity     *int     `json:"balance_intensity,omitempty"`
+	AftertasteIntensity  *int     `json:"aftertaste_intensity,omitempty"`
 	OverallScore        *int     `json:"overall_score,omitempty"`
 	Notes               *string  `json:"notes,omitempty"`
 }

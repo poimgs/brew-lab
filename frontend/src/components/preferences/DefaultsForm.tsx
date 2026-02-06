@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, Save } from 'lucide-react';
+import { X, Loader2, Save, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { type Defaults, getDefaults, updateDefaults, deleteDefault, type DefaultField } from '@/api/defaults';
+import { type Defaults, getDefaults, updateDefaults, deleteDefault, type DefaultField, type PourDefault } from '@/api/defaults';
 import { type FilterPaper, listFilterPapers } from '@/api/filter-papers';
 
 interface FieldConfig {
@@ -41,6 +41,8 @@ export default function DefaultsForm() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [pendingChanges, setPendingChanges] = useState<Defaults>({});
   const [deletingField, setDeletingField] = useState<string | null>(null);
+  const [pourDefaults, setPourDefaults] = useState<PourDefault[]>([]);
+  const [pourDefaultsChanged, setPourDefaultsChanged] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -53,6 +55,15 @@ export default function DefaultsForm() {
       ]);
       setDefaults(defaultsData);
       setFilterPapers(filterPapersData.items || []);
+      // Parse pour defaults from JSON string
+      if (defaultsData.pour_defaults) {
+        try {
+          const parsed = JSON.parse(defaultsData.pour_defaults) as PourDefault[];
+          setPourDefaults(parsed);
+        } catch {
+          // Ignore parse errors
+        }
+      }
     } catch (err) {
       setError('Failed to load preferences');
       console.error('Error fetching data:', err);
@@ -116,7 +127,12 @@ export default function DefaultsForm() {
   };
 
   const handleSave = async () => {
-    if (Object.keys(pendingChanges).length === 0) {
+    const changes = { ...pendingChanges };
+    if (pourDefaultsChanged) {
+      changes.pour_defaults = JSON.stringify(pourDefaults);
+    }
+
+    if (Object.keys(changes).length === 0) {
       return;
     }
 
@@ -124,15 +140,67 @@ export default function DefaultsForm() {
     setError(null);
 
     try {
-      const updatedDefaults = await updateDefaults(pendingChanges);
+      const updatedDefaults = await updateDefaults(changes);
       setDefaults(updatedDefaults);
       setPendingChanges({});
+      setPourDefaultsChanged(false);
       setSuccessMessage('Preferences saved');
     } catch (err) {
       setError('Failed to save preferences');
       console.error('Error saving defaults:', err);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleAddPour = () => {
+    setPourDefaults((prev) => [...prev, { water_amount: undefined, pour_style: undefined, notes: undefined }]);
+    setPourDefaultsChanged(true);
+  };
+
+  const handleRemovePour = (index: number) => {
+    setPourDefaults((prev) => prev.filter((_, i) => i !== index));
+    setPourDefaultsChanged(true);
+  };
+
+  const handlePourChange = (index: number, field: keyof PourDefault, value: string) => {
+    setPourDefaults((prev) => {
+      const updated = [...prev];
+      if (field === 'water_amount') {
+        updated[index] = { ...updated[index], water_amount: value ? parseFloat(value) : undefined };
+      } else {
+        updated[index] = { ...updated[index], [field]: value || undefined };
+      }
+      return updated;
+    });
+    setPourDefaultsChanged(true);
+  };
+
+  const handleClearPourDefaults = async () => {
+    if (!defaults.pour_defaults) {
+      setPourDefaults([]);
+      setPourDefaultsChanged(false);
+      return;
+    }
+
+    setDeletingField('pour_defaults');
+    setError(null);
+
+    try {
+      await deleteDefault('pour_defaults');
+      setDefaults((prev) => {
+        const updated = { ...prev };
+        delete updated.pour_defaults;
+        return updated;
+      });
+      setPourDefaults([]);
+      setPourDefaultsChanged(false);
+      setSuccessMessage('Cleared pour defaults');
+    } catch (err) {
+      setError('Failed to clear pour defaults');
+      console.error('Error clearing pour defaults:', err);
+    } finally {
+      setDeletingField(null);
     }
   };
 
@@ -144,7 +212,7 @@ export default function DefaultsForm() {
     return defaults[field] || '';
   };
 
-  const hasChanges = Object.keys(pendingChanges).length > 0;
+  const hasChanges = Object.keys(pendingChanges).length > 0 || pourDefaultsChanged;
 
   const getFilterPaperName = (id: string): string => {
     const paper = filterPapers.find((p) => p.id === id);
@@ -255,6 +323,93 @@ export default function DefaultsForm() {
                   )}
                 </Button>
               </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Pour Defaults Section */}
+        <div className="mt-6 pt-6 border-t">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h4 className="text-sm font-medium">Pour Defaults</h4>
+              <p className="text-sm text-muted-foreground">Default pour templates for new experiments.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddPour}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Pour
+              </Button>
+              {(pourDefaults.length > 0 || defaults.pour_defaults) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearPourDefaults}
+                  disabled={deletingField === 'pour_defaults'}
+                  title="Clear all pour defaults"
+                >
+                  {deletingField === 'pour_defaults' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <X className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {pourDefaults.length === 0 && (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No pour defaults set. Add pours to pre-fill them in new experiments.
+            </p>
+          )}
+
+          {pourDefaults.map((pour, index) => (
+            <div key={index} className="flex items-center gap-2 mb-2">
+              <span className="text-sm font-medium text-muted-foreground w-6 shrink-0">
+                {index + 1}.
+              </span>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="Water (g)"
+                value={pour.water_amount ?? ''}
+                onChange={(e) => handlePourChange(index, 'water_amount', e.target.value)}
+                className="flex-1"
+              />
+              <Select
+                value={pour.pour_style || ''}
+                onValueChange={(value) => handlePourChange(index, 'pour_style', value)}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Style" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="circular">circular</SelectItem>
+                  <SelectItem value="center">center</SelectItem>
+                  <SelectItem value="pulse">pulse</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Notes"
+                value={pour.notes ?? ''}
+                onChange={(e) => handlePourChange(index, 'notes', e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleRemovePour(index)}
+                className="shrink-0 text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           ))}
         </div>

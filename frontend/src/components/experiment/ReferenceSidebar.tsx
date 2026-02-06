@@ -91,10 +91,11 @@ function ExperimentSection({ experiment }: { experiment: ReferenceExperiment }) 
 
 function GoalsSection({ goals, onEdit }: { goals: CoffeeGoalSummary; onEdit?: () => void }) {
   const hasGoals = goals.tds || goals.extraction_yield ||
-    goals.acidity_intensity || goals.sweetness_intensity ||
-    goals.bitterness_intensity || goals.body_weight ||
-    goals.flavor_intensity || goals.overall_score ||
-    goals.aroma_intensity || goals.aftertaste_duration || goals.aftertaste_intensity;
+    goals.brightness_intensity || goals.sweetness_intensity ||
+    goals.body_intensity || goals.flavor_intensity ||
+    goals.cleanliness_intensity || goals.complexity_intensity ||
+    goals.balance_intensity || goals.overall_score ||
+    goals.aroma_intensity || goals.aftertaste_intensity;
 
   return (
     <div className="space-y-2">
@@ -112,11 +113,13 @@ function GoalsSection({ goals, onEdit }: { goals: CoffeeGoalSummary; onEdit?: ()
           <ParameterRow label="TDS" value={goals.tds ? `${goals.tds}%` : null} />
           <ParameterRow label="Extraction" value={goals.extraction_yield ? `${goals.extraction_yield}%` : null} />
           <GoalRow label="Aroma" value={goals.aroma_intensity} />
-          <GoalRow label="Acidity" value={goals.acidity_intensity} />
-          <GoalRow label="Sweetness" value={goals.sweetness_intensity} />
-          <GoalRow label="Bitterness" value={goals.bitterness_intensity} />
-          <GoalRow label="Body" value={goals.body_weight} />
+          <GoalRow label="Body" value={goals.body_intensity} />
           <GoalRow label="Flavor" value={goals.flavor_intensity} />
+          <GoalRow label="Brightness" value={goals.brightness_intensity} />
+          <GoalRow label="Sweetness" value={goals.sweetness_intensity} />
+          <GoalRow label="Cleanliness" value={goals.cleanliness_intensity} />
+          <GoalRow label="Complexity" value={goals.complexity_intensity} />
+          <GoalRow label="Balance" value={goals.balance_intensity} />
           <GoalRow label="Aftertaste" value={goals.aftertaste_intensity} />
           <GoalRow label="Overall" value={goals.overall_score} />
         </div>

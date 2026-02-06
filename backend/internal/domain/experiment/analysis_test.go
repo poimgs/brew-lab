@@ -276,13 +276,13 @@ func TestExtractInputValue(t *testing.T) {
 
 func TestExtractOutcomeValue(t *testing.T) {
 	overallScore := 8
-	acidity := 7
+	brightness := 7
 	tds := 1.65
 
 	exp := &Experiment{
-		OverallScore:     &overallScore,
-		AcidityIntensity: &acidity,
-		TDS:              &tds,
+		OverallScore:        &overallScore,
+		BrightnessIntensity: &brightness,
+		TDS:                 &tds,
 	}
 
 	tests := []struct {
@@ -290,7 +290,7 @@ func TestExtractOutcomeValue(t *testing.T) {
 		want     *float64
 	}{
 		{"overall_score", ptr(8.0)},
-		{"acidity_intensity", ptr(7.0)},
+		{"brightness_intensity", ptr(7.0)},
 		{"tds", &tds},
 		{"unknown_field", nil},
 	}
@@ -323,17 +323,17 @@ func TestCalculateCorrelations(t *testing.T) {
 	experiments := make([]Experiment, 10)
 	for i := 0; i < 10; i++ {
 		temp := 85.0 + float64(i)       // 85 to 94
-		acidity := 4 + i                 // 4 to 13 (perfect positive correlation)
-		coffeeWeight := 15.0             // constant
-		overallScore := 5                // constant
+		brightness := 4 + i             // 4 to 13 (perfect positive correlation)
+		coffeeWeight := 15.0            // constant
+		overallScore := 5               // constant
 
 		roastDate := time.Now().AddDate(0, 0, -i-5)
 		experiments[i] = Experiment{
-			ID:               uuid.New(),
-			WaterTemperature: &temp,
-			AcidityIntensity: &acidity,
-			CoffeeWeight:     &coffeeWeight,
-			OverallScore:     &overallScore,
+			ID:                  uuid.New(),
+			WaterTemperature:    &temp,
+			BrightnessIntensity: &brightness,
+			CoffeeWeight:        &coffeeWeight,
+			OverallScore:        &overallScore,
 			Coffee: &CoffeeSummary{
 				RoastDate: &roastDate,
 			},
@@ -348,21 +348,21 @@ func TestCalculateCorrelations(t *testing.T) {
 		t.Fatal("CalculateCorrelations returned nil correlations")
 	}
 
-	// Check water_temperature -> acidity_intensity correlation
+	// Check water_temperature -> brightness_intensity correlation
 	tempCorrs, ok := correlations["water_temperature"]
 	if !ok {
 		t.Error("Missing water_temperature correlations")
 	} else {
-		acidityCorr, ok := tempCorrs["acidity_intensity"]
+		brightnessCorr, ok := tempCorrs["brightness_intensity"]
 		if !ok {
-			t.Error("Missing water_temperature -> acidity_intensity correlation")
+			t.Error("Missing water_temperature -> brightness_intensity correlation")
 		} else {
 			// Should be perfect positive correlation
-			if acidityCorr.R < 0.99 {
-				t.Errorf("water_temperature -> acidity_intensity r = %f, want ~1.0", acidityCorr.R)
+			if brightnessCorr.R < 0.99 {
+				t.Errorf("water_temperature -> brightness_intensity r = %f, want ~1.0", brightnessCorr.R)
 			}
-			if acidityCorr.N != 10 {
-				t.Errorf("water_temperature -> acidity_intensity n = %d, want 10", acidityCorr.N)
+			if brightnessCorr.N != 10 {
+				t.Errorf("water_temperature -> brightness_intensity n = %d, want 10", brightnessCorr.N)
 			}
 		}
 	}
@@ -376,11 +376,11 @@ func TestCalculateCorrelations(t *testing.T) {
 func TestGenerateInsights(t *testing.T) {
 	correlations := map[string]map[string]*CorrelationResult{
 		"water_temperature": {
-			"acidity_intensity": {R: 0.75, N: 10, P: 0.001, Interpretation: "strong_positive"},
-			"overall_score":     {R: 0.35, N: 10, P: 0.05, Interpretation: "weak_positive"},
+			"brightness_intensity": {R: 0.75, N: 10, P: 0.001, Interpretation: "strong_positive"},
+			"overall_score":        {R: 0.35, N: 10, P: 0.05, Interpretation: "weak_positive"},
 		},
 		"coffee_weight": {
-			"body_weight": {R: 0.55, N: 8, P: 0.02, Interpretation: "moderate_positive"},
+			"body_intensity": {R: 0.55, N: 8, P: 0.02, Interpretation: "moderate_positive"},
 		},
 	}
 
@@ -401,8 +401,8 @@ func TestGenerateInsights(t *testing.T) {
 			if insight.Input != "water_temperature" {
 				t.Errorf("Expected input 'water_temperature', got %s", insight.Input)
 			}
-			if insight.Outcome != "acidity_intensity" {
-				t.Errorf("Expected outcome 'acidity_intensity', got %s", insight.Outcome)
+			if insight.Outcome != "brightness_intensity" {
+				t.Errorf("Expected outcome 'brightness_intensity', got %s", insight.Outcome)
 			}
 		}
 	}
@@ -441,11 +441,15 @@ func TestOutcomeVariables(t *testing.T) {
 
 	expected := []string{
 		"overall_score",
-		"acidity_intensity",
-		"sweetness_intensity",
-		"bitterness_intensity",
-		"body_weight",
 		"aroma_intensity",
+		"body_intensity",
+		"flavor_intensity",
+		"brightness_intensity",
+		"sweetness_intensity",
+		"cleanliness_intensity",
+		"complexity_intensity",
+		"balance_intensity",
+		"aftertaste_intensity",
 		"tds",
 		"extraction_yield",
 	}

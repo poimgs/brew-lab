@@ -24,6 +24,8 @@ vi.mock('@/api/coffees', async () => {
   return {
     ...actual,
     setBestExperiment: vi.fn(),
+    archiveCoffee: vi.fn(),
+    unarchiveCoffee: vi.fn(),
   };
 });
 
@@ -43,6 +45,8 @@ describe('CoffeeDetail', () => {
   const mockOnBack = vi.fn();
   const mockOnEdit = vi.fn();
   const mockOnRefresh = vi.fn();
+  const mockOnArchive = vi.fn().mockResolvedValue(undefined);
+  const mockOnUnarchive = vi.fn().mockResolvedValue(undefined);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,7 +64,7 @@ describe('CoffeeDetail', () => {
     roaster: 'Cata Coffee',
     name: 'Kiamaina',
     country: 'Kenya',
-    region: 'Nyeri',
+    farm: 'Nyeri',
     process: 'Washed',
     roast_level: 'Light',
     roast_date: '2025-11-19',
@@ -103,7 +107,7 @@ describe('CoffeeDetail', () => {
       id: 'goal-1',
       tds: 1.38,
       extraction_yield: 20.5,
-      acidity_intensity: 7,
+      brightness_intensity: 7,
       sweetness_intensity: 8,
       overall_score: 9,
       notes: 'Try finer grind to boost sweetness',
@@ -138,6 +142,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -156,6 +162,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -174,6 +182,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -193,6 +203,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -220,6 +232,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -240,6 +254,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -261,6 +277,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -282,6 +300,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -300,6 +320,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -320,6 +342,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -340,6 +364,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -358,6 +384,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -383,6 +411,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -420,6 +450,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -439,6 +471,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -458,6 +492,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -480,6 +516,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -503,6 +541,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -525,6 +565,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -549,6 +591,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -577,6 +621,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -598,6 +644,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -618,6 +666,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -638,6 +688,8 @@ describe('CoffeeDetail', () => {
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
         />
       );
 
@@ -648,6 +700,176 @@ describe('CoffeeDetail', () => {
         expect(coffeesApi.setBestExperiment).toHaveBeenCalledWith('coffee-1', null);
         expect(mockOnRefresh).toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('archive/unarchive actions', () => {
+    it('shows Archive button when coffee is not archived', () => {
+      const coffee = createMockCoffee();
+      renderWithRouter(
+        <CoffeeDetail
+          coffee={coffee}
+          reference={createMockReference()}
+          experiments={[]}
+          experimentsLoading={false}
+          onBack={mockOnBack}
+          onEdit={mockOnEdit}
+          onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /Archive/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Unarchive/i })).not.toBeInTheDocument();
+    });
+
+    it('shows Unarchive button when coffee is archived', () => {
+      const coffee = createMockCoffee({ archived_at: '2026-01-20T00:00:00Z' });
+      renderWithRouter(
+        <CoffeeDetail
+          coffee={coffee}
+          reference={createMockReference()}
+          experiments={[]}
+          experimentsLoading={false}
+          onBack={mockOnBack}
+          onEdit={mockOnEdit}
+          onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /Unarchive/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Archive$/i })).not.toBeInTheDocument();
+    });
+
+    it('opens confirmation dialog when Archive button is clicked', async () => {
+      const user = userEvent.setup();
+      const coffee = createMockCoffee();
+      renderWithRouter(
+        <CoffeeDetail
+          coffee={coffee}
+          reference={createMockReference()}
+          experiments={[]}
+          experimentsLoading={false}
+          onBack={mockOnBack}
+          onEdit={mockOnEdit}
+          onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /Archive/i }));
+      expect(screen.getByText('Archive Coffee')).toBeInTheDocument();
+      expect(screen.getByText(/Are you sure you want to archive/)).toBeInTheDocument();
+    });
+
+    it('calls onArchive when confirmed in dialog', async () => {
+      const user = userEvent.setup();
+      const coffee = createMockCoffee();
+      renderWithRouter(
+        <CoffeeDetail
+          coffee={coffee}
+          reference={createMockReference()}
+          experiments={[]}
+          experimentsLoading={false}
+          onBack={mockOnBack}
+          onEdit={mockOnEdit}
+          onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
+        />
+      );
+
+      // Open the archive dialog
+      await user.click(screen.getByRole('button', { name: /Archive/i }));
+
+      // Confirm archive in the dialog
+      const dialogArchiveButton = screen.getAllByRole('button', { name: /Archive/i }).find(
+        btn => btn.closest('[role="dialog"]')
+      );
+      expect(dialogArchiveButton).toBeInTheDocument();
+      await user.click(dialogArchiveButton!);
+
+      await waitFor(() => {
+        expect(mockOnArchive).toHaveBeenCalledOnce();
+      });
+    });
+
+    it('does not call onArchive when dialog is cancelled', async () => {
+      const user = userEvent.setup();
+      const coffee = createMockCoffee();
+      renderWithRouter(
+        <CoffeeDetail
+          coffee={coffee}
+          reference={createMockReference()}
+          experiments={[]}
+          experimentsLoading={false}
+          onBack={mockOnBack}
+          onEdit={mockOnEdit}
+          onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
+        />
+      );
+
+      // Open the archive dialog
+      await user.click(screen.getByRole('button', { name: /Archive/i }));
+      expect(screen.getByText('Archive Coffee')).toBeInTheDocument();
+
+      // Click Cancel
+      await user.click(screen.getByRole('button', { name: /Cancel/i }));
+
+      expect(mockOnArchive).not.toHaveBeenCalled();
+    });
+
+    it('calls onUnarchive directly without confirmation dialog', async () => {
+      const user = userEvent.setup();
+      const coffee = createMockCoffee({ archived_at: '2026-01-20T00:00:00Z' });
+      renderWithRouter(
+        <CoffeeDetail
+          coffee={coffee}
+          reference={createMockReference()}
+          experiments={[]}
+          experimentsLoading={false}
+          onBack={mockOnBack}
+          onEdit={mockOnEdit}
+          onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /Unarchive/i }));
+
+      await waitFor(() => {
+        expect(mockOnUnarchive).toHaveBeenCalledOnce();
+      });
+      // No dialog should appear
+      expect(screen.queryByText('Archive Coffee')).not.toBeInTheDocument();
+    });
+
+    it('shows coffee name in archive confirmation dialog', async () => {
+      const user = userEvent.setup();
+      const coffee = createMockCoffee({ name: 'El Calagual', roaster: 'Cata Coffee' });
+      renderWithRouter(
+        <CoffeeDetail
+          coffee={coffee}
+          reference={createMockReference()}
+          experiments={[]}
+          experimentsLoading={false}
+          onBack={mockOnBack}
+          onEdit={mockOnEdit}
+          onRefresh={mockOnRefresh}
+          onArchive={mockOnArchive}
+          onUnarchive={mockOnUnarchive}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /Archive/i }));
+      expect(screen.getByText(/El Calagual.*Cata Coffee/)).toBeInTheDocument();
     });
   });
 });

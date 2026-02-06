@@ -41,6 +41,8 @@ func (m *mockRepository) Create(ctx context.Context, userID uuid.UUID, input Cre
 		Roaster:   input.Roaster,
 		Name:      input.Name,
 		Country:   input.Country,
+		Farm:      input.Farm,
+		RoastDate: input.RoastDate,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -93,6 +95,9 @@ func (m *mockRepository) Update(ctx context.Context, userID, coffeeID uuid.UUID,
 	}
 	if input.Name != nil {
 		coffee.Name = *input.Name
+	}
+	if input.Farm != nil {
+		coffee.Farm = input.Farm
 	}
 	coffee.UpdatedAt = time.Now()
 	return coffee, nil
@@ -504,7 +509,7 @@ func TestHandler_Create_RoastDateValidation(t *testing.T) {
 
 	userID := uuid.New()
 
-	futureDate := time.Now().Add(24 * time.Hour)
+	futureDate := NewDateOnly(time.Now().Add(24 * time.Hour))
 	body, _ := json.Marshal(CreateCoffeeInput{
 		Roaster:   "Test Roaster",
 		Name:      "Test Coffee",
@@ -741,4 +746,470 @@ func TestHandler_GetReference_ResponseStructure(t *testing.T) {
 
 	// The mock returns nil for both fields, which is valid for a coffee with no experiments/goals
 	// This test verifies the endpoint returns valid JSON with the expected structure
+}
+
+func TestHandler_Create_WithFarmField(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	farm := "Kiamaina Estate"
+
+	body, _ := json.Marshal(CreateCoffeeInput{
+		Roaster: "Cata Coffee",
+		Name:    "Kiamaina",
+		Farm:    &farm,
+	})
+
+	req := createRequestWithUser("POST", "/coffees", body, userID)
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+
+	var result Coffee
+	if err := json.NewDecoder(rr.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify the response contains farm field
+	if result.Farm == nil || *result.Farm != farm {
+		t.Errorf("expected farm to be %q, got %v", farm, result.Farm)
+	}
+}
+
+func TestHandler_Create_ResponseHasNoRegionOrPurchaseDate(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+
+	body, _ := json.Marshal(CreateCoffeeInput{
+		Roaster: "Test Roaster",
+		Name:    "Test Coffee",
+	})
+
+	req := createRequestWithUser("POST", "/coffees", body, userID)
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+
+	// Verify the JSON response does not contain "region" or "purchase_date" keys
+	var rawJSON map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &rawJSON); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, exists := rawJSON["region"]; exists {
+		t.Error("response should not contain 'region' field")
+	}
+	if _, exists := rawJSON["purchase_date"]; exists {
+		t.Error("response should not contain 'purchase_date' field")
+	}
+
+	// Verify "farm" key is present in the JSON structure (even if omitted when nil)
+	// The entity uses omitempty, so farm won't appear when nil - that's expected
+}
+
+func TestHandler_Create_PurchaseDateInBodyIsIgnored(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+
+	// Send a body with purchase_date - it should be silently ignored
+	body := []byte(`{"roaster":"Test","name":"Coffee","purchase_date":"2026-01-01"}`)
+
+	req := createRequestWithUser("POST", "/coffees", body, userID)
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	// Should succeed - unknown fields are ignored by Go's JSON decoder
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandler_Update_FarmField(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+
+	repo.coffees[coffeeID] = &Coffee{
+		ID:        coffeeID,
+		UserID:    userID,
+		Roaster:   "Test Roaster",
+		Name:      "Test Coffee",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	farm := "New Farm"
+	body, _ := json.Marshal(UpdateCoffeeInput{
+		Farm: &farm,
+	})
+
+	req := createRequestWithUser("PUT", "/coffees/"+coffeeID.String(), body, userID)
+	rr := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Put("/coffees/{id}", handler.Update)
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	var result Coffee
+	if err := json.NewDecoder(rr.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+
+	if result.Farm == nil || *result.Farm != farm {
+		t.Errorf("expected farm to be %q, got %v", farm, result.Farm)
+	}
+}
+
+func TestHandler_List_WithBestExperimentData(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+	experimentID := uuid.New()
+	brewDate := time.Date(2026, 1, 15, 10, 30, 0, 0, time.UTC)
+	score := 8
+	ratio := 15.0
+	temp := 96.0
+	bloomTime := 30
+	fpName := "Abaca"
+	mpName := "Catalyst"
+	improvementNote := "Try finer grind to boost sweetness"
+
+	repo.listFunc = func(ctx context.Context, uid uuid.UUID, params ListCoffeesParams) (*ListCoffeesResult, error) {
+		return &ListCoffeesResult{
+			Items: []Coffee{
+				{
+					ID:        coffeeID,
+					UserID:    uid,
+					Roaster:   "Cata Coffee",
+					Name:      "Kiamaina",
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+					BestExperiment: &BestExperimentSummary{
+						ID:                 experimentID,
+						BrewDate:           brewDate,
+						OverallScore:       &score,
+						Ratio:              &ratio,
+						WaterTemperature:   &temp,
+						FilterPaperName:    &fpName,
+						MineralProfileName: &mpName,
+						BloomTime:          &bloomTime,
+						PourCount:          2,
+						PourStyles:         []string{"circular", "center"},
+					},
+					ImprovementNote: &improvementNote,
+				},
+			},
+			Pagination: Pagination{Page: 1, PerPage: 20, Total: 1, TotalPages: 1},
+		}, nil
+	}
+
+	req := createRequestWithUser("GET", "/coffees", nil, userID)
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	// Decode into raw JSON to verify structure
+	var raw map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &raw); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	items, ok := raw["items"].([]interface{})
+	if !ok || len(items) != 1 {
+		t.Fatalf("expected 1 item, got %v", raw["items"])
+	}
+
+	item := items[0].(map[string]interface{})
+
+	// Verify best_experiment is present
+	bestExp, ok := item["best_experiment"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected best_experiment to be present in response")
+	}
+
+	if bestExp["id"] != experimentID.String() {
+		t.Errorf("expected best_experiment.id %s, got %v", experimentID, bestExp["id"])
+	}
+	if bestExp["overall_score"] != float64(8) {
+		t.Errorf("expected best_experiment.overall_score 8, got %v", bestExp["overall_score"])
+	}
+	if bestExp["ratio"] != float64(15) {
+		t.Errorf("expected best_experiment.ratio 15, got %v", bestExp["ratio"])
+	}
+	if bestExp["water_temperature"] != float64(96) {
+		t.Errorf("expected best_experiment.water_temperature 96, got %v", bestExp["water_temperature"])
+	}
+	if bestExp["filter_paper_name"] != "Abaca" {
+		t.Errorf("expected best_experiment.filter_paper_name Abaca, got %v", bestExp["filter_paper_name"])
+	}
+	if bestExp["mineral_profile_name"] != "Catalyst" {
+		t.Errorf("expected best_experiment.mineral_profile_name Catalyst, got %v", bestExp["mineral_profile_name"])
+	}
+	if bestExp["bloom_time"] != float64(30) {
+		t.Errorf("expected best_experiment.bloom_time 30, got %v", bestExp["bloom_time"])
+	}
+	if bestExp["pour_count"] != float64(2) {
+		t.Errorf("expected best_experiment.pour_count 2, got %v", bestExp["pour_count"])
+	}
+
+	pourStyles, ok := bestExp["pour_styles"].([]interface{})
+	if !ok || len(pourStyles) != 2 {
+		t.Errorf("expected 2 pour_styles, got %v", bestExp["pour_styles"])
+	}
+
+	// Verify improvement_note is present
+	if item["improvement_note"] != improvementNote {
+		t.Errorf("expected improvement_note %q, got %v", improvementNote, item["improvement_note"])
+	}
+}
+
+func TestHandler_List_WithoutBestExperiment(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+
+	repo.listFunc = func(ctx context.Context, uid uuid.UUID, params ListCoffeesParams) (*ListCoffeesResult, error) {
+		return &ListCoffeesResult{
+			Items: []Coffee{
+				{
+					ID:        coffeeID,
+					UserID:    uid,
+					Roaster:   "Test Roaster",
+					Name:      "Test Coffee",
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+					// No BestExperiment or ImprovementNote
+				},
+			},
+			Pagination: Pagination{Page: 1, PerPage: 20, Total: 1, TotalPages: 1},
+		}, nil
+	}
+
+	req := createRequestWithUser("GET", "/coffees", nil, userID)
+	rr := httptest.NewRecorder()
+
+	handler.List(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &raw); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	items := raw["items"].([]interface{})
+	item := items[0].(map[string]interface{})
+
+	// best_experiment should be absent (omitempty)
+	if _, exists := item["best_experiment"]; exists {
+		t.Error("expected best_experiment to be absent when nil")
+	}
+
+	// improvement_note should be absent (omitempty)
+	if _, exists := item["improvement_note"]; exists {
+		t.Error("expected improvement_note to be absent when nil")
+	}
+}
+
+func TestHandler_Create_RoastDateValidationStillWorks(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+
+	// Future roast date should still be rejected
+	futureDate := NewDateOnly(time.Now().Add(48 * time.Hour))
+	body, _ := json.Marshal(CreateCoffeeInput{
+		Roaster:   "Test Roaster",
+		Name:      "Test Coffee",
+		RoastDate: &futureDate,
+	})
+
+	req := createRequestWithUser("POST", "/coffees", body, userID)
+	rr := httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected status %d for future roast date, got %d: %s", http.StatusBadRequest, rr.Code, rr.Body.String())
+	}
+
+	// Valid past roast date should succeed
+	pastDate := NewDateOnly(time.Now().Add(-24 * time.Hour))
+	body, _ = json.Marshal(CreateCoffeeInput{
+		Roaster:   "Test Roaster",
+		Name:      "Test Coffee",
+		RoastDate: &pastDate,
+	})
+
+	req = createRequestWithUser("POST", "/coffees", body, userID)
+	rr = httptest.NewRecorder()
+
+	handler.Create(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Errorf("expected status %d for valid roast date, got %d: %s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandler_Create_DateOnlyFormat(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+
+	tests := []struct {
+		name           string
+		body           string
+		expectedStatus int
+		checkDate      bool
+		expectedDate   string
+	}{
+		{
+			name:           "YYYY-MM-DD format accepted",
+			body:           `{"roaster":"Test","name":"Coffee","roast_date":"2025-11-19"}`,
+			expectedStatus: http.StatusCreated,
+			checkDate:      true,
+			expectedDate:   "2025-11-19",
+		},
+		{
+			name:           "RFC3339 format accepted for backward compatibility",
+			body:           `{"roaster":"Test","name":"Coffee","roast_date":"2025-11-19T00:00:00Z"}`,
+			expectedStatus: http.StatusCreated,
+			checkDate:      true,
+			expectedDate:   "2025-11-19",
+		},
+		{
+			name:           "empty roast_date accepted",
+			body:           `{"roaster":"Test","name":"Coffee","roast_date":""}`,
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name:           "null roast_date accepted",
+			body:           `{"roaster":"Test","name":"Coffee","roast_date":null}`,
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name:           "no roast_date field accepted",
+			body:           `{"roaster":"Test","name":"Coffee"}`,
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name:           "invalid date format rejected",
+			body:           `{"roaster":"Test","name":"Coffee","roast_date":"19/11/2025"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "future YYYY-MM-DD date rejected",
+			body:           `{"roaster":"Test","name":"Coffee","roast_date":"2099-12-31"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := createRequestWithUser("POST", "/coffees", []byte(tt.body), userID)
+			rr := httptest.NewRecorder()
+
+			handler.Create(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+
+			if tt.checkDate && rr.Code == http.StatusCreated {
+				var raw map[string]interface{}
+				if err := json.Unmarshal(rr.Body.Bytes(), &raw); err != nil {
+					t.Fatalf("failed to decode response: %v", err)
+				}
+				if raw["roast_date"] != tt.expectedDate {
+					t.Errorf("expected roast_date %q, got %v", tt.expectedDate, raw["roast_date"])
+				}
+			}
+		})
+	}
+}
+
+func TestHandler_Update_DateOnlyFormat(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+
+	repo.coffees[coffeeID] = &Coffee{
+		ID:        coffeeID,
+		UserID:    userID,
+		Roaster:   "Test Roaster",
+		Name:      "Test Coffee",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	tests := []struct {
+		name           string
+		body           string
+		expectedStatus int
+	}{
+		{
+			name:           "update with YYYY-MM-DD roast_date",
+			body:           `{"roast_date":"2025-11-19"}`,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "update with invalid date format rejected",
+			body:           `{"roast_date":"Nov 19 2025"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "update with future date rejected",
+			body:           `{"roast_date":"2099-12-31"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := createRequestWithUser("PUT", "/coffees/"+coffeeID.String(), []byte(tt.body), userID)
+			rr := httptest.NewRecorder()
+
+			r := chi.NewRouter()
+			r.Put("/coffees/{id}", handler.Update)
+			r.ServeHTTP(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+		})
+	}
 }

@@ -58,11 +58,17 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate field names
-	for fieldName := range input {
+	// Validate field names and values
+	for fieldName, value := range input {
 		if !IsValidField(fieldName) {
 			response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid field name: "+fieldName)
 			return
+		}
+		if fieldName == "pour_defaults" {
+			if err := ValidatePourDefaults(value); err != nil {
+				response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+				return
+			}
 		}
 	}
 

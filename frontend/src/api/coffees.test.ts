@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import client from './client';
 import {
+  listCoffees,
   setBestExperiment,
   getReference,
   type Coffee,
   type CoffeeReference,
+  type BestExperimentSummary,
+  type ListCoffeesResponse,
 } from './coffees';
 
 // Mock the axios client
@@ -22,7 +25,7 @@ const mockCoffee: Coffee = {
   roaster: 'Cata Coffee',
   name: 'Kiamaina',
   country: 'Kenya',
-  region: 'Nyeri',
+  farm: 'Nyeri',
   process: 'Washed',
   roast_level: 'Light',
   roast_date: '2025-11-19',
@@ -60,12 +63,107 @@ const mockCoffeeReference: CoffeeReference = {
     id: 'goal-789',
     tds: 1.38,
     extraction_yield: 20.5,
-    acidity_intensity: 7,
+    brightness_intensity: 7,
     sweetness_intensity: 8,
     overall_score: 9,
     notes: 'Try finer grind to boost sweetness, maybe 3.2',
   },
 };
+
+describe('coffees API - List with enrichment data', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('BestExperimentSummary type has all expected fields', () => {
+    const summary: BestExperimentSummary = {
+      id: 'exp-456',
+      brew_date: '2026-01-15T10:30:00Z',
+      overall_score: 8,
+      ratio: 15.0,
+      water_temperature: 96.0,
+      filter_paper_name: 'Abaca',
+      mineral_profile_name: 'Catalyst',
+      bloom_time: 30,
+      pour_count: 2,
+      pour_styles: ['circular', 'center'],
+    };
+
+    expect(summary.id).toBe('exp-456');
+    expect(summary.overall_score).toBe(8);
+    expect(summary.ratio).toBe(15.0);
+    expect(summary.water_temperature).toBe(96.0);
+    expect(summary.filter_paper_name).toBe('Abaca');
+    expect(summary.mineral_profile_name).toBe('Catalyst');
+    expect(summary.bloom_time).toBe(30);
+    expect(summary.pour_count).toBe(2);
+    expect(summary.pour_styles).toEqual(['circular', 'center']);
+  });
+
+  it('Coffee type supports optional best_experiment and improvement_note', () => {
+    const coffeeWithEnrichment: Coffee = {
+      ...mockCoffee,
+      best_experiment: {
+        id: 'exp-456',
+        brew_date: '2026-01-15T10:30:00Z',
+        overall_score: 8,
+        ratio: 15.0,
+        water_temperature: 96.0,
+        filter_paper_name: 'Abaca',
+        bloom_time: 30,
+        pour_count: 2,
+        pour_styles: ['circular'],
+      },
+      improvement_note: 'Try finer grind',
+    };
+
+    expect(coffeeWithEnrichment.best_experiment).toBeDefined();
+    expect(coffeeWithEnrichment.best_experiment?.overall_score).toBe(8);
+    expect(coffeeWithEnrichment.improvement_note).toBe('Try finer grind');
+  });
+
+  it('Coffee type works without enrichment fields', () => {
+    const plain: Coffee = { ...mockCoffee };
+    expect(plain.best_experiment).toBeUndefined();
+    expect(plain.improvement_note).toBeUndefined();
+  });
+
+  it('listCoffees returns enriched coffee data', async () => {
+    const response: ListCoffeesResponse = {
+      items: [
+        {
+          ...mockCoffee,
+          best_experiment: {
+            id: 'exp-456',
+            brew_date: '2026-01-15T10:30:00Z',
+            overall_score: 8,
+            ratio: 15.0,
+            water_temperature: 96.0,
+            bloom_time: 30,
+            pour_count: 3,
+            pour_styles: ['circular', 'circular', 'center'],
+          },
+          improvement_note: 'Try finer grind to boost sweetness',
+        },
+      ],
+      pagination: { page: 1, per_page: 20, total: 1, total_pages: 1 },
+    };
+
+    vi.mocked(client.get).mockResolvedValueOnce({ data: response });
+
+    const result = await listCoffees();
+
+    expect(client.get).toHaveBeenCalledWith('/coffees', { params: {} });
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].best_experiment?.pour_count).toBe(3);
+    expect(result.items[0].best_experiment?.pour_styles).toEqual([
+      'circular',
+      'circular',
+      'center',
+    ]);
+    expect(result.items[0].improvement_note).toBe('Try finer grind to boost sweetness');
+  });
+});
 
 describe('coffees API - Best Experiment and Reference', () => {
   beforeEach(() => {
@@ -182,12 +280,13 @@ describe('coffees API - Best Experiment and Reference', () => {
           tds: 1.40,
           extraction_yield: 21.0,
           aroma_intensity: 7,
-          acidity_intensity: 8,
+          brightness_intensity: 8,
           sweetness_intensity: 9,
-          bitterness_intensity: 3,
-          body_weight: 6,
+          cleanliness_intensity: 3,
+          body_intensity: 6,
           flavor_intensity: 8,
-          aftertaste_duration: 5,
+          complexity_intensity: 5,
+          balance_intensity: 7,
           aftertaste_intensity: 4,
           overall_score: 9,
           notes: 'Target profile notes',
@@ -201,12 +300,13 @@ describe('coffees API - Best Experiment and Reference', () => {
       expect(goals.tds).toBe(1.40);
       expect(goals.extraction_yield).toBe(21.0);
       expect(goals.aroma_intensity).toBe(7);
-      expect(goals.acidity_intensity).toBe(8);
+      expect(goals.brightness_intensity).toBe(8);
       expect(goals.sweetness_intensity).toBe(9);
-      expect(goals.bitterness_intensity).toBe(3);
-      expect(goals.body_weight).toBe(6);
+      expect(goals.cleanliness_intensity).toBe(3);
+      expect(goals.body_intensity).toBe(6);
       expect(goals.flavor_intensity).toBe(8);
-      expect(goals.aftertaste_duration).toBe(5);
+      expect(goals.complexity_intensity).toBe(5);
+      expect(goals.balance_intensity).toBe(7);
       expect(goals.aftertaste_intensity).toBe(4);
       expect(goals.overall_score).toBe(9);
       expect(goals.notes).toBe('Target profile notes');
