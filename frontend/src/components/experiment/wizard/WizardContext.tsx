@@ -15,12 +15,15 @@ export const TOTAL_STEPS = WIZARD_STEPS.length;
 interface WizardContextType {
   currentStep: number;
   visitedSteps: Set<number>;
+  stepErrors: Set<number>;
   isEditMode: boolean;
   goToStep: (step: number) => void;
   nextStep: () => void;
   prevStep: () => void;
   markStepVisited: (step: number) => void;
   canNavigateToStep: (step: number) => boolean;
+  setStepErrors: (errors: Set<number>) => void;
+  clearStepError: (step: number) => void;
   isFirstStep: boolean;
   isLastStep: boolean;
 }
@@ -43,9 +46,23 @@ export function WizardProvider({ children, isEditMode = false, initialStep = 1 }
     // In create mode, only the first step is visited
     return new Set([1]);
   });
+  const [stepErrors, setStepErrorsState] = useState<Set<number>>(new Set());
 
   const markStepVisited = useCallback((step: number) => {
     setVisitedSteps(prev => new Set([...prev, step]));
+  }, []);
+
+  const setStepErrors = useCallback((errors: Set<number>) => {
+    setStepErrorsState(errors);
+  }, []);
+
+  const clearStepError = useCallback((step: number) => {
+    setStepErrorsState(prev => {
+      if (!prev.has(step)) return prev;
+      const next = new Set(prev);
+      next.delete(step);
+      return next;
+    });
   }, []);
 
   const canNavigateToStep = useCallback((step: number) => {
@@ -56,11 +73,11 @@ export function WizardProvider({ children, isEditMode = false, initialStep = 1 }
   }, [isEditMode, visitedSteps]);
 
   const goToStep = useCallback((step: number) => {
-    if (step >= 1 && step <= TOTAL_STEPS && canNavigateToStep(step)) {
+    if (step >= 1 && step <= TOTAL_STEPS && (canNavigateToStep(step) || stepErrors.has(step))) {
       setCurrentStep(step);
       markStepVisited(step);
     }
-  }, [canNavigateToStep, markStepVisited]);
+  }, [canNavigateToStep, markStepVisited, stepErrors]);
 
   const nextStep = useCallback(() => {
     if (currentStep < TOTAL_STEPS) {
@@ -79,12 +96,15 @@ export function WizardProvider({ children, isEditMode = false, initialStep = 1 }
   const value: WizardContextType = {
     currentStep,
     visitedSteps,
+    stepErrors,
     isEditMode,
     goToStep,
     nextStep,
     prevStep,
     markStepVisited,
     canNavigateToStep,
+    setStepErrors,
+    clearStepError,
     isFirstStep: currentStep === 1,
     isLastStep: currentStep === TOTAL_STEPS,
   };

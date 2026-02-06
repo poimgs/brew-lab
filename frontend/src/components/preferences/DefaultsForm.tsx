@@ -18,19 +18,24 @@ interface FieldConfig {
   key: DefaultField;
   label: string;
   unit?: string;
-  type: 'number' | 'text' | 'select';
+  type: 'number' | 'select';
 }
 
-const FIELD_CONFIGS: FieldConfig[] = [
+const PRE_BREW_FIELDS: FieldConfig[] = [
   { key: 'coffee_weight', label: 'Coffee Weight', unit: 'g', type: 'number' },
   { key: 'water_weight', label: 'Water Weight', unit: 'g', type: 'number' },
-  { key: 'ratio', label: 'Ratio', type: 'text' },
-  { key: 'grind_size', label: 'Grind Size', type: 'text' },
+  { key: 'ratio', label: 'Ratio', type: 'number' },
+  { key: 'grind_size', label: 'Grind Size', type: 'number' },
   { key: 'water_temperature', label: 'Temperature', unit: '°C', type: 'number' },
   { key: 'filter_paper_id', label: 'Filter Paper', type: 'select' },
+];
+
+const BREW_FIELDS: FieldConfig[] = [
   { key: 'bloom_water', label: 'Bloom Water', unit: 'g', type: 'number' },
   { key: 'bloom_time', label: 'Bloom Time', unit: 's', type: 'number' },
 ];
+
+const ALL_FIELD_CONFIGS = [...PRE_BREW_FIELDS, ...BREW_FIELDS];
 
 export default function DefaultsForm() {
   const [defaults, setDefaults] = useState<Defaults>({});
@@ -117,7 +122,7 @@ export default function DefaultsForm() {
         delete updated[field];
         return updated;
       });
-      setSuccessMessage(`Cleared ${FIELD_CONFIGS.find((f) => f.key === field)?.label}`);
+      setSuccessMessage(`Cleared ${ALL_FIELD_CONFIGS.find((f) => f.key === field)?.label}`);
     } catch (err) {
       setError('Failed to clear default');
       console.error('Error clearing default:', err);
@@ -214,10 +219,71 @@ export default function DefaultsForm() {
 
   const hasChanges = Object.keys(pendingChanges).length > 0 || pourDefaultsChanged;
 
-  const getFilterPaperName = (id: string): string => {
-    const paper = filterPapers.find((p) => p.id === id);
-    return paper ? paper.name : 'Unknown';
-  };
+  const renderField = (config: FieldConfig) => (
+    <div key={config.key} className="flex items-center gap-3">
+      <Label htmlFor={config.key} className="w-32 shrink-0">
+        {config.label}
+      </Label>
+
+      <div className="flex-1 flex items-center gap-2">
+        {config.type === 'select' ? (
+          <Select
+            value={getFieldValue(config.key) || undefined}
+            onValueChange={(value) => handleFieldChange(config.key, value)}
+          >
+            <SelectTrigger id={config.key} className="flex-1">
+              <SelectValue placeholder="Select filter paper..." />
+            </SelectTrigger>
+            <SelectContent>
+              {filterPapers.map((paper) => (
+                <SelectItem key={paper.id} value={paper.id}>
+                  {paper.name}
+                  {paper.brand && ` (${paper.brand})`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <>
+            <Input
+              id={config.key}
+              type="number"
+              step="any"
+              value={getFieldValue(config.key)}
+              onChange={(e) => handleFieldChange(config.key, e.target.value)}
+              placeholder="0"
+              className="flex-1"
+            />
+            {config.unit && (
+              <span className="text-sm text-muted-foreground w-8">
+                {config.unit}
+              </span>
+            )}
+          </>
+        )}
+
+        {/* Clear button */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => handleClearField(config.key)}
+          disabled={
+            deletingField === config.key ||
+            (!defaults[config.key] && !pendingChanges[config.key])
+          }
+          className="shrink-0"
+          title="Clear default"
+        >
+          {deletingField === config.key ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <X className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -260,71 +326,20 @@ export default function DefaultsForm() {
           </div>
         )}
 
-        <div className="space-y-4">
-          {FIELD_CONFIGS.map((config) => (
-            <div key={config.key} className="flex items-center gap-3">
-              <Label htmlFor={config.key} className="w-32 shrink-0">
-                {config.label}
-              </Label>
+        {/* Pre-Brew Defaults Section */}
+        <div>
+          <h4 className="text-sm font-medium mb-4">Pre-Brew Defaults</h4>
+          <div className="space-y-4">
+            {PRE_BREW_FIELDS.map(renderField)}
+          </div>
+        </div>
 
-              <div className="flex-1 flex items-center gap-2">
-                {config.type === 'select' ? (
-                  <Select
-                    value={getFieldValue(config.key) || undefined}
-                    onValueChange={(value) => handleFieldChange(config.key, value)}
-                  >
-                    <SelectTrigger id={config.key} className="flex-1">
-                      <SelectValue placeholder="Select filter paper..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filterPapers.map((paper) => (
-                        <SelectItem key={paper.id} value={paper.id}>
-                          {paper.name}
-                          {paper.brand && ` (${paper.brand})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <>
-                    <Input
-                      id={config.key}
-                      type={config.type}
-                      value={getFieldValue(config.key)}
-                      onChange={(e) => handleFieldChange(config.key, e.target.value)}
-                      placeholder={config.type === 'number' ? '0' : ''}
-                      className="flex-1"
-                    />
-                    {config.unit && (
-                      <span className="text-sm text-muted-foreground w-8">
-                        {config.unit}
-                      </span>
-                    )}
-                  </>
-                )}
-
-                {/* Clear button */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleClearField(config.key)}
-                  disabled={
-                    deletingField === config.key ||
-                    (!defaults[config.key] && !pendingChanges[config.key])
-                  }
-                  className="shrink-0"
-                  title="Clear default"
-                >
-                  {deletingField === config.key ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <X className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-          ))}
+        {/* Brew Defaults Section */}
+        <div className="mt-6 pt-6 border-t">
+          <h4 className="text-sm font-medium mb-4">Brew Defaults</h4>
+          <div className="space-y-4">
+            {BREW_FIELDS.map(renderField)}
+          </div>
         </div>
 
         {/* Pour Defaults Section */}
@@ -414,12 +429,6 @@ export default function DefaultsForm() {
           ))}
         </div>
 
-        {/* Show current filter paper name if set */}
-        {defaults.filter_paper_id && (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Current filter paper default: {getFilterPaperName(defaults.filter_paper_id)}
-          </p>
-        )}
       </CardContent>
     </Card>
   );

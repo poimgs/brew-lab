@@ -105,12 +105,12 @@ describe('CoffeeDetail', () => {
     experiment: createMockReferenceExperiment(),
     goals: {
       id: 'goal-1',
+      coffee_ml: 180,
       tds: 1.38,
       extraction_yield: 20.5,
       brightness_intensity: 7,
       sweetness_intensity: 8,
       overall_score: 9,
-      notes: 'Try finer grind to boost sweetness',
     },
     ...overrides,
   });
@@ -264,8 +264,8 @@ describe('CoffeeDetail', () => {
     });
   });
 
-  describe('best brew section', () => {
-    it('renders best brew information', () => {
+  describe('reference brew section', () => {
+    it('renders reference brew information', () => {
       const coffee = createMockCoffee();
       const reference = createMockReference();
       renderWithRouter(
@@ -282,8 +282,8 @@ describe('CoffeeDetail', () => {
         />
       );
 
-      expect(screen.getByText('Best Brew')).toBeInTheDocument();
-      expect(screen.getByText(/Best Brew.*Jan 15/)).toBeInTheDocument();
+      expect(screen.getByText('Reference Brew')).toBeInTheDocument();
+      expect(screen.getByText(/Reference Brew.*Jan 15/)).toBeInTheDocument();
       expect(screen.getByText(/Grind: 3.5.*1:15.*96°C.*Abaca/)).toBeInTheDocument();
       expect(screen.getByText(/TDS: 1.38%.*EY: 20.1%/)).toBeInTheDocument();
     });
@@ -330,7 +330,7 @@ describe('CoffeeDetail', () => {
   });
 
   describe('target goals section', () => {
-    it('renders target goals information', () => {
+    it('renders target goals information with quantitative and sensory subsections', () => {
       const coffee = createMockCoffee();
       const reference = createMockReference();
       renderWithRouter(
@@ -348,8 +348,17 @@ describe('CoffeeDetail', () => {
       );
 
       expect(screen.getByText('Target Goals')).toBeInTheDocument();
-      expect(screen.getByText(/TDS: 1.38%.*EY: 20.5%/)).toBeInTheDocument();
-      expect(screen.getByText(/"Try finer grind to boost sweetness"/)).toBeInTheDocument();
+      expect(screen.getByText('Quantitative')).toBeInTheDocument();
+      expect(screen.getByText('Sensory')).toBeInTheDocument();
+      // Quantitative goals (coffee_ml is unique to goals section)
+      expect(screen.getByText(/Coffee: 180ml/)).toBeInTheDocument();
+      // TDS/EY may appear in both reference brew and goals sections
+      expect(screen.getAllByText(/TDS: 1.38%/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/EY: 20/).length).toBeGreaterThanOrEqual(1);
+      // Sensory goals
+      expect(screen.getByText(/Brightness: 7\/10/)).toBeInTheDocument();
+      expect(screen.getByText(/Sweetness: 8\/10/)).toBeInTheDocument();
+      expect(screen.getByText(/Overall: 9\/10/)).toBeInTheDocument();
     });
 
     it('renders empty state when no goals exist', () => {
@@ -526,7 +535,7 @@ describe('CoffeeDetail', () => {
       expect(stars.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('shows Mark as Best button for non-best experiments', () => {
+    it('shows Mark as Reference button for non-reference experiments', () => {
       const coffee = createMockCoffee({ best_experiment_id: 'exp-1' });
       const experiments = [
         createMockExperiment({ id: 'exp-1', brew_date: '2026-01-15T10:30:00Z' }),
@@ -546,10 +555,10 @@ describe('CoffeeDetail', () => {
         />
       );
 
-      expect(screen.getByRole('button', { name: /Mark as Best/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Mark as Reference/i })).toBeInTheDocument();
     });
 
-    it('sets best experiment when Mark as Best is clicked', async () => {
+    it('sets reference experiment when Mark as Reference is clicked', async () => {
       const user = userEvent.setup();
       const coffee = createMockCoffee({ best_experiment_id: 'exp-1' });
       const experiments = [
@@ -570,7 +579,7 @@ describe('CoffeeDetail', () => {
         />
       );
 
-      await user.click(screen.getByRole('button', { name: /Mark as Best/i }));
+      await user.click(screen.getByRole('button', { name: /Mark as Reference/i }));
 
       await waitFor(() => {
         expect(coffeesApi.setBestExperiment).toHaveBeenCalledWith('coffee-1', 'exp-2');
@@ -596,20 +605,20 @@ describe('CoffeeDetail', () => {
         />
       );
 
-      // Click on the experiment row (not the Mark as Best button)
-      const row = screen.getByText('Jan 15').closest('div[class*="border"]');
+      // Click on the table row
+      const row = screen.getByText('Jan 15').closest('tr');
       if (row) {
         await user.click(row);
         expect(mockNavigate).toHaveBeenCalledWith('/experiments/exp-1');
       }
     });
 
-    it('shows View All Experiments link when more than 5 experiments', () => {
+    it('shows View All Experiments link when more than 10 experiments', () => {
       const coffee = createMockCoffee();
-      const experiments = Array.from({ length: 6 }, (_, i) =>
+      const experiments = Array.from({ length: 11 }, (_, i) =>
         createMockExperiment({
           id: `exp-${i}`,
-          brew_date: `2026-01-${15 - i}T10:30:00Z`,
+          brew_date: `2026-01-${String(15 - i).padStart(2, '0')}T10:30:00Z`,
         })
       );
       renderWithRouter(
@@ -630,7 +639,7 @@ describe('CoffeeDetail', () => {
     });
   });
 
-  describe('change best experiment dialog', () => {
+  describe('change reference experiment dialog', () => {
     it('opens dialog when Change button is clicked', async () => {
       const user = userEvent.setup();
       const coffee = createMockCoffee();
@@ -650,7 +659,7 @@ describe('CoffeeDetail', () => {
       );
 
       await user.click(screen.getByRole('button', { name: 'Change' }));
-      expect(screen.getByText('Select Best Brew')).toBeInTheDocument();
+      expect(screen.getByText('Select Reference Brew')).toBeInTheDocument();
     });
 
     it('shows Clear Selection button when best experiment is set', async () => {

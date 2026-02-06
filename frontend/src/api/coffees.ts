@@ -64,6 +64,7 @@ export interface ReferenceExperiment {
 
 export interface CoffeeGoalSummary {
   id: string;
+  coffee_ml?: number;
   tds?: number;
   extraction_yield?: number;
   aroma_intensity?: number;
@@ -76,7 +77,6 @@ export interface CoffeeGoalSummary {
   balance_intensity?: number;
   aftertaste_intensity?: number;
   overall_score?: number;
-  notes?: string;
 }
 
 export interface CoffeeReference {
@@ -99,12 +99,11 @@ export interface CoffeeInput {
 export interface ListCoffeesParams {
   page?: number;
   per_page?: number;
-  sort?: string;
   roaster?: string;
   country?: string;
   process?: string;
   search?: string;
-  include_archived?: boolean;
+  archived_only?: boolean;
   include_deleted?: boolean;
 }
 

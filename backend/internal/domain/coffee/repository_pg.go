@@ -64,11 +64,13 @@ func (r *PostgresRepository) Create(ctx context.Context, userID uuid.UUID, input
 
 func (r *PostgresRepository) GetByID(ctx context.Context, userID, coffeeID uuid.UUID) (*Coffee, error) {
 	query := `
-		SELECT id, user_id, roaster, name, country, farm, process, roast_level,
-			tasting_notes, roast_date, notes, best_experiment_id,
-			archived_at, deleted_at, created_at, updated_at
-		FROM coffees
-		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+		SELECT c.id, c.user_id, c.roaster, c.name, c.country, c.farm, c.process, c.roast_level,
+			c.tasting_notes, c.roast_date, c.notes, c.best_experiment_id,
+			c.archived_at, c.deleted_at, c.created_at, c.updated_at,
+			(SELECT COUNT(*) FROM experiments WHERE coffee_id = c.id) AS experiment_count,
+			(SELECT MAX(brew_date) FROM experiments WHERE coffee_id = c.id) AS last_brewed
+		FROM coffees c
+		WHERE c.id = $1 AND c.user_id = $2 AND c.deleted_at IS NULL
 	`
 
 	coffee := &Coffee{}
@@ -78,6 +80,7 @@ func (r *PostgresRepository) GetByID(ctx context.Context, userID, coffeeID uuid.
 		&coffee.TastingNotes, &coffee.RoastDate, &coffee.Notes,
 		&coffee.BestExperimentID, &coffee.ArchivedAt, &coffee.DeletedAt,
 		&coffee.CreatedAt, &coffee.UpdatedAt,
+		&coffee.ExperimentCount, &coffee.LastBrewed,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -97,38 +100,40 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 	var args []interface{}
 	argIdx := 1
 
-	conditions = append(conditions, fmt.Sprintf("user_id = $%d", argIdx))
+	conditions = append(conditions, fmt.Sprintf("c.user_id = $%d", argIdx))
 	args = append(args, userID)
 	argIdx++
 
 	if !params.IncludeDeleted {
-		conditions = append(conditions, "deleted_at IS NULL")
+		conditions = append(conditions, "c.deleted_at IS NULL")
 	}
 
-	if !params.IncludeArchived {
-		conditions = append(conditions, "archived_at IS NULL")
+	if params.ArchivedOnly {
+		conditions = append(conditions, "c.archived_at IS NOT NULL")
+	} else if !params.IncludeArchived {
+		conditions = append(conditions, "c.archived_at IS NULL")
 	}
 
 	if params.Roaster != "" {
-		conditions = append(conditions, fmt.Sprintf("roaster = $%d", argIdx))
+		conditions = append(conditions, fmt.Sprintf("c.roaster = $%d", argIdx))
 		args = append(args, params.Roaster)
 		argIdx++
 	}
 
 	if params.Country != "" {
-		conditions = append(conditions, fmt.Sprintf("country = $%d", argIdx))
+		conditions = append(conditions, fmt.Sprintf("c.country = $%d", argIdx))
 		args = append(args, params.Country)
 		argIdx++
 	}
 
 	if params.Process != "" {
-		conditions = append(conditions, fmt.Sprintf("process = $%d", argIdx))
+		conditions = append(conditions, fmt.Sprintf("c.process = $%d", argIdx))
 		args = append(args, params.Process)
 		argIdx++
 	}
 
 	if params.Search != "" {
-		conditions = append(conditions, fmt.Sprintf("(roaster ILIKE $%d OR name ILIKE $%d)", argIdx, argIdx))
+		conditions = append(conditions, fmt.Sprintf("(c.roaster ILIKE $%d OR c.name ILIKE $%d)", argIdx, argIdx))
 		args = append(args, "%"+params.Search+"%")
 		argIdx++
 	}
@@ -136,36 +141,22 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 	whereClause := "WHERE " + strings.Join(conditions, " AND ")
 
 	// Count total
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM coffees %s", whereClause)
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM coffees c %s", whereClause)
 	var total int
 	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, err
 	}
 
-	// Determine sort
-	orderBy := "created_at DESC"
-	if params.Sort != "" {
-		sortField := params.Sort
-		sortOrder := "ASC"
-		if strings.HasPrefix(sortField, "-") {
-			sortField = strings.TrimPrefix(sortField, "-")
-			sortOrder = "DESC"
-		}
-		allowedFields := map[string]bool{
-			"created_at": true, "updated_at": true, "roaster": true,
-			"name": true, "country": true, "roast_date": true,
-		}
-		if allowedFields[sortField] {
-			orderBy = fmt.Sprintf("%s %s", sortField, sortOrder)
-		}
-	}
+	orderBy := "c.created_at DESC"
 
 	offset := (params.Page - 1) * params.PerPage
 	listQuery := fmt.Sprintf(`
-		SELECT id, user_id, roaster, name, country, farm, process, roast_level,
-			tasting_notes, roast_date, notes, best_experiment_id,
-			archived_at, deleted_at, created_at, updated_at
-		FROM coffees
+		SELECT c.id, c.user_id, c.roaster, c.name, c.country, c.farm, c.process, c.roast_level,
+			c.tasting_notes, c.roast_date, c.notes, c.best_experiment_id,
+			c.archived_at, c.deleted_at, c.created_at, c.updated_at,
+			(SELECT COUNT(*) FROM experiments WHERE coffee_id = c.id) AS experiment_count,
+			(SELECT MAX(brew_date) FROM experiments WHERE coffee_id = c.id) AS last_brewed
+		FROM coffees c
 		%s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
@@ -187,6 +178,7 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 			&c.Country, &c.Farm, &c.Process, &c.RoastLevel,
 			&c.TastingNotes, &c.RoastDate, &c.Notes,
 			&c.BestExperimentID, &c.ArchivedAt, &c.DeletedAt, &c.CreatedAt, &c.UpdatedAt,
+			&c.ExperimentCount, &c.LastBrewed,
 		)
 		if err != nil {
 			return nil, err
@@ -523,21 +515,21 @@ func (r *PostgresRepository) GetReference(ctx context.Context, userID, coffeeID 
 
 	// Get coffee goals
 	goalsQuery := `
-		SELECT id, coffee_id, user_id, tds, extraction_yield,
+		SELECT id, coffee_id, user_id, coffee_ml, tds, extraction_yield,
 			aroma_intensity, sweetness_intensity, body_intensity, flavor_intensity,
 			brightness_intensity, cleanliness_intensity, complexity_intensity,
 			balance_intensity, aftertaste_intensity,
-			overall_score, notes, created_at, updated_at
+			overall_score, created_at, updated_at
 		FROM coffee_goals
 		WHERE coffee_id = $1 AND user_id = $2
 	`
 	var goals CoffeeGoal
 	err = r.db.QueryRowContext(ctx, goalsQuery, coffeeID, userID).Scan(
-		&goals.ID, &goals.CoffeeID, &goals.UserID, &goals.TDS, &goals.ExtractionYield,
+		&goals.ID, &goals.CoffeeID, &goals.UserID, &goals.CoffeeMl, &goals.TDS, &goals.ExtractionYield,
 		&goals.AromaIntensity, &goals.SweetnessIntensity, &goals.BodyIntensity, &goals.FlavorIntensity,
 		&goals.BrightnessIntensity, &goals.CleanlinessIntensity, &goals.ComplexityIntensity,
 		&goals.BalanceIntensity, &goals.AftertasteIntensity,
-		&goals.OverallScore, &goals.Notes, &goals.CreatedAt, &goals.UpdatedAt,
+		&goals.OverallScore, &goals.CreatedAt, &goals.UpdatedAt,
 	)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
@@ -696,10 +688,23 @@ func (r *PostgresRepository) populateImprovementNotes(ctx context.Context, userI
 		coffeeIDs = append(coffeeIDs, id)
 	}
 
+	// Get improvement_notes from the best or latest experiment for each coffee
 	query := `
-		SELECT coffee_id, notes
-		FROM coffee_goals
-		WHERE coffee_id = ANY($1) AND user_id = $2 AND notes IS NOT NULL AND notes != ''
+		SELECT DISTINCT ON (c.id)
+			c.id AS coffee_id,
+			COALESCE(best.improvement_notes, latest.improvement_notes) AS improvement_notes
+		FROM coffees c
+		LEFT JOIN experiments best ON best.id = c.best_experiment_id AND best.user_id = $2
+		LEFT JOIN LATERAL (
+			SELECT e.improvement_notes
+			FROM experiments e
+			WHERE e.coffee_id = c.id AND e.user_id = $2
+			ORDER BY e.brew_date DESC
+			LIMIT 1
+		) latest ON c.best_experiment_id IS NULL
+		WHERE c.id = ANY($1) AND c.user_id = $2
+			AND COALESCE(best.improvement_notes, latest.improvement_notes) IS NOT NULL
+			AND COALESCE(best.improvement_notes, latest.improvement_notes) != ''
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, pq.Array(coffeeIDs), userID)

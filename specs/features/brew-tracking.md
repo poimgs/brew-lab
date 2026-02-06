@@ -436,12 +436,13 @@ Note: Water weight is auto-calculated from coffee_weight × ratio but the "(auto
 - Water Bypass (ml) - with equal spacing to mineral profile
 - Mineral Profile (dropdown with "None" option, see [Library](library.md))
 
-**Quantitative Outcomes:**
+**Quantitative Outcomes (Step 5):**
 - Coffee (ml) - volume of brewed coffee
 - TDS (%)
 - Extraction Yield (%)
+- **Target Goals subsection** (editable, see Target Goals on Wizard Steps below)
 
-**Sensory Outcomes:**
+**Sensory Outcomes (Step 6):**
 
 Nine sensory attributes, each with intensity (1-10) and optional notes:
 
@@ -455,10 +456,61 @@ Nine sensory attributes, each with intensity (1-10) and optional notes:
 8. Balance - harmony between all taste attributes
 9. Aftertaste - strength and quality of finish
 
+- **Target Goals subsection** (editable, see Target Goals on Wizard Steps below)
+
 **Flavor Wheel Reference:**
 - Collapsible image showing SCA/common flavor wheel
 - Helps users identify and describe flavor notes
 - Displayed in a collapsible section to save space
+
+### Target Goals on Wizard Steps
+
+Steps 5 (Quantitative) and 6 (Sensory) include editable target goal sections that allow users to view and update their coffee's target goals inline while filling out the experiment.
+
+**Step 5 — Quantitative Outcomes:**
+```
+┌─────────────────────────────────────────┐
+│ ─── Quantitative Outcomes ───           │
+│                                         │
+│ Coffee (ml)      [180   ]               │
+│ TDS (%)          [1.38  ]               │
+│ Extraction (%)   [20.1  ]               │
+│                                         │
+│ ─── Target Goals ───                    │
+│ Coffee (ml)      [180   ]               │
+│ TDS              [1.38  ]               │
+│ Extraction       [20.5  ]               │
+│                                         │
+│            [Back]  [Next]  [Save Draft] │
+└─────────────────────────────────────────┘
+```
+
+**Step 6 — Sensory Outcomes:**
+```
+┌─────────────────────────────────────────┐
+│ ─── Sensory Outcomes ───                │
+│                                         │
+│ [Sensory attribute fields...]           │
+│                                         │
+│ ─── Target Goals ───                    │
+│ Aroma       [7 ]  Sweetness  [8 ]      │
+│ Body        [7 ]  Flavor     [8 ]      │
+│ Brightness  [7 ]  Cleanliness [7]      │
+│ Complexity  [6 ]  Balance    [8 ]      │
+│ Aftertaste  [7 ]  Overall    [9 ]      │
+│                                         │
+│            [Back]  [Next]  [Save Draft] │
+└─────────────────────────────────────────┘
+```
+
+**Behavior:**
+- Target goals are fetched when a coffee is selected (from `GET /api/v1/coffees/:id/goals`)
+- Goals are pre-populated with existing values (if any)
+- Changes to target goals are saved via `PUT /api/v1/coffees/:id/goals` when the user navigates away from the step or saves
+- Target goal fields are visually distinct from experiment outcome fields (e.g., different background or border)
+- All target goal fields are optional
+- Step 5 targets: `coffee_ml`, `tds`, `extraction_yield`
+- Step 6 targets: 9 sensory intensities (`aroma_intensity`, `sweetness_intensity`, `body_intensity`, `flavor_intensity`, `brightness_intensity`, `cleanliness_intensity`, `complexity_intensity`, `balance_intensity`, `aftertaste_intensity`) + `overall_score`
 
 ### Defaults System
 
@@ -540,17 +592,46 @@ Navigate to: User menu → Preferences → Brew Defaults section
 - Validates required fields (coffee selection, overall notes)
 - Sets `is_draft: false` on save
 
+### Wizard Progress Indicator
+
+The wizard displays a progress indicator showing all steps with their current state.
+
+**Step Circles:**
+```
+┌─────────────────────────────────────────────────────┐
+│  ① ─── ② ─── ③ ─── ④ ─── ⑤ ─── ⑥ ─── ⑦          │
+│  ●     ○     ○     ○     ○     ○     ○              │
+│ Coffee Pre   Brew  Post  Quant Sens  Notes          │
+└─────────────────────────────────────────────────────┘
+```
+
+**States:**
+- **Default**: Neutral circle (unfilled)
+- **Active**: Highlighted circle (current step)
+- **Completed**: Filled circle (step visited and has data)
+- **Error**: Red circle border/background — indicates validation errors on that step
+
+**Error Indicator Behavior:**
+- Step circles get a red border when their section has validation errors
+- Currently affected steps:
+  - Step 1 (Select Coffee): Red when `coffee_id` is not selected
+  - Step 6 (Sensory): Red when `overall_notes` is empty (required for final save)
+- Red indicator appears **after** the user attempts to submit (clicks "Save Experiment" on the last step) or navigates away from a step with required field errors
+- Red indicator clears when the user fixes the validation errors on that step
+- Clicking a red step circle navigates to that step so the user can fix errors
+
 ---
 
 ## Reference Sidebar
 
-When logging an experiment, users can view reference information for the selected coffee in a collapsible sidebar. This shows the best brew parameters and target goals, providing context while filling out the form.
+When logging an experiment, users can view reference information for the selected coffee in a sidebar. This shows the reference brew parameters and target goals, providing context while filling out the form.
 
 ### Layout
 
+**Desktop (lg+ breakpoints):**
 ```
 ┌─────────────────────────────────────┬─────────────────────────────────┐
-│ Log Experiment                      │ ▼ Reference (Best Brew)        │
+│ Log Experiment                      │ Reference Brew        [Change]  │
 │                                     │ ─────────────────────────────── │
 │ Coffee*  [Kiamaina - Cata ▼]        │ Based on: Jan 15 brew           │
 │                                     │                                 │
@@ -571,9 +652,9 @@ When logging an experiment, users can view reference information for the selecte
 │ TDS         [1.38      ]            │ • Sweetness: 8/10               │
 │ Extraction  [20.1      ]            │ • Balance: 8/10                 │
 │ ...                                 │ • Overall: 9/10                 │
-│ ...                                 │                                 │
+│                                     │                                 │
 │                                     │ ─────────────────────────────── │
-│                                     │ IMPROVEMENT NOTES         [✏️]  │
+│                                     │ IMPROVEMENT NOTES               │
 │                                     │ "Try finer grind to boost       │
 │                                     │ sweetness, maybe 3.2"           │
 │                                     │                                 │
@@ -581,24 +662,74 @@ When logging an experiment, users can view reference information for the selecte
 └─────────────────────────────────────┴─────────────────────────────────┘
 ```
 
-### Behavior
+**Mobile (< lg breakpoint):**
+
+On mobile, the sidebar is a **slide-out drawer** (Sheet component) rather than stacking below the form:
+- Triggered by a "Reference" floating button visible on all wizard steps
+- Slides in from the right, overlays the form
+- Same content and functionality as desktop sidebar
+- Close button or swipe to dismiss
+
+```
+┌─────────────────────────────────────┐
+│ Log Experiment        [Reference →] │
+│                                     │
+│ Coffee*  [Kiamaina - Cata ▼]        │
+│ ...form fields...                   │
+│                                     │
+└─────────────────────────────────────┘
+
+When "Reference" tapped:
+┌──────────────────┬──────────────────┐
+│ (form, dimmed)   │ Reference   [×]  │
+│                  │ Change: [▼]      │
+│                  │                  │
+│                  │ Based on: Jan 15 │
+│                  │ INPUT PARAMETERS │
+│                  │ • Coffee: 15g    │
+│                  │ • Ratio: 1:15    │
+│                  │ ...              │
+│                  │                  │
+│                  │ TARGET GOALS     │
+│                  │ ...              │
+│                  │                  │
+│                  │ [Copy Parameters]│
+└──────────────────┴──────────────────┘
+```
+
+### Select Different Reference Brew
+
+A **[Change]** button in the sidebar header allows the user to view a different experiment as the reference during this session.
+
+**Behavior:**
+- Clicking "Change" opens a modal dialog listing all experiments for the selected coffee
+- Dialog shows: Date, Score, key params (grind, ratio, temp) for each experiment
+- Current sidebar reference has a checkmark
+- Selecting an experiment updates the sidebar to show that experiment's parameters
+- This is a **session-level override** — it does NOT change the coffee's `best_experiment_id` in the database
+- Useful for comparing against a specific past experiment while brewing
+- Reset to default reference when coffee selection changes
+
+### Sidebar Behavior
 
 **Visibility:**
 - Sidebar hidden when no coffee is selected
-- Sidebar appears when coffee is selected (collapsed by default)
-- User can expand/collapse the sidebar
+- Desktop: Sidebar appears when coffee is selected (collapsed by default), fixed position on the right (w-80)
+- Mobile: "Reference" button appears when coffee is selected
 - Expansion state persists during the session
 
 **Data Source:**
 - Fetches data from `GET /api/v1/coffees/:id/reference` when coffee is selected
-- Shows best experiment parameters (or latest if no best marked)
+- Shows reference experiment parameters (or latest if no reference marked)
 - Shows target goals if they exist for this coffee
+- When user selects a different reference via "Change", fetches that experiment's data from `GET /api/v1/experiments/:id`
 
 **Sections:**
 
-1. **Best Brew Header**
+1. **Reference Brew Header**
    - Shows date of the reference experiment
-   - Indicates if this is explicitly marked best or just latest
+   - [Change] button to select a different reference
+   - Indicates if this is explicitly marked reference or just latest
 
 2. **Input Parameters**
    - Coffee weight, ratio, water weight
@@ -612,15 +743,13 @@ When logging an experiment, users can view reference information for the selecte
    - Edit icon opens inline edit or modal
    - Changes saved to `PUT /api/v1/coffees/:id/goals`
 
-4. **Improvement Notes** (editable)
-   - Free-form notes about what to try next
-   - Part of coffee goals entity
-   - Edit icon toggles inline editing
-   - Changes saved to `PUT /api/v1/coffees/:id/goals`
+4. **Improvement Notes**
+   - Shows the latest experiment's `improvement_notes` for this coffee
+   - Read-only in sidebar context
 
 **Actions:**
 
-- **Copy Parameters**: Fills form fields with best brew's input parameters
+- **Copy Parameters**: Fills form fields with reference brew's input parameters
   - Copies: coffee weight, ratio, water weight, grind, temp, filter, bloom
   - Does NOT copy: outcomes, sensory data, notes
   - Shows toast confirmation: "Parameters copied from Jan 15 brew"
@@ -630,20 +759,17 @@ When logging an experiment, users can view reference information for the selecte
   - Save/Cancel buttons
   - Auto-saves on blur or explicit save
 
-- **Edit Notes** (✏️): Opens inline text editor for improvement notes
-  - Auto-saves on blur
-
 ### Empty States
 
 **No experiments for coffee:**
 ```
 ┌─────────────────────────────────┐
-│ ▼ Reference                     │
+│ Reference Brew                  │
 │ ─────────────────────────────── │
 │                                 │
 │ No experiments yet for this     │
 │ coffee. This will show your     │
-│ best brew parameters after      │
+│ reference brew parameters after │
 │ you log some experiments.       │
 │                                 │
 │ ─────────────────────────────── │
@@ -661,13 +787,6 @@ When logging an experiment, users can view reference information for the selecte
 │ Set targets for TDS,            │
 │ extraction, or taste scores.    │
 ```
-
-### Mobile Behavior
-
-On mobile (< 768px):
-- Sidebar displays below the form instead of beside it
-- Collapsible accordion style
-- Same content and functionality
 
 ---
 
@@ -736,6 +855,37 @@ Built-in timer not included initially:
 - Users have phone timers, scales with timers
 - Adds significant UI complexity
 - Can be added later as enhancement
+
+### Wizard Error Indicators
+
+Red circles on wizard steps with validation errors because:
+- Users can see at a glance which steps need attention
+- Prevents frustrating "find the error" experience on submit
+- Only shown after user attempts to submit, not while actively filling in
+- Clickable for quick navigation to the problem step
+
+### Target Goals Inline on Wizard Steps
+
+Target goals editable directly on quantitative/sensory steps because:
+- Users can compare their outcomes against targets as they fill them in
+- Reduces context switching between experiment form and coffee goals
+- Goals naturally evolve as users learn about a coffee
+- Saves are implicit (on step navigation), reducing friction
+
+### Reference Sidebar as Drawer on Mobile
+
+Mobile uses a slide-out drawer instead of stacking below the form because:
+- Form is the primary focus — sidebar should not push it down
+- Drawer provides on-demand access without layout shift
+- Consistent with mobile UX patterns for supplementary content
+- Right-side slide matches the desktop sidebar position
+
+### Session-Level Reference Override
+
+The "Change" reference in the sidebar doesn't persist because:
+- Users may want to compare against a specific experiment during this session only
+- Changing the coffee's permanent reference should be a deliberate action (done from coffee detail)
+- Avoids accidental changes to the reference brew
 
 ---
 

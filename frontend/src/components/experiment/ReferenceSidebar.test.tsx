@@ -7,6 +7,7 @@ import type { CoffeeReference, ReferenceExperiment, CoffeeGoalSummary } from '@/
 describe('ReferenceSidebar', () => {
   const mockOnCopyParameters = vi.fn();
   const mockOnEditGoals = vi.fn();
+  const mockOnChangeReference = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,12 +38,12 @@ describe('ReferenceSidebar', () => {
 
   const createMockGoals = (overrides: Partial<CoffeeGoalSummary> = {}): CoffeeGoalSummary => ({
     id: 'goal-123',
+    coffee_ml: 180,
     tds: 1.4,
     extraction_yield: 21,
     brightness_intensity: 7,
     sweetness_intensity: 8,
     overall_score: 9,
-    notes: 'Try finer grind to boost sweetness',
     ...overrides,
   });
 
@@ -102,7 +103,7 @@ describe('ReferenceSidebar', () => {
   });
 
   describe('experiment display', () => {
-    it('displays best brew indicator when is_best is true', () => {
+    it('displays reference brew indicator when is_best is true', () => {
       const reference = createMockReference();
 
       render(
@@ -113,7 +114,7 @@ describe('ReferenceSidebar', () => {
         />
       );
 
-      expect(screen.getByText('Best Brew')).toBeInTheDocument();
+      expect(screen.getByText('Reference Brew')).toBeInTheDocument();
     });
 
     it('displays latest brew indicator when is_best is false', () => {
@@ -364,24 +365,10 @@ describe('ReferenceSidebar', () => {
       expect(screen.getByText('9/10')).toBeInTheDocument(); // Overall
     });
 
-    it('displays improvement notes', () => {
-      const reference = createMockReference();
-
-      render(
-        <ReferenceSidebar
-          reference={reference}
-          isLoading={false}
-          onCopyParameters={mockOnCopyParameters}
-        />
-      );
-
-      expect(screen.getByText('Improvement Notes')).toBeInTheDocument();
-      expect(screen.getByText(/"Try finer grind to boost sweetness"/)).toBeInTheDocument();
-    });
-
     it('shows no goals message when goals are empty', () => {
       const reference = createMockReference({
         goals: createMockGoals({
+          coffee_ml: undefined,
           tds: undefined,
           extraction_yield: undefined,
           brightness_intensity: undefined,
@@ -394,7 +381,6 @@ describe('ReferenceSidebar', () => {
           complexity_intensity: undefined,
           balance_intensity: undefined,
           aftertaste_intensity: undefined,
-          notes: undefined,
         }),
       });
 
@@ -499,6 +485,160 @@ describe('ReferenceSidebar', () => {
 
       // Content should be visible again
       expect(screen.getByText('15g')).toBeInTheDocument();
+    });
+  });
+
+  describe('change reference button', () => {
+    it('shows Change button when onChangeReference is provided and experiment exists', () => {
+      const reference = createMockReference();
+
+      render(
+        <ReferenceSidebar
+          reference={reference}
+          isLoading={false}
+          onCopyParameters={mockOnCopyParameters}
+          onChangeReference={mockOnChangeReference}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument();
+    });
+
+    it('does not show Change button when onChangeReference is not provided', () => {
+      const reference = createMockReference();
+
+      render(
+        <ReferenceSidebar
+          reference={reference}
+          isLoading={false}
+          onCopyParameters={mockOnCopyParameters}
+        />
+      );
+
+      expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+    });
+
+    it('does not show Change button when no experiment exists', () => {
+      const reference: CoffeeReference = {
+        experiment: null,
+        goals: createMockGoals(),
+      };
+
+      render(
+        <ReferenceSidebar
+          reference={reference}
+          isLoading={false}
+          onCopyParameters={mockOnCopyParameters}
+          onChangeReference={mockOnChangeReference}
+        />
+      );
+
+      expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument();
+    });
+
+    it('calls onChangeReference when Change button is clicked', async () => {
+      const user = userEvent.setup();
+      const reference = createMockReference();
+
+      render(
+        <ReferenceSidebar
+          reference={reference}
+          isLoading={false}
+          onCopyParameters={mockOnCopyParameters}
+          onChangeReference={mockOnChangeReference}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Change' }));
+      expect(mockOnChangeReference).toHaveBeenCalled();
+    });
+
+    it('Change button click does not toggle collapse', async () => {
+      const user = userEvent.setup();
+      const reference = createMockReference();
+
+      render(
+        <ReferenceSidebar
+          reference={reference}
+          isLoading={false}
+          onCopyParameters={mockOnCopyParameters}
+          onChangeReference={mockOnChangeReference}
+        />
+      );
+
+      // Content should be visible
+      expect(screen.getByText('15g')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Change' }));
+
+      // Content should still be visible (not collapsed)
+      expect(screen.getByText('15g')).toBeInTheDocument();
+    });
+  });
+
+  describe('embedded mode', () => {
+    it('renders content without border wrapper in embedded mode', () => {
+      const reference = createMockReference();
+
+      const { container } = render(
+        <ReferenceSidebar
+          reference={reference}
+          isLoading={false}
+          onCopyParameters={mockOnCopyParameters}
+          embedded
+        />
+      );
+
+      // Should not have the border rounded-lg wrapper
+      expect(container.querySelector('.border.rounded-lg')).not.toBeInTheDocument();
+      // Content should still render
+      expect(screen.getByText('15g')).toBeInTheDocument();
+    });
+
+    it('does not show collapse toggle in embedded mode', () => {
+      const reference = createMockReference();
+
+      render(
+        <ReferenceSidebar
+          reference={reference}
+          isLoading={false}
+          onCopyParameters={mockOnCopyParameters}
+          embedded
+        />
+      );
+
+      // The collapse toggle button with "Reference" text should not be present
+      expect(screen.queryByRole('button', { name: 'Reference' })).not.toBeInTheDocument();
+    });
+
+    it('shows Change button in embedded mode when provided', () => {
+      const reference = createMockReference();
+
+      render(
+        <ReferenceSidebar
+          reference={reference}
+          isLoading={false}
+          onCopyParameters={mockOnCopyParameters}
+          onChangeReference={mockOnChangeReference}
+          embedded
+        />
+      );
+
+      expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument();
+    });
+
+    it('shows loading without border in embedded mode', () => {
+      const { container } = render(
+        <ReferenceSidebar
+          reference={null}
+          isLoading={true}
+          onCopyParameters={mockOnCopyParameters}
+          embedded
+        />
+      );
+
+      expect(container.querySelector('.animate-pulse')).toBeInTheDocument();
+      expect(container.querySelector('.border.rounded-lg')).not.toBeInTheDocument();
     });
   });
 

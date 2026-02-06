@@ -4,8 +4,8 @@
 
 The Coffees feature manages coffee bean metadata as a first-class entity, independent from experiments. It provides:
 - Coffee inventory management (CRUD)
-- **Best Brew** tracking - mark an experiment as your best brew for each coffee
-- **Target Goals** - set desired outcome targets and improvement notes
+- **Reference Brew** tracking - mark an experiment as your reference brew for each coffee
+- **Target Goals** - set desired outcome targets to track what you're aiming for
 
 **Route:** `/` (landing page)
 
@@ -29,11 +29,13 @@ The Coffees feature manages coffee bean metadata as a first-class entity, indepe
 | tasting_notes | string | No | Roaster's described flavor notes |
 | roast_date | date | No | Date the coffee was roasted |
 | notes | text | No | Personal notes about this coffee |
-| best_experiment_id | UUID | No | FK to experiment marked as "best" |
+| best_experiment_id | UUID | No | FK to experiment marked as "reference" (API field name unchanged) |
 | archived_at | timestamp | No | When coffee was archived (hidden but still usable) |
 | deleted_at | timestamp | No | Soft delete timestamp (preserved for experiment history) |
 | created_at | timestamp | Auto | Record creation time |
 | updated_at | timestamp | Auto | Last modification time |
+
+Note: The API field `best_experiment_id` is displayed as "Reference Brew" in the UI. The field name is unchanged for backwards compatibility.
 
 ### Validation Rules
 
@@ -52,16 +54,16 @@ The Coffees feature manages coffee bean metadata as a first-class entity, indepe
 
 - **One-to-Many with Experiment**: A coffee can have many experiments; each experiment references exactly one coffee
 - **One-to-One with Coffee Goals**: A coffee can have one set of target goals
-- **Best Experiment**: Optional FK to the experiment marked as the user's best brew
+- **Reference Experiment**: Optional FK to the experiment marked as the user's reference brew
 - Deleting a coffee uses soft delete (`deleted_at` timestamp) to preserve experiment history
 - Archived coffees are hidden from lists but can still be referenced in new experiments
 
 ### Computed Properties
 
 - **Days Off Roast**: `current_date - roast_date` (if roast_date provided)
-- **Experiment Count**: Number of experiments using this coffee
+- **Experiment Count**: Number of experiments using this coffee (computed via subquery: `SELECT COUNT(*) FROM experiments WHERE coffee_id = c.id`)
 - **Last Brewed**: Most recent experiment date for this coffee
-- **Effective Best Experiment**: `best_experiment_id` if set, otherwise latest experiment by brew_date
+- **Effective Reference Experiment**: `best_experiment_id` if set, otherwise latest experiment by brew_date
 
 ### Database Schema
 
@@ -96,7 +98,7 @@ CREATE INDEX idx_coffees_archived_at ON coffees(archived_at) WHERE archived_at I
 
 ## Entity: Coffee Goals
 
-Target outcomes for a coffee. One set of goals per coffee.
+Target outcomes for a coffee. One set of goals per coffee. Fields align with experiment quantitative and sensory outcomes.
 
 ### Fields
 
@@ -104,6 +106,7 @@ Target outcomes for a coffee. One set of goals per coffee.
 |-------|------|----------|-------------|
 | id | UUID | Auto | Unique identifier |
 | coffee_id | UUID | Yes | FK to coffee (unique per coffee) |
+| coffee_ml | decimal | No | Target brewed coffee volume (ml) |
 | tds | decimal | No | Target TDS |
 | extraction_yield | decimal | No | Target extraction % |
 | aroma_intensity | int 1-10 | No | Target aroma |
@@ -116,9 +119,10 @@ Target outcomes for a coffee. One set of goals per coffee.
 | balance_intensity | int 1-10 | No | Target balance (harmony of attributes) |
 | aftertaste_intensity | int 1-10 | No | Target aftertaste intensity |
 | overall_score | int 1-10 | No | Target overall |
-| notes | text | No | What to change to achieve goals |
 | created_at | timestamp | Auto | Record creation time |
 | updated_at | timestamp | Auto | Last modification time |
+
+**Total: 13 target fields** — 3 quantitative (coffee_ml, tds, extraction_yield) + 9 sensory intensities + overall_score
 
 ### Database Schema
 
@@ -126,6 +130,7 @@ Target outcomes for a coffee. One set of goals per coffee.
 CREATE TABLE coffee_goals (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     coffee_id UUID NOT NULL REFERENCES coffees(id) ON DELETE CASCADE,
+    coffee_ml DECIMAL(6,2),
     tds DECIMAL(4,2),
     extraction_yield DECIMAL(5,2),
     aroma_intensity INTEGER CHECK (aroma_intensity BETWEEN 1 AND 10),
@@ -138,7 +143,6 @@ CREATE TABLE coffee_goals (
     balance_intensity INTEGER CHECK (balance_intensity BETWEEN 1 AND 10),
     aftertaste_intensity INTEGER CHECK (aftertaste_intensity BETWEEN 1 AND 10),
     overall_score INTEGER CHECK (overall_score BETWEEN 1 AND 10),
-    notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(coffee_id)
@@ -160,13 +164,15 @@ GET /api/v1/coffees
 
 **Query Parameters:**
 - `page`, `per_page`: Pagination
-- `sort`: Field name, `-` prefix for descending (default: `-created_at`)
 - `roaster`: Filter by roaster name
 - `country`: Filter by country
 - `process`: Filter by process
 - `search`: Search roaster and name fields
 - `include_archived`: `true` to include archived coffees (default: `false`)
+- `archived_only`: `true` to show only archived coffees, hiding active ones (default: `false`)
 - `include_deleted`: `true` to include soft-deleted coffees (default: `false`)
+
+**Default sort:** `-created_at` (newest first, not configurable via API)
 
 **Response:**
 ```json
@@ -200,6 +206,8 @@ GET /api/v1/coffees
 }
 ```
 
+**Note:** `experiment_count` is computed via a subquery: `(SELECT COUNT(*) FROM experiments WHERE coffee_id = c.id)`. This must be present in both `List` and `GetByID` repository queries.
+
 #### Create Coffee
 ```
 POST /api/v1/coffees
@@ -227,7 +235,7 @@ POST /api/v1/coffees
 GET /api/v1/coffees/:id
 ```
 
-**Response:** Coffee object with computed properties
+**Response:** Coffee object with computed properties (including `experiment_count` via subquery)
 
 #### Update Coffee
 ```
@@ -302,12 +310,19 @@ GET /api/v1/coffees/:id/goals
 {
   "id": "uuid",
   "coffee_id": "uuid",
+  "coffee_ml": 180.0,
   "tds": 1.38,
   "extraction_yield": 20.5,
-  "acidity_intensity": 7,
+  "aroma_intensity": 7,
   "sweetness_intensity": 8,
+  "body_intensity": 7,
+  "flavor_intensity": 8,
+  "brightness_intensity": 7,
+  "cleanliness_intensity": 7,
+  "complexity_intensity": 6,
+  "balance_intensity": 8,
+  "aftertaste_intensity": 7,
   "overall_score": 9,
-  "notes": "Try finer grind to boost sweetness, maybe 3.2",
   "created_at": "2026-01-15T10:00:00Z",
   "updated_at": "2026-01-18T14:30:00Z"
 }
@@ -323,12 +338,11 @@ PUT /api/v1/coffees/:id/goals
 **Request:**
 ```json
 {
+  "coffee_ml": 180.0,
   "tds": 1.38,
   "extraction_yield": 20.5,
-  "acidity_intensity": 7,
   "sweetness_intensity": 8,
-  "overall_score": 9,
-  "notes": "Try finer grind to boost sweetness, maybe 3.2"
+  "overall_score": 9
 }
 ```
 
@@ -342,12 +356,11 @@ PUT /api/v1/coffees/:id/goals
 {
   "id": "uuid",
   "coffee_id": "uuid",
+  "coffee_ml": 180.0,
   "tds": 1.38,
   "extraction_yield": 20.5,
-  "acidity_intensity": 7,
   "sweetness_intensity": 8,
   "overall_score": 9,
-  "notes": "Try finer grind to boost sweetness, maybe 3.2",
   "created_at": "2026-01-15T10:00:00Z",
   "updated_at": "2026-01-18T14:30:00Z"
 }
@@ -362,12 +375,14 @@ DELETE /api/v1/coffees/:id/goals
 - Deletes goals for this coffee
 - Returns `204 No Content`
 
-### Best Experiment API
+### Reference Experiment API
 
-#### Set Best Experiment
+#### Set Reference Experiment
 ```
 POST /api/v1/coffees/:id/best-experiment
 ```
+
+Note: API endpoint name unchanged for backwards compatibility. UI displays as "Reference Brew".
 
 **Request:**
 ```json
@@ -382,7 +397,7 @@ POST /api/v1/coffees/:id/best-experiment
 
 **Response:** `200 OK` with updated coffee object
 
-To clear the best experiment, send `null`:
+To clear the reference experiment, send `null`:
 ```json
 {
   "experiment_id": null
@@ -394,7 +409,7 @@ To clear the best experiment, send `null`:
 GET /api/v1/coffees/:id/reference
 ```
 
-Returns the best experiment (or latest if none marked as best) along with target goals. Used by the experiment form reference sidebar.
+Returns the reference experiment (or latest if none marked) along with target goals. Used by the experiment form reference sidebar.
 
 **Response:**
 ```json
@@ -422,19 +437,19 @@ Returns the best experiment (or latest if none marked as best) along with target
   },
   "goals": {
     "id": "uuid",
+    "coffee_ml": 180.0,
     "tds": 1.38,
     "extraction_yield": 20.5,
-    "acidity_intensity": 7,
+    "aroma_intensity": 7,
     "sweetness_intensity": 8,
-    "overall_score": 9,
-    "notes": "Try finer grind to boost sweetness, maybe 3.2"
+    "overall_score": 9
   }
 }
 ```
 
 - `experiment` is `null` if no experiments exist for this coffee
 - `goals` is `null` if no goals have been set
-- `experiment.is_best` is `true` if this is the explicitly marked best, `false` if it's just the latest
+- `experiment.is_best` is `true` if this is the explicitly marked reference, `false` if it's just the latest
 
 ---
 
@@ -455,24 +470,27 @@ Returns the best experiment (or latest if none marked as best) along with target
 - Coffee name (bold, primary)
 - Roaster name (muted)
 - Archived badge (if archived)
-- Best Brew section:
-  - "Best Brew (date)" + score badge
+- Reference Brew section:
+  - "Reference Brew (date)" + score badge
   - Params: ratio, temperature, filter, minerals
   - Pour info: bloom time, pour count, pour style(s)
   - Improvement note snippet (from coffee goals)
-- Quick action button:
-  - Normal view: "+ New Experiment" button
-  - Archived view: "Re-activate" button
+- Action buttons (always visible, not hidden behind menus):
+  - **[+ New Experiment]** — Navigates to experiment form with coffee pre-selected
+  - **[Edit]** — Opens edit form for this coffee
+  - **[Archive]** — Archives the coffee (with confirmation)
+  - For archived cards: **[Re-activate]** replaces Archive button
 
 **Card Behavior:**
 - Click card → Coffee detail view (`/coffees/:id`)
-- Click quick action button → Respective action (new experiment or unarchive)
+- Action buttons stop click propagation (don't navigate to detail)
 
 **Toolbar (above grid):**
 - Search input with icon
-- "Show Archived" toggle button
-- Sort dropdown (roaster, name, country, roast_date, experiment_count, created_at)
+- "Show Archived" toggle — when on, shows **only** archived coffees (hides active). Sends `archived_only=true` to API
 - "+ Add Coffee" button
+
+Note: No sort dropdown. Default sort is `-created_at` (newest first).
 
 **Empty State:**
 - Message: "No coffees in your library yet"
@@ -548,75 +566,91 @@ Note: Delete functionality is not exposed in the UI. Use archive to hide coffees
 │                                                     │
 │ ═══════════════════════════════════════════════════ │
 │                                                     │
-│ ─── Best Brew ─── (Jan 15, 2026)           [Change] │
+│ ─── Reference Brew ─── (Jan 15, 2026)      [Change] │
 │ Grind: 3.5 · Ratio: 1:15 · Temp: 96°C               │
 │ Bloom: 40g/30s · Total: 2:45                        │
 │ TDS: 1.38 · Extraction: 20.1%                       │
 │ Overall: 8/10                                       │
 │                                                     │
 │ ─── Target Goals ───                         [Edit] │
-│ TDS: 1.35-1.40 · Extraction: 20-22%                 │
-│ Acidity: 7 · Sweetness: 8 · Overall: 9              │
 │                                                     │
-│ Improvement Notes                                   │
-│ "Try finer grind to boost sweetness, maybe 3.2"    │
+│ Quantitative                                        │
+│ Coffee: 180ml · TDS: 1.38 · Extraction: 20.5%      │
+│                                                     │
+│ Sensory                                             │
+│ Aroma: 7 · Sweetness: 8 · Body: 7 · Flavor: 8     │
+│ Brightness: 7 · Cleanliness: 7 · Complexity: 6     │
+│ Balance: 8 · Aftertaste: 7 · Overall: 9            │
 │                                                     │
 │ ═══════════════════════════════════════════════════ │
 │                                                     │
 │ ─── Brew History ───                                │
-│ [⭐ Jan 15] 8/10 · Grind 3.5 · 1:15 · 96°C         │
-│ [   Jan 12] 7/10 · Grind 4.0 · 1:15 · 94°C         │
-│ [   Jan 10] 6/10 · Grind 4.5 · 1:16 · 93°C         │
+│ ┌──────────┬──────┬───────┬───────┬───────┬────────┐│
+│ │ Date     │ DOR  │ Score │ Grind │ Ratio │ Temp   ││
+│ ├──────────┼──────┼───────┼───────┼───────┼────────┤│
+│ │⭐Jan 15  │ 57   │ 8/10  │ 3.5   │ 1:15  │ 96°C   ││
+│ │  Jan 12  │ 54   │ 7/10  │ 4.0   │ 1:15  │ 94°C   ││
+│ │  Jan 10  │ 52   │ 6/10  │ 4.5   │ 1:16  │ 93°C   ││
+│ │  Jan 08  │ 50   │ 7/10  │ 3.8   │ 1:15  │ 95°C   ││
+│ │  Jan 05  │ 47   │ 5/10  │ 5.0   │ 1:15  │ 92°C   ││
+│ └──────────┴──────┴───────┴───────┴───────┴────────┘│
+│                                                     │
+│ Actions per row:                                    │
+│ [Mark as Reference] [View]                          │
+│                                                     │
 │                               [View All Experiments]│
 └─────────────────────────────────────────────────────┘
 ```
 
-### Best Brew Section
+### Reference Brew Section
 
 **Display:**
-- Shows input parameters from the best experiment (or latest if none marked)
+- Shows input parameters from the reference experiment (or latest if none marked)
 - Date of the brew
 - Key parameters: grind, ratio, temperature, bloom, total time
 - Key outcomes: TDS, extraction yield, overall score
-- Indicator showing if this is explicitly marked best or just latest
+- Indicator showing if this is explicitly marked reference or just latest
 
 **[Change] Button:**
-- Opens modal to select a different experiment as best
+- Opens modal to select a different experiment as reference
 - Shows list of experiments for this coffee
-- Current best has checkmark
+- Current reference has checkmark
 - Can also clear selection (revert to latest)
 
 ### Target Goals Section
 
 **Display:**
 - Target outcome values user wants to achieve
-- Improvement notes (what to change to reach goals)
+- Organized into two subsections: Quantitative and Sensory
+- Quantitative: coffee_ml, tds, extraction_yield
+- Sensory: 9 intensity fields + overall_score
 
 **[Edit] Button:**
-- Opens inline edit or modal with goal fields
+- Opens modal with goal fields organized into Quantitative and Sensory sections
 - All fields optional
-- Notes field for improvement ideas
+- No notes field — goals are purely numerical targets
 
 ### Brew History Section
 
 **Display:**
-- Recent experiments for this coffee (most recent 5)
-- Star icon indicates best brew
-- Quick stats: score, grind, ratio, temperature
-- "Mark as Best" action available on row hover/menu
+- Table of experiments for this coffee (most recent first)
+- Columns: Date, Days Off Roast, Score, Grind, Ratio, Temp
+- Star icon indicates reference brew
+- Shows most recent experiments (paginated or limited to ~10 with "View All" link)
+- Row actions: "Mark as Reference", "View" (navigates to experiment detail)
 
 **[View All Experiments] Link:**
 - Navigates to `/experiments?coffee_id=:id`
 
-### Mark as Best Action
+### Mark as Reference Action
 
 Available in:
-1. Coffee detail brew history rows (hover action or menu)
+1. Coffee detail brew history table rows
 2. Experiment list when filtered to single coffee
 3. Experiment detail view
 
 **Behavior:**
-- Sets this experiment as best for its coffee
+- Sets this experiment as reference for its coffee
 - Updates coffee's `best_experiment_id`
 - Visual feedback: star icon, toast confirmation
 
@@ -624,9 +658,9 @@ Available in:
 
 ## Design Decisions
 
-### Best Brew vs Latest
+### Reference Brew vs Latest
 
-The "effective best" is:
+The "effective reference" is:
 1. The explicitly marked `best_experiment_id` if set
 2. Otherwise, the latest experiment by `brew_date`
 
@@ -634,6 +668,13 @@ This ensures:
 - Users always have a reference even before marking anything
 - Explicit marking overrides recency
 - New users get value immediately
+
+### "Reference" Label vs "Best" API Field
+
+The UI uses "Reference Brew" / "Reference" terminology while the API retains `best_experiment_id`:
+- "Reference" is more accurate — it's what you compare against, not necessarily the "best"
+- API field names are kept for backwards compatibility
+- Only UI labels change, not data or API contracts
 
 ### Coffee Goals as Separate Entity
 
@@ -643,19 +684,34 @@ Goals stored separately (not inline on Coffee) because:
 - Easy to clear/reset without affecting coffee
 - Cleaner API semantics
 
+### Goals Aligned with Outcomes (No Notes)
+
+Goals contain only numerical target fields (no `notes` field) because:
+- Goals are purely about target numbers to compare against
+- Improvement notes live on the experiment's `improvement_notes` field
+- Cleaner separation: goals = what to achieve, improvement notes = how to get there
+
 ### Reference Data Endpoint
 
-The `/reference` endpoint combines best experiment + goals because:
+The `/reference` endpoint combines reference experiment + goals because:
 - Single request for experiment form sidebar
 - Common access pattern
 - Reduces client-side coordination
 
-### Improvement Notes on Goals
+### Archive Toggle Shows Only Archived
 
-The `notes` field on `coffee_goals` captures what to change to achieve the targets. This is:
-- Separate from coffee's personal notes (general observations)
-- Actionable: "try finer grind" vs "great coffee"
-- Visible in experiment form for reference
+The "Show Archived" toggle in the coffee list switches to showing **only** archived coffees (not mixing them with active):
+- Clearer mental model — you're either browsing active or archived
+- Avoids visual clutter of mixing archived and active cards
+- Archive view lets you focus on re-activating coffees
+
+### Brew History as Table
+
+Brew history uses a table format (not a simple list) because:
+- Columns enable quick visual comparison across experiments
+- Sortable columns help find patterns
+- Consistent with the experiments list page
+- More information visible at a glance
 
 ---
 
@@ -663,6 +719,6 @@ The `notes` field on `coffee_goals` captures what to change to achieve the targe
 
 1. **Goal Ranges**: Should targets support ranges (e.g., TDS 1.35-1.40) or just single values?
 2. **Goal History**: Track when goals were changed?
-3. **Best Per Parameter**: Mark different experiments as best for different attributes?
+3. **Reference Per Parameter**: Mark different experiments as reference for different attributes?
 4. **Goal Templates**: Suggest goals based on coffee characteristics?
-5. **Comparison View**: Side-by-side best brew vs goals with gap analysis?
+5. **Comparison View**: Side-by-side reference brew vs goals with gap analysis?

@@ -143,24 +143,24 @@ type CoffeeReference struct {
 
 // CoffeeGoal represents target outcomes for a coffee
 type CoffeeGoal struct {
-	ID                  uuid.UUID  `json:"id"`
-	CoffeeID            uuid.UUID  `json:"coffee_id"`
-	UserID              uuid.UUID  `json:"user_id"`
-	TDS                 *float64   `json:"tds,omitempty"`
-	ExtractionYield     *float64   `json:"extraction_yield,omitempty"`
-	AromaIntensity       *int       `json:"aroma_intensity,omitempty"`
-	SweetnessIntensity   *int       `json:"sweetness_intensity,omitempty"`
-	BodyIntensity        *int       `json:"body_intensity,omitempty"`
-	FlavorIntensity      *int       `json:"flavor_intensity,omitempty"`
-	BrightnessIntensity  *int       `json:"brightness_intensity,omitempty"`
-	CleanlinessIntensity *int       `json:"cleanliness_intensity,omitempty"`
-	ComplexityIntensity  *int       `json:"complexity_intensity,omitempty"`
-	BalanceIntensity     *int       `json:"balance_intensity,omitempty"`
-	AftertasteIntensity  *int       `json:"aftertaste_intensity,omitempty"`
-	OverallScore        *int       `json:"overall_score,omitempty"`
-	Notes               *string    `json:"notes,omitempty"`
-	CreatedAt           time.Time  `json:"created_at"`
-	UpdatedAt           time.Time  `json:"updated_at"`
+	ID                   uuid.UUID `json:"id"`
+	CoffeeID             uuid.UUID `json:"coffee_id"`
+	UserID               uuid.UUID `json:"user_id"`
+	CoffeeMl             *float64  `json:"coffee_ml,omitempty"`
+	TDS                  *float64  `json:"tds,omitempty"`
+	ExtractionYield      *float64  `json:"extraction_yield,omitempty"`
+	AromaIntensity       *int      `json:"aroma_intensity,omitempty"`
+	SweetnessIntensity   *int      `json:"sweetness_intensity,omitempty"`
+	BodyIntensity        *int      `json:"body_intensity,omitempty"`
+	FlavorIntensity      *int      `json:"flavor_intensity,omitempty"`
+	BrightnessIntensity  *int      `json:"brightness_intensity,omitempty"`
+	CleanlinessIntensity *int      `json:"cleanliness_intensity,omitempty"`
+	ComplexityIntensity  *int      `json:"complexity_intensity,omitempty"`
+	BalanceIntensity     *int      `json:"balance_intensity,omitempty"`
+	AftertasteIntensity  *int      `json:"aftertaste_intensity,omitempty"`
+	OverallScore         *int      `json:"overall_score,omitempty"`
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
 }
 
 type CreateCoffeeInput struct {
@@ -190,12 +190,12 @@ type UpdateCoffeeInput struct {
 type ListCoffeesParams struct {
 	Page            int
 	PerPage         int
-	Sort            string
 	Roaster         string
 	Country         string
 	Process         string
 	Search          string
 	IncludeArchived bool
+	ArchivedOnly    bool
 	IncludeDeleted  bool
 }
 
@@ -220,9 +220,6 @@ func (p *ListCoffeesParams) SetDefaults() {
 	}
 	if p.PerPage > 100 {
 		p.PerPage = 100
-	}
-	if p.Sort == "" {
-		p.Sort = "-created_at"
 	}
 }
 

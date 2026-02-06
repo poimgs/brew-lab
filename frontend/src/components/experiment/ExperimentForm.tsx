@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, type FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSearchParams } from 'react-router-dom';
@@ -19,11 +19,14 @@ import {
   SensoryStep,
   ImprovementStep,
 } from './wizard/steps';
-import { type Experiment, type CreateExperimentInput, createExperiment, updateExperiment } from '@/api/experiments';
+import { type Experiment, type CreateExperimentInput, createExperiment, updateExperiment, listExperiments } from '@/api/experiments';
 import { getDefaults, type Defaults, type PourDefault } from '@/api/defaults';
 import { listFilterPapers, type FilterPaper } from '@/api/filter-papers';
 import { listMineralProfiles, type MineralProfile } from '@/api/mineral-profiles';
 import { type Coffee, type CoffeeReference, type ReferenceExperiment, getReference, getCoffee } from '@/api/coffees';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import ReferencePickerDialog from './ReferencePickerDialog';
+import { getCoffeeGoal, upsertCoffeeGoal, type CoffeeGoalInput } from '@/api/coffee-goals';
 
 const pourSchema = z.object({
   pour_number: z.number(),
@@ -120,8 +123,17 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
   const [reference, setReference] = useState<CoffeeReference | null>(null);
   const [isLoadingReference, setIsLoadingReference] = useState(false);
   const [waterWeightManuallySet, setWaterWeightManuallySet] = useState(false);
+  const [coffeeGoals, setCoffeeGoals] = useState<CoffeeGoalInput>({});
+  const [goalsDirty, setGoalsDirty] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [coffeeExperiments, setCoffeeExperiments] = useState<Experiment[]>([]);
+  const [isLoadingExperiments, setIsLoadingExperiments] = useState(false);
+  const [overrideReference, setOverrideReference] = useState<CoffeeReference | null>(null);
 
-  const { currentStep, goToStep } = useWizard();
+  const { currentStep, goToStep, setStepErrors, clearStepError } = useWizard();
+
+  const effectiveReference = overrideReference || reference;
 
   const methods = useForm<ExperimentFormData>({
     resolver: zodResolver(experimentSchema),
@@ -213,12 +225,17 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
     }
   }, [initialCoffeeId, experiment]);
 
-  // Fetch reference data when coffee changes
+  // Fetch reference data and goals when coffee changes
   useEffect(() => {
     if (!selectedCoffee) {
       setReference(null);
+      setOverrideReference(null);
+      setCoffeeGoals({});
+      setGoalsDirty(false);
       return;
     }
+
+    setOverrideReference(null);
 
     const fetchReference = async () => {
       setIsLoadingReference(true);
@@ -232,7 +249,23 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
       }
     };
 
+    const fetchGoals = async () => {
+      try {
+        const goals = await getCoffeeGoal(selectedCoffee.id);
+        if (goals) {
+          const { id, coffee_id, created_at, updated_at, ...goalFields } = goals;
+          setCoffeeGoals(goalFields);
+        } else {
+          setCoffeeGoals({});
+        }
+      } catch {
+        setCoffeeGoals({});
+      }
+      setGoalsDirty(false);
+    };
+
     fetchReference();
+    fetchGoals();
   }, [selectedCoffee]);
 
   // Apply defaults when entering a step (for new experiments)
@@ -321,6 +354,65 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
     if (exp.bloom_time) setValue('bloom_time', exp.bloom_time);
   };
 
+  const handleGoalChange = (field: keyof CoffeeGoalInput, value: number | null) => {
+    setCoffeeGoals((prev) => ({ ...prev, [field]: value }));
+    setGoalsDirty(true);
+  };
+
+  const saveGoalsIfDirty = async () => {
+    if (!goalsDirty || !selectedCoffee) return;
+    try {
+      await upsertCoffeeGoal(selectedCoffee.id, coffeeGoals);
+      setGoalsDirty(false);
+    } catch {
+      // Silently fail - goals save is non-blocking
+    }
+  };
+
+  const handleOpenPicker = async () => {
+    if (!selectedCoffee) return;
+    setPickerOpen(true);
+    setIsLoadingExperiments(true);
+    try {
+      const response = await listExperiments({
+        coffee_id: selectedCoffee.id,
+        per_page: 50,
+        sort: '-brew_date',
+      });
+      setCoffeeExperiments(response.items);
+    } catch {
+      setCoffeeExperiments([]);
+    } finally {
+      setIsLoadingExperiments(false);
+    }
+  };
+
+  const handleSelectReference = (exp: Experiment) => {
+    const refExp: ReferenceExperiment = {
+      id: exp.id,
+      brew_date: exp.brew_date,
+      coffee_weight: exp.coffee_weight,
+      water_weight: exp.water_weight,
+      ratio: exp.ratio,
+      grind_size: exp.grind_size,
+      water_temperature: exp.water_temperature,
+      filter_paper: exp.filter_paper
+        ? { id: exp.filter_paper.id, name: exp.filter_paper.name, brand: exp.filter_paper.brand }
+        : undefined,
+      bloom_water: exp.bloom_water,
+      bloom_time: exp.bloom_time,
+      total_brew_time: exp.total_brew_time,
+      tds: exp.tds,
+      extraction_yield: exp.extraction_yield,
+      overall_score: exp.overall_score,
+      is_best: selectedCoffee?.best_experiment_id === exp.id,
+    };
+    setOverrideReference({
+      experiment: refExp,
+      goals: reference?.goals || null,
+    });
+  };
+
   // Save as draft without full validation
   const handleSaveDraft = async () => {
     setIsSavingDraft(true);
@@ -357,6 +449,8 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
         return result;
       };
 
+      await saveGoalsIfDirty();
+
       const input = cleanData(data as unknown as Record<string, unknown>) as unknown as CreateExperimentInput;
       input.is_draft = true;
 
@@ -379,6 +473,13 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
     const fields = STEP_FIELDS[currentStep];
     if (!fields || fields.length === 0) return true;
     const result = await trigger(fields);
+    if (result) {
+      clearStepError(currentStep);
+    }
+    // Save goals when navigating away from steps 5 or 6
+    if (result && (currentStep === 5 || currentStep === 6)) {
+      saveGoalsIfDirty();
+    }
     return result;
   };
 
@@ -393,17 +494,19 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
   };
 
   // Handle form submission with validation error navigation
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFormSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setSubmitError(null);
 
-    // Trigger validation for all fields
-    const isValid = await trigger();
-
-    if (!isValid) {
-      // Find the first step with an error and navigate there
-      const errors = methods.formState.errors;
+    const onInvalid = (errors: FieldErrors<ExperimentFormData>) => {
       const errorFields = Object.keys(errors);
+      const stepsWithErrors = new Set<number>();
+
+      for (const field of errorFields) {
+        stepsWithErrors.add(findStepForField(field));
+      }
+
+      setStepErrors(stepsWithErrors);
 
       if (errorFields.length > 0) {
         const firstErrorField = errorFields[0];
@@ -413,7 +516,6 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
           goToStep(stepWithError);
         }
 
-        // Set a generic error message
         const errorMessage = errors[firstErrorField as keyof typeof errors]?.message;
         if (typeof errorMessage === 'string') {
           setSubmitError(errorMessage);
@@ -421,11 +523,18 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
           setSubmitError('Please fill in all required fields');
         }
       }
-      return;
-    }
+    };
 
-    // If validation passes, submit the form
-    methods.handleSubmit(onSubmit)();
+    // handleSubmit uses the full zod resolver, validating ALL schema fields
+    // (including those on unmounted steps), unlike trigger() which only
+    // validates registered/mounted fields.
+    await methods.handleSubmit(
+      async (data) => {
+        setStepErrors(new Set());
+        await onSubmit(data);
+      },
+      onInvalid
+    )();
   };
 
   const onSubmit = async (data: ExperimentFormData) => {
@@ -452,6 +561,8 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
         }
         return result;
       };
+
+      await saveGoalsIfDirty();
 
       const input = cleanData(data as unknown as Record<string, unknown>) as unknown as CreateExperimentInput;
 
@@ -485,9 +596,9 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
       case 4:
         return <PostBrewStep mineralProfiles={mineralProfiles} />;
       case 5:
-        return <QuantitativeStep />;
+        return <QuantitativeStep goals={coffeeGoals} onGoalChange={handleGoalChange} />;
       case 6:
-        return <SensoryStep />;
+        return <SensoryStep goals={coffeeGoals} onGoalChange={handleGoalChange} />;
       case 7:
         return <ImprovementStep />;
       default:
@@ -535,6 +646,7 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
                 <WizardNavigation
                   onNext={validateCurrentStep}
                   onSaveDraft={handleSaveDraft}
+                  onSubmitForm={handleFormSubmit}
                   isSubmitting={isSubmitting}
                   isSavingDraft={isSavingDraft}
                   isEditMode={isEditMode}
@@ -546,17 +658,64 @@ function ExperimentFormContent({ experiment, onSuccess, onCancel }: ExperimentFo
           </CardContent>
         </Card>
 
-        {/* Reference Sidebar - visible when coffee is selected */}
+        {/* Reference Sidebar - desktop only */}
         {selectedCoffee && (
-          <div className="lg:w-80 lg:shrink-0">
+          <div className="hidden lg:block lg:w-80 lg:shrink-0">
             <ReferenceSidebar
-              reference={reference}
+              reference={effectiveReference}
               isLoading={isLoadingReference}
               onCopyParameters={handleCopyParameters}
+              onChangeReference={handleOpenPicker}
             />
           </div>
         )}
       </div>
+
+      {/* Mobile: floating Reference button + Sheet drawer */}
+      {selectedCoffee && (
+        <>
+          <div className="fixed bottom-6 right-4 z-40 lg:hidden">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setSheetOpen(true)}
+              className="shadow-lg"
+            >
+              Reference
+            </Button>
+          </div>
+
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <SheetContent side="right" className="flex flex-col">
+              <SheetHeader>
+                <SheetTitle>Reference</SheetTitle>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto px-4 pb-4">
+                <ReferenceSidebar
+                  reference={effectiveReference}
+                  isLoading={isLoadingReference}
+                  onCopyParameters={(exp) => {
+                    handleCopyParameters(exp);
+                    setSheetOpen(false);
+                  }}
+                  onChangeReference={handleOpenPicker}
+                  embedded
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <ReferencePickerDialog
+            open={pickerOpen}
+            onOpenChange={setPickerOpen}
+            experiments={coffeeExperiments}
+            currentReferenceId={effectiveReference?.experiment?.id}
+            isLoading={isLoadingExperiments}
+            onSelect={handleSelectReference}
+          />
+        </>
+      )}
     </div>
   );
 }

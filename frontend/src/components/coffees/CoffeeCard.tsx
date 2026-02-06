@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Plus, ArchiveRestore } from 'lucide-react';
+import { Plus, ArchiveRestore, Pencil, Archive } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,8 @@ import type { Coffee } from '@/api/coffees';
 interface CoffeeCardProps {
   coffee: Coffee;
   onNewExperiment: (coffeeId: string) => void;
+  onEdit: (coffee: Coffee) => void;
+  onArchive: (coffeeId: string) => void;
   onReactivate?: (coffeeId: string) => void;
 }
 
@@ -38,7 +40,7 @@ function formatPourInfo(bloomTime?: number, pourCount?: number, pourStyles?: str
   return parts.join(' \u2192 ');
 }
 
-export default function CoffeeCard({ coffee, onNewExperiment, onReactivate }: CoffeeCardProps) {
+export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive, onReactivate }: CoffeeCardProps) {
   const navigate = useNavigate();
   const { best_experiment, improvement_note } = coffee;
   const isArchived = !!coffee.archived_at;
@@ -47,13 +49,24 @@ export default function CoffeeCard({ coffee, onNewExperiment, onReactivate }: Co
     navigate(`/coffees/${coffee.id}`);
   };
 
-  const handleAction = (e: React.MouseEvent) => {
+  const handleNewExperiment = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isArchived && onReactivate) {
-      onReactivate(coffee.id);
-    } else {
-      onNewExperiment(coffee.id);
-    }
+    onNewExperiment(coffee.id);
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit(coffee);
+  };
+
+  const handleArchive = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onArchive(coffee.id);
+  };
+
+  const handleReactivate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onReactivate?.(coffee.id);
   };
 
   // Build params string: ratio, temp, filter, minerals
@@ -100,7 +113,7 @@ export default function CoffeeCard({ coffee, onNewExperiment, onReactivate }: Co
           <div className="flex-1 space-y-1 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
-                Best Brew ({formatDate(best_experiment.brew_date)})
+                Reference Brew ({formatDate(best_experiment.brew_date)})
               </span>
               {best_experiment.overall_score != null && (
                 <Badge variant="outline" className="font-bold">
@@ -129,26 +142,44 @@ export default function CoffeeCard({ coffee, onNewExperiment, onReactivate }: Co
           </div>
         )}
 
-        {/* Action button */}
-        <div className="mt-3 flex justify-end">
+        {/* Action buttons */}
+        <div className="mt-3 flex flex-wrap gap-2 justify-end">
           {isArchived ? (
             <Button
               size="sm"
               variant="outline"
-              onClick={handleAction}
+              onClick={handleReactivate}
             >
               <ArchiveRestore className="h-4 w-4 mr-1" />
               Re-activate
             </Button>
           ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleAction}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              New Experiment
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleNewExperiment}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                New Experiment
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleEdit}
+              >
+                <Pencil className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleArchive}
+              >
+                <Archive className="h-4 w-4 mr-1" />
+                Archive
+              </Button>
+            </>
           )}
         </div>
       </CardContent>

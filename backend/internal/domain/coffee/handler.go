@@ -32,12 +32,12 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	params := ListCoffeesParams{
 		Page:            parseIntOrDefault(r.URL.Query().Get("page"), 1),
 		PerPage:         parseIntOrDefault(r.URL.Query().Get("per_page"), 20),
-		Sort:            r.URL.Query().Get("sort"),
 		Roaster:         r.URL.Query().Get("roaster"),
 		Country:         r.URL.Query().Get("country"),
 		Process:         r.URL.Query().Get("process"),
 		Search:          r.URL.Query().Get("search"),
 		IncludeArchived: r.URL.Query().Get("include_archived") == "true",
+		ArchivedOnly:    r.URL.Query().Get("archived_only") == "true",
 		IncludeDeleted:  r.URL.Query().Get("include_deleted") == "true",
 	}
 

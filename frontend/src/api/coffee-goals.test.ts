@@ -22,6 +22,7 @@ vi.mock('./client', () => ({
 const mockCoffeeGoal: CoffeeGoal = {
   id: 'goal-123',
   coffee_id: 'coffee-456',
+  coffee_ml: 180,
   tds: 1.38,
   extraction_yield: 20.5,
   aroma_intensity: 7,
@@ -34,7 +35,6 @@ const mockCoffeeGoal: CoffeeGoal = {
   balance_intensity: 7,
   aftertaste_intensity: 4,
   overall_score: 9,
-  notes: 'Try finer grind to boost sweetness',
   created_at: '2026-01-15T10:00:00Z',
   updated_at: '2026-01-18T14:30:00Z',
 };
@@ -100,7 +100,7 @@ describe('coffee-goals API', () => {
       expect(result?.balance_intensity).toBe(7);
       expect(result?.aftertaste_intensity).toBe(4);
       expect(result?.overall_score).toBe(9);
-      expect(result?.notes).toBe('Try finer grind to boost sweetness');
+      expect(result?.coffee_ml).toBe(180);
     });
 
     it('returns goals with partial fields', async () => {
@@ -126,10 +126,10 @@ describe('coffee-goals API', () => {
   describe('upsertCoffeeGoal', () => {
     it('creates new goals', async () => {
       const input: CoffeeGoalInput = {
+        coffee_ml: 185,
         tds: 1.40,
         extraction_yield: 21.0,
         overall_score: 9,
-        notes: 'New target profile',
       };
       vi.mocked(client.put).mockResolvedValueOnce({ data: { ...mockCoffeeGoal, ...input } });
 
@@ -137,13 +137,13 @@ describe('coffee-goals API', () => {
 
       expect(client.put).toHaveBeenCalledWith('/coffees/coffee-456/goals', input);
       expect(result.tds).toBe(1.40);
-      expect(result.notes).toBe('New target profile');
+      expect(result.coffee_ml).toBe(185);
     });
 
     it('updates existing goals', async () => {
       const input: CoffeeGoalInput = {
         sweetness_intensity: 10,
-        notes: 'Updated notes',
+        coffee_ml: 190,
       };
       vi.mocked(client.put).mockResolvedValueOnce({
         data: { ...mockCoffeeGoal, ...input },
@@ -180,7 +180,7 @@ describe('coffee-goals API', () => {
       const input: CoffeeGoalInput = {
         tds: null,
         extraction_yield: null,
-        notes: null,
+        coffee_ml: null,
       };
       const resultGoal: CoffeeGoal = {
         id: 'goal-123',
@@ -196,7 +196,7 @@ describe('coffee-goals API', () => {
       expect(client.put).toHaveBeenCalledWith('/coffees/coffee-456/goals', input);
       expect(result.tds).toBeUndefined();
       expect(result.extraction_yield).toBeUndefined();
-      expect(result.notes).toBeUndefined();
+      expect(result.coffee_ml).toBeUndefined();
     });
 
     it('handles empty input (clears all optional fields)', async () => {

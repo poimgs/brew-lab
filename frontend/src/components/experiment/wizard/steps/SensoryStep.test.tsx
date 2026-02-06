@@ -1,10 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useForm, FormProvider } from 'react-hook-form';
 import SensoryStep from './SensoryStep';
+import { type CoffeeGoalInput } from '@/api/coffee-goals';
 
-function SensoryStepWrapper({ defaultValues = {} }: { defaultValues?: Record<string, unknown> }) {
+function SensoryStepWrapper({
+  defaultValues = {},
+  goals = {},
+  onGoalChange = vi.fn(),
+}: {
+  defaultValues?: Record<string, unknown>;
+  goals?: CoffeeGoalInput;
+  onGoalChange?: (field: keyof CoffeeGoalInput, value: number | null) => void;
+}) {
   const methods = useForm({
     defaultValues: {
       aroma_intensity: null,
@@ -34,7 +43,7 @@ function SensoryStepWrapper({ defaultValues = {} }: { defaultValues?: Record<str
   return (
     <FormProvider {...methods}>
       <form>
-        <SensoryStep />
+        <SensoryStep goals={goals} onGoalChange={onGoalChange} />
       </form>
     </FormProvider>
   );
@@ -52,15 +61,11 @@ describe('SensoryStep', () => {
     it('renders all 9 sensory attribute labels', () => {
       render(<SensoryStepWrapper />);
 
-      expect(screen.getByText('Aroma')).toBeInTheDocument();
-      expect(screen.getByText('Body')).toBeInTheDocument();
-      expect(screen.getByText('Flavor')).toBeInTheDocument();
-      expect(screen.getByText('Brightness')).toBeInTheDocument();
-      expect(screen.getByText('Sweetness')).toBeInTheDocument();
-      expect(screen.getByText('Cleanliness')).toBeInTheDocument();
-      expect(screen.getByText('Complexity')).toBeInTheDocument();
-      expect(screen.getByText('Balance')).toBeInTheDocument();
-      expect(screen.getByText('Aftertaste')).toBeInTheDocument();
+      // Each label appears twice: once for the slider and once for the target goal
+      const attributes = ['Aroma', 'Body', 'Flavor', 'Brightness', 'Sweetness', 'Cleanliness', 'Complexity', 'Balance', 'Aftertaste'];
+      for (const attr of attributes) {
+        expect(screen.getAllByText(attr).length).toBeGreaterThanOrEqual(1);
+      }
     });
 
     it('renders overall notes and overall score fields', () => {
@@ -134,6 +139,91 @@ describe('SensoryStep', () => {
       // Close
       await user.click(button);
       expect(screen.queryByText('Fruity')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('target goals section', () => {
+    it('renders target goals heading and description', () => {
+      render(<SensoryStepWrapper />);
+      expect(screen.getByText('Target Goals')).toBeInTheDocument();
+      expect(screen.getByText(/set target sensory scores/i)).toBeInTheDocument();
+    });
+
+    it('renders all 10 goal input fields (9 sensory + overall)', () => {
+      render(<SensoryStepWrapper />);
+      const goalFields = [
+        'goal_aroma_intensity', 'goal_sweetness_intensity', 'goal_body_intensity',
+        'goal_flavor_intensity', 'goal_brightness_intensity', 'goal_cleanliness_intensity',
+        'goal_complexity_intensity', 'goal_balance_intensity', 'goal_aftertaste_intensity',
+        'goal_overall_score',
+      ];
+      for (const id of goalFields) {
+        expect(document.getElementById(id)).toBeInTheDocument();
+      }
+    });
+
+    it('displays pre-populated goal values', () => {
+      render(
+        <SensoryStepWrapper
+          goals={{
+            aroma_intensity: 7,
+            sweetness_intensity: 8,
+            body_intensity: 6,
+            overall_score: 9,
+          }}
+        />
+      );
+      expect(document.getElementById('goal_aroma_intensity')).toHaveValue(7);
+      expect(document.getElementById('goal_sweetness_intensity')).toHaveValue(8);
+      expect(document.getElementById('goal_body_intensity')).toHaveValue(6);
+      expect(document.getElementById('goal_overall_score')).toHaveValue(9);
+    });
+
+    it('shows empty fields when no goals are set', () => {
+      render(<SensoryStepWrapper goals={{}} />);
+      expect(document.getElementById('goal_aroma_intensity')).toHaveValue(null);
+      expect(document.getElementById('goal_overall_score')).toHaveValue(null);
+    });
+
+    it('calls onGoalChange when a sensory goal is edited', async () => {
+      const onGoalChange = vi.fn();
+      const user = userEvent.setup();
+      render(<SensoryStepWrapper goals={{}} onGoalChange={onGoalChange} />);
+
+      const aromaGoal = document.getElementById('goal_aroma_intensity')!;
+      await user.type(aromaGoal, '7');
+
+      expect(onGoalChange).toHaveBeenCalledWith('aroma_intensity', 7);
+    });
+
+    it('calls onGoalChange with null when a goal field is cleared', async () => {
+      const onGoalChange = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <SensoryStepWrapper
+          goals={{ aroma_intensity: 7 }}
+          onGoalChange={onGoalChange}
+        />
+      );
+
+      const aromaGoal = document.getElementById('goal_aroma_intensity')!;
+      await user.clear(aromaGoal);
+
+      expect(onGoalChange).toHaveBeenCalledWith('aroma_intensity', null);
+    });
+
+    it('clamps goal values to 1-10 range', async () => {
+      const onGoalChange = vi.fn();
+      const user = userEvent.setup();
+      render(<SensoryStepWrapper goals={{}} onGoalChange={onGoalChange} />);
+
+      const aromaGoal = document.getElementById('goal_aroma_intensity')!;
+      await user.type(aromaGoal, '15');
+
+      // Should clamp to 10
+      const lastCall = onGoalChange.mock.calls[onGoalChange.mock.calls.length - 1];
+      expect(lastCall[0]).toBe('aroma_intensity');
+      expect(lastCall[1]).toBeLessThanOrEqual(10);
     });
   });
 });

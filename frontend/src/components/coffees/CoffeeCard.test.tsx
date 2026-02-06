@@ -49,14 +49,18 @@ const archivedCoffee: Coffee = {
   archived_at: '2026-01-20T00:00:00Z',
 };
 
-function renderCard(coffee: Coffee, props?: Partial<{ onNewExperiment: (id: string) => void; onReactivate: (id: string) => void }>) {
+function renderCard(coffee: Coffee, props?: Partial<{ onNewExperiment: (id: string) => void; onEdit: (coffee: Coffee) => void; onArchive: (id: string) => void; onReactivate: (id: string) => void }>) {
   const onNewExperiment = props?.onNewExperiment ?? vi.fn();
+  const onEdit = props?.onEdit ?? vi.fn();
+  const onArchive = props?.onArchive ?? vi.fn();
   const onReactivate = props?.onReactivate;
   return render(
     <BrowserRouter>
       <CoffeeCard
         coffee={coffee}
         onNewExperiment={onNewExperiment}
+        onEdit={onEdit}
+        onArchive={onArchive}
         onReactivate={onReactivate}
       />
     </BrowserRouter>
@@ -84,7 +88,7 @@ describe('CoffeeCard', () => {
   it('displays best brew date and score', () => {
     renderCard(coffeeWithBestExperiment);
 
-    expect(screen.getByText(/Best Brew/)).toBeInTheDocument();
+    expect(screen.getByText(/Reference Brew/)).toBeInTheDocument();
     expect(screen.getByText('8/10')).toBeInTheDocument();
   });
 
@@ -188,5 +192,42 @@ describe('CoffeeCard', () => {
     renderCard(coffeeNoScore);
 
     expect(screen.queryByText(/\/10/)).not.toBeInTheDocument();
+  });
+
+  it('shows Edit and Archive buttons for active coffee', () => {
+    renderCard(baseCoffee);
+
+    expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /archive/i })).toBeInTheDocument();
+  });
+
+  it('does not show Edit or Archive buttons for archived coffee', () => {
+    renderCard(archivedCoffee, { onReactivate: vi.fn() });
+
+    expect(screen.queryByRole('button', { name: /^edit$/i })).not.toBeInTheDocument();
+    // The Archive button from lucide has text "Archive" but "Re-activate" is shown instead
+    expect(screen.queryByRole('button', { name: /new experiment/i })).not.toBeInTheDocument();
+  });
+
+  it('calls onEdit with coffee object when Edit button is clicked', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    renderCard(baseCoffee, { onEdit });
+
+    await user.click(screen.getByRole('button', { name: /edit/i }));
+
+    expect(onEdit).toHaveBeenCalledWith(baseCoffee);
+    expect(mockNavigate).not.toHaveBeenCalledWith('/coffees/coffee-1');
+  });
+
+  it('calls onArchive with coffee id when Archive button is clicked', async () => {
+    const user = userEvent.setup();
+    const onArchive = vi.fn();
+    renderCard(baseCoffee, { onArchive });
+
+    await user.click(screen.getByRole('button', { name: /archive/i }));
+
+    expect(onArchive).toHaveBeenCalledWith('coffee-1');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/coffees/coffee-1');
   });
 });

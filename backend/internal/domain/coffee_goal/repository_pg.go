@@ -36,22 +36,22 @@ func (r *PostgresRepository) GetByCoffeeID(ctx context.Context, userID, coffeeID
 	}
 
 	query := `
-		SELECT id, coffee_id, user_id, tds, extraction_yield,
+		SELECT id, coffee_id, user_id, coffee_ml, tds, extraction_yield,
 			aroma_intensity, sweetness_intensity, body_intensity, flavor_intensity,
 			brightness_intensity, cleanliness_intensity, complexity_intensity,
 			balance_intensity, aftertaste_intensity,
-			overall_score, notes, created_at, updated_at
+			overall_score, created_at, updated_at
 		FROM coffee_goals
 		WHERE coffee_id = $1 AND user_id = $2
 	`
 
 	goal := &CoffeeGoal{}
 	err = r.db.QueryRowContext(ctx, query, coffeeID, userID).Scan(
-		&goal.ID, &goal.CoffeeID, &goal.UserID, &goal.TDS, &goal.ExtractionYield,
+		&goal.ID, &goal.CoffeeID, &goal.UserID, &goal.CoffeeMl, &goal.TDS, &goal.ExtractionYield,
 		&goal.AromaIntensity, &goal.SweetnessIntensity, &goal.BodyIntensity, &goal.FlavorIntensity,
 		&goal.BrightnessIntensity, &goal.CleanlinessIntensity, &goal.ComplexityIntensity,
 		&goal.BalanceIntensity, &goal.AftertasteIntensity,
-		&goal.OverallScore, &goal.Notes, &goal.CreatedAt, &goal.UpdatedAt,
+		&goal.OverallScore, &goal.CreatedAt, &goal.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -81,13 +81,14 @@ func (r *PostgresRepository) Upsert(ctx context.Context, userID, coffeeID uuid.U
 	// Use INSERT ... ON CONFLICT for upsert
 	query := `
 		INSERT INTO coffee_goals (
-			id, coffee_id, user_id, tds, extraction_yield,
+			id, coffee_id, user_id, coffee_ml, tds, extraction_yield,
 			aroma_intensity, sweetness_intensity, body_intensity, flavor_intensity,
 			brightness_intensity, cleanliness_intensity, complexity_intensity,
 			balance_intensity, aftertaste_intensity,
-			overall_score, notes, created_at, updated_at
+			overall_score, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 		ON CONFLICT (coffee_id) DO UPDATE SET
+			coffee_ml = EXCLUDED.coffee_ml,
 			tds = EXCLUDED.tds,
 			extraction_yield = EXCLUDED.extraction_yield,
 			aroma_intensity = EXCLUDED.aroma_intensity,
@@ -100,28 +101,27 @@ func (r *PostgresRepository) Upsert(ctx context.Context, userID, coffeeID uuid.U
 			balance_intensity = EXCLUDED.balance_intensity,
 			aftertaste_intensity = EXCLUDED.aftertaste_intensity,
 			overall_score = EXCLUDED.overall_score,
-			notes = EXCLUDED.notes,
 			updated_at = EXCLUDED.updated_at
-		RETURNING id, coffee_id, user_id, tds, extraction_yield,
+		RETURNING id, coffee_id, user_id, coffee_ml, tds, extraction_yield,
 			aroma_intensity, sweetness_intensity, body_intensity, flavor_intensity,
 			brightness_intensity, cleanliness_intensity, complexity_intensity,
 			balance_intensity, aftertaste_intensity,
-			overall_score, notes, created_at, updated_at
+			overall_score, created_at, updated_at
 	`
 
 	goal := &CoffeeGoal{}
 	err = r.db.QueryRowContext(ctx, query,
-		uuid.New(), coffeeID, userID, input.TDS, input.ExtractionYield,
+		uuid.New(), coffeeID, userID, input.CoffeeMl, input.TDS, input.ExtractionYield,
 		input.AromaIntensity, input.SweetnessIntensity, input.BodyIntensity, input.FlavorIntensity,
 		input.BrightnessIntensity, input.CleanlinessIntensity, input.ComplexityIntensity,
 		input.BalanceIntensity, input.AftertasteIntensity,
-		input.OverallScore, input.Notes, now, now,
+		input.OverallScore, now, now,
 	).Scan(
-		&goal.ID, &goal.CoffeeID, &goal.UserID, &goal.TDS, &goal.ExtractionYield,
+		&goal.ID, &goal.CoffeeID, &goal.UserID, &goal.CoffeeMl, &goal.TDS, &goal.ExtractionYield,
 		&goal.AromaIntensity, &goal.SweetnessIntensity, &goal.BodyIntensity, &goal.FlavorIntensity,
 		&goal.BrightnessIntensity, &goal.CleanlinessIntensity, &goal.ComplexityIntensity,
 		&goal.BalanceIntensity, &goal.AftertasteIntensity,
-		&goal.OverallScore, &goal.Notes, &goal.CreatedAt, &goal.UpdatedAt,
+		&goal.OverallScore, &goal.CreatedAt, &goal.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err

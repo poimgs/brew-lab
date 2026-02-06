@@ -89,6 +89,14 @@ vi.mock('@/api/mineral-profiles', () => ({
   }),
 }));
 
+const mockGetCoffeeGoal = vi.fn().mockResolvedValue(null);
+const mockUpsertCoffeeGoal = vi.fn().mockResolvedValue({});
+
+vi.mock('@/api/coffee-goals', () => ({
+  getCoffeeGoal: (...args: unknown[]) => mockGetCoffeeGoal(...args),
+  upsertCoffeeGoal: (...args: unknown[]) => mockUpsertCoffeeGoal(...args),
+}));
+
 const mockOnSuccess = vi.fn();
 const mockOnCancel = vi.fn();
 
@@ -359,6 +367,207 @@ describe('ExperimentForm', () => {
 
       // No pour defaults - should show empty state
       expect(screen.getByText(/no pours recorded yet/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('step error indicators', () => {
+    it('marks steps with validation errors after failed submit', async () => {
+      const user = userEvent.setup();
+      renderWithRouter(
+        <ExperimentForm
+          experiment={{ ...mockExperiment, overall_notes: '' }}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+        />
+      );
+
+      // In edit mode, submit button is on every step
+      const submitButton = screen.getByRole('button', { name: /save changes/i });
+      await user.click(submitButton);
+
+      // Should show validation error
+      await waitFor(() => {
+        expect(screen.queryAllByText(/notes must be at least 10 characters/i).length).toBeGreaterThan(0);
+      });
+
+      // Step 6 circles should have error styling (overall_notes is on step 6)
+      const circles = document.querySelectorAll('.rounded-full');
+      const step6Circles = Array.from(circles).filter(
+        (el) => el.textContent?.trim() === '6'
+      );
+      expect(step6Circles.length).toBeGreaterThan(0);
+      step6Circles.forEach((circle) => {
+        expect(circle.className).toContain('border-destructive');
+      });
+
+      // Step 1 should NOT have error styling (coffee_id is valid)
+      const step1Circles = Array.from(circles).filter(
+        (el) => el.textContent?.trim() === '1'
+      );
+      step1Circles.forEach((circle) => {
+        expect(circle.className).not.toContain('border-destructive');
+      });
+    });
+
+    it('navigates to the first step with an error on failed submit', async () => {
+      const user = userEvent.setup();
+      renderWithRouter(
+        <ExperimentForm
+          experiment={{ ...mockExperiment, overall_notes: '' }}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+        />
+      );
+
+      // Click submit from step 1
+      const submitButton = screen.getByRole('button', { name: /save changes/i });
+      await user.click(submitButton);
+
+      // Should navigate to step 6 (where overall_notes error is)
+      await waitFor(() => {
+        expect(screen.getByText('Sensory Outcomes')).toBeInTheDocument();
+      });
+    });
+
+    it('clears error indicators when form is resubmitted successfully', async () => {
+      const { updateExperiment } = await import('@/api/experiments');
+      (updateExperiment as ReturnType<typeof vi.fn>).mockResolvedValue({});
+
+      const user = userEvent.setup();
+      renderWithRouter(
+        <ExperimentForm
+          experiment={{ ...mockExperiment, overall_notes: '' }}
+          onSuccess={mockOnSuccess}
+          onCancel={mockOnCancel}
+        />
+      );
+
+      // First submit fails
+      const submitButton = screen.getByRole('button', { name: /save changes/i });
+      await user.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.queryAllByText(/notes must be at least 10 characters/i).length).toBeGreaterThan(0);
+      });
+
+      // Now on step 6, fill overall_notes with valid content
+      const notesTextarea = screen.getByPlaceholderText(/how did this brew taste/i);
+      await user.type(notesTextarea, 'A wonderful cup with complex flavors and sweet finish');
+
+      // Submit again - should succeed now
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(mockOnSuccess).toHaveBeenCalled();
+      });
+
+      // Step error indicators on progress circles should be cleared
+      await waitFor(() => {
+        const circles = document.querySelectorAll('.rounded-full');
+        const errorCircles = Array.from(circles).filter(
+          (el) => /^\d$/.test(el.textContent?.trim() || '') && el.className.includes('border-destructive')
+        );
+        expect(errorCircles.length).toBe(0);
+      });
+    });
+  });
+
+  describe('target goals', () => {
+    it('fetches coffee goals when a coffee is selected', async () => {
+      mockGetCoffeeGoal.mockResolvedValue({
+        id: 'goal-1',
+        coffee_id: 'coffee-1',
+        tds: 1.38,
+        extraction_yield: 20.5,
+        aroma_intensity: 7,
+        overall_score: 9,
+        created_at: '2026-01-15T10:00:00Z',
+        updated_at: '2026-01-15T10:00:00Z',
+      });
+
+      const user = userEvent.setup();
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+
+      // Select a coffee
+      const selector = screen.getByText('Select a coffee...');
+      await user.click(selector);
+      await waitFor(() => expect(screen.getByText('Test Coffee')).toBeInTheDocument());
+      const coffeeOptions = screen.getAllByRole('button', { name: /test coffee/i });
+      await user.click(coffeeOptions[0]);
+
+      // Goals should be fetched for the selected coffee
+      await waitFor(() => {
+        expect(mockGetCoffeeGoal).toHaveBeenCalledWith('coffee-1');
+      });
+    });
+
+    it('shows target goals on quantitative step with fetched values', async () => {
+      mockGetCoffeeGoal.mockResolvedValue({
+        id: 'goal-1',
+        coffee_id: 'coffee-1',
+        coffee_ml: 180,
+        tds: 1.38,
+        extraction_yield: 20.5,
+        created_at: '2026-01-15T10:00:00Z',
+        updated_at: '2026-01-15T10:00:00Z',
+      });
+
+      const user = userEvent.setup();
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+
+      // Select coffee
+      const selector = screen.getByText('Select a coffee...');
+      await user.click(selector);
+      await waitFor(() => expect(screen.getByText('Test Coffee')).toBeInTheDocument());
+      const coffeeOptions = screen.getAllByRole('button', { name: /test coffee/i });
+      await user.click(coffeeOptions[0]);
+
+      // Navigate to step 5 (Quantitative): Next on step 1, then Skip on steps 2-4
+      await user.click(screen.getByRole('button', { name: /^next$/i }));
+      await waitFor(() => expect(screen.getByText('Pre-Brew Variables')).toBeInTheDocument());
+      await user.click(screen.getByRole('button', { name: /^skip$/i }));
+      await waitFor(() => expect(screen.getByText('Brew Variables')).toBeInTheDocument());
+      await user.click(screen.getByRole('button', { name: /^skip$/i }));
+      await waitFor(() => expect(screen.getByText('Post-Brew Variables')).toBeInTheDocument());
+      await user.click(screen.getByRole('button', { name: /^skip$/i }));
+
+      await waitFor(() => expect(screen.getByText('Quantitative Outcomes')).toBeInTheDocument());
+
+      // Target goals should show the fetched values
+      await waitFor(() => {
+        expect(document.getElementById('goal_coffee_ml')).toHaveValue(180);
+        expect(document.getElementById('goal_tds')).toHaveValue(1.38);
+        expect(document.getElementById('goal_extraction_yield')).toHaveValue(20.5);
+      });
+    });
+
+    it('handles no goals gracefully (empty state)', async () => {
+      mockGetCoffeeGoal.mockResolvedValue(null);
+
+      const user = userEvent.setup();
+      renderWithRouter(<ExperimentForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+
+      // Select coffee
+      const selector = screen.getByText('Select a coffee...');
+      await user.click(selector);
+      await waitFor(() => expect(screen.getByText('Test Coffee')).toBeInTheDocument());
+      const coffeeOptions = screen.getAllByRole('button', { name: /test coffee/i });
+      await user.click(coffeeOptions[0]);
+
+      // Navigate to step 5 (Quantitative): Next on step 1, then Skip on steps 2-4
+      await user.click(screen.getByRole('button', { name: /^next$/i }));
+      await waitFor(() => expect(screen.getByText('Pre-Brew Variables')).toBeInTheDocument());
+      await user.click(screen.getByRole('button', { name: /^skip$/i }));
+      await waitFor(() => expect(screen.getByText('Brew Variables')).toBeInTheDocument());
+      await user.click(screen.getByRole('button', { name: /^skip$/i }));
+      await waitFor(() => expect(screen.getByText('Post-Brew Variables')).toBeInTheDocument());
+      await user.click(screen.getByRole('button', { name: /^skip$/i }));
+
+      await waitFor(() => expect(screen.getByText('Quantitative Outcomes')).toBeInTheDocument());
+
+      // Goal fields should be empty
+      expect(document.getElementById('goal_coffee_ml')).toHaveValue(null);
+      expect(document.getElementById('goal_tds')).toHaveValue(null);
     });
   });
 });

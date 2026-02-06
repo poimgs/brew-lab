@@ -8,6 +8,8 @@ interface ReferenceSidebarProps {
   isLoading: boolean;
   onCopyParameters: (experiment: ReferenceExperiment) => void;
   onEditGoals?: () => void;
+  onChangeReference?: () => void;
+  embedded?: boolean;
 }
 
 function formatDate(dateString: string): string {
@@ -51,7 +53,7 @@ function ExperimentSection({ experiment }: { experiment: ReferenceExperiment }) 
         {experiment.is_best ? (
           <>
             <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-            <span>Best Brew</span>
+            <span>Reference Brew</span>
           </>
         ) : (
           <span>Latest Brew</span>
@@ -90,7 +92,7 @@ function ExperimentSection({ experiment }: { experiment: ReferenceExperiment }) 
 }
 
 function GoalsSection({ goals, onEdit }: { goals: CoffeeGoalSummary; onEdit?: () => void }) {
-  const hasGoals = goals.tds || goals.extraction_yield ||
+  const hasGoals = goals.coffee_ml || goals.tds || goals.extraction_yield ||
     goals.brightness_intensity || goals.sweetness_intensity ||
     goals.body_intensity || goals.flavor_intensity ||
     goals.cleanliness_intensity || goals.complexity_intensity ||
@@ -110,6 +112,7 @@ function GoalsSection({ goals, onEdit }: { goals: CoffeeGoalSummary; onEdit?: ()
 
       {hasGoals ? (
         <div className="space-y-1">
+          <ParameterRow label="Coffee" value={goals.coffee_ml ? `${goals.coffee_ml}ml` : null} />
           <ParameterRow label="TDS" value={goals.tds ? `${goals.tds}%` : null} />
           <ParameterRow label="Extraction" value={goals.extraction_yield ? `${goals.extraction_yield}%` : null} />
           <GoalRow label="Aroma" value={goals.aroma_intensity} />
@@ -127,12 +130,6 @@ function GoalsSection({ goals, onEdit }: { goals: CoffeeGoalSummary; onEdit?: ()
         <p className="text-sm text-muted-foreground">No goals set yet.</p>
       )}
 
-      {goals.notes && (
-        <div className="mt-3 pt-3 border-t">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground block mb-1">Improvement Notes</span>
-          <p className="text-sm italic text-muted-foreground">"{goals.notes}"</p>
-        </div>
-      )}
     </div>
   );
 }
@@ -142,12 +139,14 @@ export default function ReferenceSidebar({
   isLoading,
   onCopyParameters,
   onEditGoals,
+  onChangeReference,
+  embedded = false,
 }: ReferenceSidebarProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   if (isLoading) {
     return (
-      <div className="border rounded-lg p-4">
+      <div className={embedded ? '' : 'border rounded-lg p-4'}>
         <div className="animate-pulse space-y-3">
           <div className="h-4 bg-muted rounded w-1/2" />
           <div className="h-3 bg-muted rounded w-3/4" />
@@ -164,13 +163,63 @@ export default function ReferenceSidebar({
   const { experiment, goals } = reference;
   const hasContent = experiment || goals;
 
-  if (!hasContent) {
+  const content = hasContent ? (
+    <div className="space-y-4">
+      {experiment && (
+        <>
+          <ExperimentSection experiment={experiment} />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full gap-2"
+            onClick={() => onCopyParameters(experiment)}
+          >
+            <Copy className="h-3 w-3" />
+            Copy Parameters
+          </Button>
+        </>
+      )}
+
+      {goals && (
+        <div className={experiment ? 'pt-4 border-t' : ''}>
+          <GoalsSection goals={goals} onEdit={onEditGoals} />
+        </div>
+      )}
+    </div>
+  ) : (
+    <p className="text-sm text-muted-foreground">
+      No experiments yet for this coffee. Reference data will appear after you log some brews.
+    </p>
+  );
+
+  // Embedded mode: no border wrapper or collapse toggle (used inside Sheet)
+  if (embedded) {
     return (
-      <div className="border rounded-lg">
+      <div className="space-y-4">
+        {onChangeReference && experiment && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={onChangeReference}
+          >
+            Change
+          </Button>
+        )}
+        {content}
+      </div>
+    );
+  }
+
+  // Normal mode: collapsible card with border
+  return (
+    <div className="border rounded-lg">
+      <div className="flex items-center justify-between px-4 py-3">
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center justify-between px-4 py-3 text-left font-medium hover:bg-muted/50 transition-colors"
+          className="flex items-center gap-2 font-medium hover:text-foreground/80 transition-colors"
         >
           <span>Reference</span>
           {isExpanded ? (
@@ -179,55 +228,21 @@ export default function ReferenceSidebar({
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           )}
         </button>
-        {isExpanded && (
-          <div className="px-4 pb-4 pt-2 border-t">
-            <p className="text-sm text-muted-foreground">
-              No experiments yet for this coffee. Reference data will appear after you log some brews.
-            </p>
-          </div>
+        {onChangeReference && experiment && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={onChangeReference}
+          >
+            Change
+          </Button>
         )}
       </div>
-    );
-  }
-
-  return (
-    <div className="border rounded-lg">
-      <button
-        type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left font-medium hover:bg-muted/50 transition-colors"
-      >
-        <span>Reference</span>
-        {isExpanded ? (
-          <ChevronUp className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        )}
-      </button>
 
       {isExpanded && (
-        <div className="px-4 pb-4 pt-2 border-t space-y-4">
-          {experiment && (
-            <>
-              <ExperimentSection experiment={experiment} />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full gap-2"
-                onClick={() => onCopyParameters(experiment)}
-              >
-                <Copy className="h-3 w-3" />
-                Copy Parameters
-              </Button>
-            </>
-          )}
-
-          {goals && (
-            <div className={experiment ? 'pt-4 border-t' : ''}>
-              <GoalsSection goals={goals} onEdit={onEditGoals} />
-            </div>
-          )}
+        <div className="px-4 pb-4 pt-2 border-t">
+          {content}
         </div>
       )}
     </div>

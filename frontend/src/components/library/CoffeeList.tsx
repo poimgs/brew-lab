@@ -4,31 +4,14 @@ import { Plus, Search, Archive, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   type Coffee,
   type ListCoffeesParams,
   listCoffees,
+  archiveCoffee,
   unarchiveCoffee,
 } from '@/api/coffees';
 import CoffeeCard from '@/components/coffees/CoffeeCard';
 import CoffeeForm from './CoffeeForm';
-
-type SortOption = '-created_at' | 'roaster' | 'name' | 'country' | '-roast_date' | '-experiment_count';
-
-const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: '-created_at', label: 'Newest' },
-  { value: 'roaster', label: 'Roaster' },
-  { value: 'name', label: 'Name' },
-  { value: 'country', label: 'Country' },
-  { value: '-roast_date', label: 'Roast Date' },
-  { value: '-experiment_count', label: 'Most Brewed' },
-];
 
 export default function CoffeeList() {
   const navigate = useNavigate();
@@ -39,9 +22,6 @@ export default function CoffeeList() {
   // Filters
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
-
-  // Sorting
-  const [sort, setSort] = useState<SortOption>('-created_at');
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -61,8 +41,7 @@ export default function CoffeeList() {
       const params: ListCoffeesParams = {
         page,
         per_page: perPage,
-        sort,
-        include_archived: showArchived,
+        archived_only: showArchived || undefined,
       };
 
       if (search.trim()) {
@@ -79,7 +58,7 @@ export default function CoffeeList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, perPage, sort, showArchived, search]);
+  }, [page, perPage, showArchived, search]);
 
   useEffect(() => {
     fetchCoffees();
@@ -93,6 +72,15 @@ export default function CoffeeList() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const handleArchive = async (coffeeId: string) => {
+    try {
+      await archiveCoffee(coffeeId);
+      await fetchCoffees();
+    } catch (err) {
+      console.error('Error archiving coffee:', err);
+    }
+  };
+
   const handleReactivate = async (coffeeId: string) => {
     try {
       await unarchiveCoffee(coffeeId);
@@ -100,6 +88,10 @@ export default function CoffeeList() {
     } catch (err) {
       console.error('Error unarchiving coffee:', err);
     }
+  };
+
+  const handleEdit = (coffee: Coffee) => {
+    setEditingCoffee(coffee);
   };
 
   const handleNewExperiment = (coffeeId: string) => {
@@ -157,24 +149,10 @@ export default function CoffeeList() {
             {showArchived ? 'Showing Archived' : 'Show Archived'}
           </Button>
         </div>
-        <div className="flex gap-2">
-          <Select value={sort} onValueChange={(value) => { setSort(value as SortOption); setPage(1); }}>
-            <SelectTrigger size="sm">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              {SORT_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button onClick={() => setShowAddForm(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            Add Coffee
-          </Button>
-        </div>
+        <Button onClick={() => setShowAddForm(true)}>
+          <Plus className="h-4 w-4 mr-1" />
+          Add Coffee
+        </Button>
       </div>
 
       {/* Error state */}
@@ -218,6 +196,8 @@ export default function CoffeeList() {
                 key={coffee.id}
                 coffee={coffee}
                 onNewExperiment={handleNewExperiment}
+                onEdit={handleEdit}
+                onArchive={handleArchive}
                 onReactivate={showArchived ? handleReactivate : undefined}
               />
             ))}

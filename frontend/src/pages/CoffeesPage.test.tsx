@@ -11,6 +11,7 @@ vi.mock('@/api/coffees', () => ({
   archiveCoffee: vi.fn(),
   unarchiveCoffee: vi.fn(),
   deleteCoffee: vi.fn(),
+  getCoffeeSuggestions: vi.fn(),
 }));
 
 // Mock react-router-dom's useNavigate
@@ -174,21 +175,24 @@ describe('CoffeesPage', () => {
     expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
   });
 
-  it('fetches coffees with correct sort parameter', async () => {
+  it('fetches coffees with correct default parameters (no sort)', async () => {
     renderWithRouter(<CoffeesPage />);
 
     await waitFor(() => {
       expect(coffeesApi.listCoffees).toHaveBeenCalledWith(
         expect.objectContaining({
-          sort: '-created_at',
           page: 1,
           per_page: 20,
         })
       );
     });
+
+    // Sort should not be sent (backend hardcodes -created_at)
+    const callArgs = vi.mocked(coffeesApi.listCoffees).mock.calls[0][0];
+    expect(callArgs).not.toHaveProperty('sort');
   });
 
-  it('toggles archived filter when clicking show archived button', async () => {
+  it('sends archived_only when clicking show archived button', async () => {
     const user = userEvent.setup();
     renderWithRouter(<CoffeesPage />);
 
@@ -203,7 +207,7 @@ describe('CoffeesPage', () => {
     await waitFor(() => {
       expect(coffeesApi.listCoffees).toHaveBeenCalledWith(
         expect.objectContaining({
-          include_archived: true,
+          archived_only: true,
         })
       );
     });

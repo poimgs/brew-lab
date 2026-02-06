@@ -3,6 +3,7 @@ import client from './client';
 export interface CoffeeGoal {
   id: string;
   coffee_id: string;
+  coffee_ml?: number;
   tds?: number;
   extraction_yield?: number;
   aroma_intensity?: number;
@@ -15,12 +16,12 @@ export interface CoffeeGoal {
   balance_intensity?: number;
   aftertaste_intensity?: number;
   overall_score?: number;
-  notes?: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface CoffeeGoalInput {
+  coffee_ml?: number | null;
   tds?: number | null;
   extraction_yield?: number | null;
   aroma_intensity?: number | null;
@@ -33,7 +34,6 @@ export interface CoffeeGoalInput {
   balance_intensity?: number | null;
   aftertaste_intensity?: number | null;
   overall_score?: number | null;
-  notes?: string | null;
 }
 
 export async function getCoffeeGoal(coffeeId: string): Promise<CoffeeGoal | null> {

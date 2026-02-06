@@ -2,7 +2,7 @@
 
 ## Overview
 
-User Preferences contains user-configurable settings that affect experiment entry. Currently this includes Brew Defaults—values that pre-populate when creating new experiments.
+User Preferences contains user-configurable settings that affect experiment entry. Currently this includes Brew Defaults—values that pre-populate when creating new experiments, organized into sections matching the experiment wizard steps.
 
 **Access:** Via user menu dropdown (not main navigation)
 
@@ -38,23 +38,33 @@ User Preferences is accessed via the user menu dropdown in the header, not throu
 │ ┌─ Brew Defaults ────────────────────────────────────────────[Save]┐│
 │ │ These values will be pre-filled when creating a new experiment.  ││
 │ │                                                                  ││
+│ │ ─── Pre-Brew Defaults ───                                       ││
 │ │ Coffee Weight [15    ] g  [×]                                    ││
 │ │ Water Weight  [250   ] g  [×]                                    ││
+│ │ Ratio         [15    ]    [×]                                    ││
+│ │ Grind Size    [3.5   ]    [×]                                    ││
 │ │ Temperature   [93    ] °C [×]                                    ││
-│ │ Grind Size    [24 clicks ] [×]                                   ││
 │ │ Filter Paper  [Abaca (Cafec) ▼] [×]                              ││
+│ │                                                                  ││
+│ │ ─── Brew Defaults ───                                            ││
 │ │ Bloom Water   [45    ] g  [×]                                    ││
 │ │ Bloom Time    [45    ] s  [×]                                    ││
+│ │ Pour Defaults [Configure...]  [×]                                ││
 │ └──────────────────────────────────────────────────────────────────┘│
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+**Section Organization:**
+- **Pre-Brew Defaults**: Fields matching the Pre-Brew wizard step — coffee_weight, water_weight, ratio, grind_size, water_temperature, filter_paper_id
+- **Brew Defaults**: Fields matching the Brew wizard step — bloom_water, bloom_time, pour_defaults
 
 **Field Behavior:**
 - Each field has a clear button [×] to remove that default
 - Empty fields mean no default (field left blank in new experiments)
 - Save button persists all changes
 - Filter Paper dropdown shows user's filter papers from Library
+- Ratio and Grind Size are numeric inputs (not text fields)
 
 ### Default Behavior in Experiment Entry
 
@@ -78,8 +88,8 @@ Defaults are stored as key-value pairs per user, allowing flexibility in which f
 |-------|------|------|-------------|
 | coffee_weight | decimal | grams | Default dose |
 | water_weight | decimal | grams | Default water amount |
-| ratio | string | — | Default ratio (e.g., "1:15") |
-| grind_size | string | — | Default grind setting |
+| ratio | decimal | — | Default ratio (e.g., 15 for 1:15) |
+| grind_size | decimal | — | Default grind setting (numeric) |
 | water_temperature | decimal | °C | Default water temperature |
 | filter_paper_id | UUID | — | Default filter paper |
 | bloom_water | decimal | grams | Default bloom water |
@@ -114,8 +124,8 @@ GET /api/v1/defaults
 ```json
 {
   "coffee_weight": "15",
-  "ratio": "1:15",
-  "grind_size": "8 clicks",
+  "ratio": "15",
+  "grind_size": "3.5",
   "water_temperature": "90",
   "filter_paper_id": "uuid",
   "bloom_water": "45",
@@ -132,7 +142,7 @@ PUT /api/v1/defaults
 ```json
 {
   "coffee_weight": "15",
-  "ratio": "1:15"
+  "ratio": "15"
 }
 ```
 
@@ -152,6 +162,13 @@ Removes a single default value by field name.
 ---
 
 ## Design Decisions
+
+### Section Organization Matching Wizard Steps
+
+Defaults are organized into Pre-Brew and Brew sections because:
+- Mirrors the experiment wizard step structure
+- Users mentally map defaults to where they're used
+- Easier to find and configure relevant fields
 
 ### User Menu Access
 
@@ -181,6 +198,13 @@ Coffee is not defaultable because:
 - Users typically rotate through different coffees
 - Defaulting to a specific coffee would often be wrong
 - Coffee selection is the first, intentional step in logging
+
+### Numeric Types for Ratio and Grind Size
+
+Ratio and grind_size use numeric input types (not text) because:
+- The experiment wizard treats these as numeric values
+- Enables proper validation (positive decimals)
+- Consistent with how they're stored and used in experiments
 
 ---
 

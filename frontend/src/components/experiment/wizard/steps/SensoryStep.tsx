@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import IntensityInput from '../../IntensityInput';
+import { type CoffeeGoalInput } from '@/api/coffee-goals';
 
 const FLAVOR_CATEGORIES = [
   { name: 'Fruity', descriptors: ['Berry', 'Citrus', 'Stone Fruit', 'Tropical', 'Dried Fruit', 'Apple', 'Grape'] },
@@ -16,9 +18,36 @@ const FLAVOR_CATEGORIES = [
   { name: 'Other', descriptors: ['Wine-like', 'Tea-like', 'Earthy', 'Woody', 'Herbal', 'Fermented'] },
 ];
 
-export default function SensoryStep() {
+const SENSORY_GOAL_FIELDS = [
+  { field: 'aroma_intensity' as const, label: 'Aroma' },
+  { field: 'sweetness_intensity' as const, label: 'Sweetness' },
+  { field: 'body_intensity' as const, label: 'Body' },
+  { field: 'flavor_intensity' as const, label: 'Flavor' },
+  { field: 'brightness_intensity' as const, label: 'Brightness' },
+  { field: 'cleanliness_intensity' as const, label: 'Cleanliness' },
+  { field: 'complexity_intensity' as const, label: 'Complexity' },
+  { field: 'balance_intensity' as const, label: 'Balance' },
+  { field: 'aftertaste_intensity' as const, label: 'Aftertaste' },
+  { field: 'overall_score' as const, label: 'Overall' },
+];
+
+interface SensoryStepProps {
+  goals: CoffeeGoalInput;
+  onGoalChange: (field: keyof CoffeeGoalInput, value: number | null) => void;
+}
+
+export default function SensoryStep({ goals, onGoalChange }: SensoryStepProps) {
   const { register, control, watch, setValue, formState: { errors } } = useFormContext();
   const [flavorRefOpen, setFlavorRefOpen] = useState(false);
+
+  const handleGoalIntChange = (field: keyof CoffeeGoalInput, value: string) => {
+    const parsed = parseInt(value);
+    if (value === '' || isNaN(parsed)) {
+      onGoalChange(field, null);
+    } else {
+      onGoalChange(field, Math.min(10, Math.max(1, parsed)));
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -215,6 +244,34 @@ export default function SensoryStep() {
             />
           )}
         />
+      </div>
+
+      {/* Target Goals */}
+      <div className="border border-dashed rounded-lg p-4 space-y-4 bg-muted/20">
+        <div>
+          <h4 className="text-sm font-medium">Target Goals</h4>
+          <p className="text-xs text-muted-foreground">
+            Set target sensory scores for this coffee (1-10).
+          </p>
+        </div>
+
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-5">
+          {SENSORY_GOAL_FIELDS.map(({ field, label }) => (
+            <div key={field} className="space-y-1">
+              <Label htmlFor={`goal_${field}`} className="text-xs">{label}</Label>
+              <Input
+                id={`goal_${field}`}
+                type="number"
+                min="1"
+                max="10"
+                placeholder="—"
+                value={goals[field] ?? ''}
+                onChange={(e) => handleGoalIntChange(field, e.target.value)}
+                className="h-8 text-sm"
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

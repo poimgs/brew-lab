@@ -5,6 +5,7 @@ import { useWizard, TOTAL_STEPS } from './WizardContext';
 interface WizardNavigationProps {
   onNext?: () => Promise<boolean> | boolean;
   onSaveDraft?: () => void;
+  onSubmitForm?: () => void;
   isSubmitting?: boolean;
   isSavingDraft?: boolean;
   isEditMode?: boolean;
@@ -15,6 +16,7 @@ interface WizardNavigationProps {
 export default function WizardNavigation({
   onNext,
   onSaveDraft,
+  onSubmitForm,
   isSubmitting = false,
   isSavingDraft = false,
   isEditMode = false,
@@ -76,7 +78,11 @@ export default function WizardNavigation({
         )}
 
         {isLastStep || isEditMode ? (
-          <Button type="submit" disabled={isSubmitting || isSavingDraft}>
+          <Button
+            type={onSubmitForm ? 'button' : 'submit'}
+            onClick={onSubmitForm}
+            disabled={isSubmitting || isSavingDraft}
+          >
             {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {submitLabel}
           </Button>

@@ -61,12 +61,12 @@ const mockCoffeeReference: CoffeeReference = {
   },
   goals: {
     id: 'goal-789',
+    coffee_ml: 180,
     tds: 1.38,
     extraction_yield: 20.5,
     brightness_intensity: 7,
     sweetness_intensity: 8,
     overall_score: 9,
-    notes: 'Try finer grind to boost sweetness, maybe 3.2',
   },
 };
 
@@ -208,7 +208,7 @@ describe('coffees API - Best Experiment and Reference', () => {
       expect(result.experiment).not.toBeNull();
       expect(result.experiment?.is_best).toBe(true);
       expect(result.goals).not.toBeNull();
-      expect(result.goals?.notes).toBe('Try finer grind to boost sweetness, maybe 3.2');
+      expect(result.goals?.coffee_ml).toBe(180);
     });
 
     it('handles reference with null experiment (no experiments yet)', async () => {
@@ -277,6 +277,7 @@ describe('coffees API - Best Experiment and Reference', () => {
         experiment: null,
         goals: {
           id: 'goal-789',
+          coffee_ml: 185,
           tds: 1.40,
           extraction_yield: 21.0,
           aroma_intensity: 7,
@@ -289,7 +290,6 @@ describe('coffees API - Best Experiment and Reference', () => {
           balance_intensity: 7,
           aftertaste_intensity: 4,
           overall_score: 9,
-          notes: 'Target profile notes',
         },
       };
       vi.mocked(client.get).mockResolvedValueOnce({ data: fullGoals });
@@ -309,7 +309,7 @@ describe('coffees API - Best Experiment and Reference', () => {
       expect(goals.balance_intensity).toBe(7);
       expect(goals.aftertaste_intensity).toBe(4);
       expect(goals.overall_score).toBe(9);
-      expect(goals.notes).toBe('Target profile notes');
+      expect(goals.coffee_ml).toBe(185);
     });
   });
 });

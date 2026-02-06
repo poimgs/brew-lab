@@ -6,7 +6,7 @@ interface WizardProgressProps {
 }
 
 export default function WizardProgress({ className }: WizardProgressProps) {
-  const { currentStep, visitedSteps, goToStep, canNavigateToStep } = useWizard();
+  const { currentStep, visitedSteps, stepErrors, goToStep, canNavigateToStep } = useWizard();
 
   return (
     <div className={cn('w-full', className)}>
@@ -15,7 +15,8 @@ export default function WizardProgress({ className }: WizardProgressProps) {
         {WIZARD_STEPS.map((step, index) => {
           const isCompleted = visitedSteps.has(step.id) && step.id < currentStep;
           const isCurrent = step.id === currentStep;
-          const isClickable = canNavigateToStep(step.id);
+          const hasError = stepErrors.has(step.id);
+          const isClickable = canNavigateToStep(step.id) || hasError;
           const isUpcoming = !visitedSteps.has(step.id);
 
           return (
@@ -33,9 +34,10 @@ export default function WizardProgress({ className }: WizardProgressProps) {
                 <div
                   className={cn(
                     'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors',
-                    isCompleted && 'bg-primary text-primary-foreground',
-                    isCurrent && 'border-2 border-primary text-primary bg-background',
-                    isUpcoming && !isCurrent && 'bg-muted text-muted-foreground'
+                    hasError && 'border-2 border-destructive bg-destructive/10 text-destructive',
+                    !hasError && isCompleted && 'bg-primary text-primary-foreground',
+                    !hasError && isCurrent && 'border-2 border-primary text-primary bg-background',
+                    !hasError && isUpcoming && !isCurrent && 'bg-muted text-muted-foreground'
                   )}
                 >
                   {step.id}
@@ -43,9 +45,10 @@ export default function WizardProgress({ className }: WizardProgressProps) {
                 <span
                   className={cn(
                     'text-sm font-medium hidden lg:block',
-                    isCurrent && 'text-primary',
-                    isCompleted && 'text-foreground',
-                    isUpcoming && !isCurrent && 'text-muted-foreground'
+                    hasError && 'text-destructive',
+                    !hasError && isCurrent && 'text-primary',
+                    !hasError && isCompleted && 'text-foreground',
+                    !hasError && isUpcoming && !isCurrent && 'text-muted-foreground'
                   )}
                 >
                   {step.shortName}
@@ -72,8 +75,9 @@ export default function WizardProgress({ className }: WizardProgressProps) {
           {WIZARD_STEPS.map((step) => {
             const isCompleted = visitedSteps.has(step.id) && step.id < currentStep;
             const isCurrent = step.id === currentStep;
+            const hasError = stepErrors.has(step.id);
             const isUpcoming = !visitedSteps.has(step.id);
-            const isClickable = canNavigateToStep(step.id);
+            const isClickable = canNavigateToStep(step.id) || hasError;
 
             return (
               <button
@@ -83,9 +87,10 @@ export default function WizardProgress({ className }: WizardProgressProps) {
                 disabled={!isClickable}
                 className={cn(
                   'w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-colors',
-                  isCompleted && 'bg-primary text-primary-foreground',
-                  isCurrent && 'border-2 border-primary text-primary bg-background',
-                  isUpcoming && !isCurrent && 'bg-muted text-muted-foreground',
+                  hasError && 'border-2 border-destructive bg-destructive/10 text-destructive',
+                  !hasError && isCompleted && 'bg-primary text-primary-foreground',
+                  !hasError && isCurrent && 'border-2 border-primary text-primary bg-background',
+                  !hasError && isUpcoming && !isCurrent && 'bg-muted text-muted-foreground',
                   isClickable && !isCurrent && 'hover:opacity-80',
                   !isClickable && 'cursor-not-allowed opacity-50'
                 )}

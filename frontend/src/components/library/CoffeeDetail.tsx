@@ -17,6 +17,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -26,7 +34,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import type { Coffee, CoffeeReference, ReferenceExperiment } from '@/api/coffees';
 import { setBestExperiment } from '@/api/coffees';
 import { upsertCoffeeGoal, type CoffeeGoalInput } from '@/api/coffee-goals';
@@ -94,12 +101,19 @@ export default function CoffeeDetail({
 
   const openGoalsDialog = () => {
     setGoalsForm({
+      coffee_ml: reference?.goals?.coffee_ml,
       tds: reference?.goals?.tds,
       extraction_yield: reference?.goals?.extraction_yield,
-      brightness_intensity: reference?.goals?.brightness_intensity,
+      aroma_intensity: reference?.goals?.aroma_intensity,
       sweetness_intensity: reference?.goals?.sweetness_intensity,
+      body_intensity: reference?.goals?.body_intensity,
+      flavor_intensity: reference?.goals?.flavor_intensity,
+      brightness_intensity: reference?.goals?.brightness_intensity,
+      cleanliness_intensity: reference?.goals?.cleanliness_intensity,
+      complexity_intensity: reference?.goals?.complexity_intensity,
+      balance_intensity: reference?.goals?.balance_intensity,
+      aftertaste_intensity: reference?.goals?.aftertaste_intensity,
       overall_score: reference?.goals?.overall_score,
-      notes: reference?.goals?.notes,
     });
     setGoalsDialogOpen(true);
   };
@@ -190,7 +204,7 @@ export default function CoffeeDetail({
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>
-            {exp.is_best ? 'Best Brew' : 'Latest Brew'} ({formatShortDate(exp.brew_date)})
+            {exp.is_best ? 'Reference Brew' : 'Latest Brew'} ({formatShortDate(exp.brew_date)})
           </span>
           {exp.overall_score != null && (
             <Badge variant="secondary">{exp.overall_score}/10</Badge>
@@ -219,18 +233,36 @@ export default function CoffeeDetail({
       );
     }
 
-    const targets: string[] = [];
-    if (goals.tds != null) targets.push(`TDS: ${goals.tds}%`);
-    if (goals.extraction_yield != null) targets.push(`EY: ${goals.extraction_yield}%`);
-    if (goals.brightness_intensity != null) targets.push(`Brightness: ${goals.brightness_intensity}/10`);
-    if (goals.sweetness_intensity != null) targets.push(`Sweetness: ${goals.sweetness_intensity}/10`);
-    if (goals.overall_score != null) targets.push(`Overall: ${goals.overall_score}/10`);
+    const quantitative: string[] = [];
+    if (goals.coffee_ml != null) quantitative.push(`Coffee: ${goals.coffee_ml}ml`);
+    if (goals.tds != null) quantitative.push(`TDS: ${goals.tds}%`);
+    if (goals.extraction_yield != null) quantitative.push(`EY: ${goals.extraction_yield}%`);
+
+    const sensory: string[] = [];
+    if (goals.aroma_intensity != null) sensory.push(`Aroma: ${goals.aroma_intensity}/10`);
+    if (goals.sweetness_intensity != null) sensory.push(`Sweetness: ${goals.sweetness_intensity}/10`);
+    if (goals.body_intensity != null) sensory.push(`Body: ${goals.body_intensity}/10`);
+    if (goals.flavor_intensity != null) sensory.push(`Flavor: ${goals.flavor_intensity}/10`);
+    if (goals.brightness_intensity != null) sensory.push(`Brightness: ${goals.brightness_intensity}/10`);
+    if (goals.cleanliness_intensity != null) sensory.push(`Cleanliness: ${goals.cleanliness_intensity}/10`);
+    if (goals.complexity_intensity != null) sensory.push(`Complexity: ${goals.complexity_intensity}/10`);
+    if (goals.balance_intensity != null) sensory.push(`Balance: ${goals.balance_intensity}/10`);
+    if (goals.aftertaste_intensity != null) sensory.push(`Aftertaste: ${goals.aftertaste_intensity}/10`);
+    if (goals.overall_score != null) sensory.push(`Overall: ${goals.overall_score}/10`);
 
     return (
-      <div className="space-y-2">
-        {targets.length > 0 && <p className="text-sm">{targets.join(' · ')}</p>}
-        {goals.notes && (
-          <p className="text-sm italic text-muted-foreground">"{goals.notes}"</p>
+      <div className="space-y-3">
+        {quantitative.length > 0 && (
+          <div>
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Quantitative</h4>
+            <p className="text-sm">{quantitative.join(' · ')}</p>
+          </div>
+        )}
+        {sensory.length > 0 && (
+          <div>
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Sensory</h4>
+            <p className="text-sm">{sensory.join(' · ')}</p>
+          </div>
         )}
       </div>
     );
@@ -361,10 +393,10 @@ export default function CoffeeDetail({
             </div>
           )}
 
-          {/* Best Brew Section */}
+          {/* Reference Brew Section */}
           <div className="pt-4 border-t">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold">Best Brew</h3>
+              <h3 className="text-lg font-semibold">Reference Brew</h3>
               {experiments.length > 0 && (
                 <Button
                   variant="ghost"
@@ -394,7 +426,7 @@ export default function CoffeeDetail({
           <div className="pt-4 border-t">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Brew History</h3>
-              {experiments.length > 5 && (
+              {experiments.length > 10 && (
                 <Button
                   variant="link"
                   size="sm"
@@ -414,58 +446,77 @@ export default function CoffeeDetail({
                 No experiments yet. Click "New Experiment" to log your first brew.
               </p>
             ) : (
-              <div className="space-y-2">
-                {experiments.slice(0, 5).map((exp) => {
-                  const isBest = isBestExperiment(exp);
-                  const params: string[] = [];
-                  if (exp.overall_score != null) params.push(`${exp.overall_score}/10`);
-                  if (exp.grind_size != null) params.push(`Grind ${exp.grind_size}`);
-                  if (exp.ratio != null) params.push(`1:${exp.ratio}`);
-                  if (exp.water_temperature != null) params.push(`${exp.water_temperature}°C`);
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8"></TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>DOR</TableHead>
+                    <TableHead>Score</TableHead>
+                    <TableHead>Grind</TableHead>
+                    <TableHead>Ratio</TableHead>
+                    <TableHead>Temp</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {experiments.slice(0, 10).map((exp) => {
+                    const isBest = isBestExperiment(exp);
 
-                  return (
-                    <div
-                      key={exp.id}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/experiments/${exp.id}`)}
-                    >
-                      <div className="flex items-center gap-3">
-                        {isBest ? (
-                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                        ) : (
-                          <span className="w-4" />
-                        )}
-                        <div>
-                          <p className="text-sm font-medium">
-                            {formatShortDate(exp.brew_date)}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {params.join(' · ')}
-                          </p>
-                        </div>
-                      </div>
-                      {!isBest && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSetBestExperiment(exp.id);
-                          }}
-                          disabled={settingBest === exp.id}
-                        >
-                          {settingBest === exp.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Star className="h-3 w-3 mr-1" />
+                    return (
+                      <TableRow
+                        key={exp.id}
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/experiments/${exp.id}`)}
+                      >
+                        <TableCell>
+                          {isBest && (
+                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                           )}
-                          Mark as Best
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatShortDate(exp.brew_date)}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {exp.days_off_roast ?? '—'}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {exp.overall_score != null ? `${exp.overall_score}/10` : '—'}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {exp.grind_size ?? '—'}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {exp.ratio != null ? `1:${exp.ratio}` : '—'}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {exp.water_temperature != null ? `${exp.water_temperature}°C` : '—'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {!isBest && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSetBestExperiment(exp.id);
+                              }}
+                              disabled={settingBest === exp.id}
+                            >
+                              {settingBest === exp.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Star className="h-3 w-3 mr-1" />
+                              )}
+                              Mark as Reference
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             )}
           </div>
         </CardContent>
@@ -473,17 +524,34 @@ export default function CoffeeDetail({
 
       {/* Goals Edit Dialog */}
       <Dialog open={goalsDialogOpen} onOpenChange={setGoalsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Edit Target Goals</DialogTitle>
             <DialogDescription>
               Set your target outcomes for this coffee.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
+            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Quantitative</h4>
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="tds">Target TDS (%)</Label>
+                <Label htmlFor="coffee_ml">Coffee (ml)</Label>
+                <Input
+                  id="coffee_ml"
+                  type="number"
+                  step="0.1"
+                  placeholder="180"
+                  value={goalsForm.coffee_ml ?? ''}
+                  onChange={(e) =>
+                    setGoalsForm({
+                      ...goalsForm,
+                      coffee_ml: e.target.value ? parseFloat(e.target.value) : null,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tds">TDS (%)</Label>
                 <Input
                   id="tds"
                   type="number"
@@ -499,7 +567,7 @@ export default function CoffeeDetail({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="extraction_yield">Target EY (%)</Label>
+                <Label htmlFor="extraction_yield">Extraction (%)</Label>
                 <Input
                   id="extraction_yield"
                   type="number"
@@ -515,69 +583,38 @@ export default function CoffeeDetail({
                 />
               </div>
             </div>
+            <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mt-2">Sensory</h4>
             <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="brightness_intensity">Brightness (1-10)</Label>
-                <Input
-                  id="brightness_intensity"
-                  type="number"
-                  min="1"
-                  max="10"
-                  placeholder="7"
-                  value={goalsForm.brightness_intensity ?? ''}
-                  onChange={(e) =>
-                    setGoalsForm({
-                      ...goalsForm,
-                      brightness_intensity: e.target.value ? parseInt(e.target.value) : null,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sweetness_intensity">Sweetness (1-10)</Label>
-                <Input
-                  id="sweetness_intensity"
-                  type="number"
-                  min="1"
-                  max="10"
-                  placeholder="8"
-                  value={goalsForm.sweetness_intensity ?? ''}
-                  onChange={(e) =>
-                    setGoalsForm({
-                      ...goalsForm,
-                      sweetness_intensity: e.target.value ? parseInt(e.target.value) : null,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="overall_score">Overall (1-10)</Label>
-                <Input
-                  id="overall_score"
-                  type="number"
-                  min="1"
-                  max="10"
-                  placeholder="9"
-                  value={goalsForm.overall_score ?? ''}
-                  onChange={(e) =>
-                    setGoalsForm({
-                      ...goalsForm,
-                      overall_score: e.target.value ? parseInt(e.target.value) : null,
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Improvement Notes</Label>
-              <Textarea
-                id="notes"
-                placeholder="What to change to achieve these goals..."
-                value={goalsForm.notes ?? ''}
-                onChange={(e) =>
-                  setGoalsForm({ ...goalsForm, notes: e.target.value || null })
-                }
-              />
+              {([
+                ['aroma_intensity', 'Aroma'],
+                ['sweetness_intensity', 'Sweetness'],
+                ['body_intensity', 'Body'],
+                ['flavor_intensity', 'Flavor'],
+                ['brightness_intensity', 'Brightness'],
+                ['cleanliness_intensity', 'Cleanliness'],
+                ['complexity_intensity', 'Complexity'],
+                ['balance_intensity', 'Balance'],
+                ['aftertaste_intensity', 'Aftertaste'],
+                ['overall_score', 'Overall'],
+              ] as const).map(([field, label]) => (
+                <div key={field} className="space-y-2">
+                  <Label htmlFor={field}>{label}</Label>
+                  <Input
+                    id={field}
+                    type="number"
+                    min="1"
+                    max="10"
+                    placeholder="—"
+                    value={goalsForm[field] ?? ''}
+                    onChange={(e) =>
+                      setGoalsForm({
+                        ...goalsForm,
+                        [field]: e.target.value ? parseInt(e.target.value) : null,
+                      })
+                    }
+                  />
+                </div>
+              ))}
             </div>
           </div>
           <DialogFooter>
@@ -617,9 +654,9 @@ export default function CoffeeDetail({
       <Dialog open={changeBestDialogOpen} onOpenChange={setChangeBestDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Select Best Brew</DialogTitle>
+            <DialogTitle>Select Reference Brew</DialogTitle>
             <DialogDescription>
-              Choose which experiment represents your best brew for this coffee.
+              Choose which experiment to use as the reference brew for this coffee.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[400px] overflow-y-auto">
