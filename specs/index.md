@@ -30,6 +30,8 @@ The app assumes a single equipment setup: Fellow Ode 2 grinder and V60 brewer. G
 ### Data Model
 ```
 Coffee (metadata) 1:N ← Experiment (brew record)
+Coffee (metadata) 1:N ← Session (variable testing group)
+Session N:M ← Experiment (many-to-many via join table)
 ```
 
 ---
@@ -68,23 +70,34 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | Spec | Dependencies | Purpose |
 |------|--------------|---------|
 | [authentication.md](features/authentication.md) | — | User entity, login/signup, JWT, session handling |
-| [coffees.md](features/coffees.md) | authentication | Coffee beans + best brew tracking + target goals |
+| [coffees.md](features/coffees.md) | authentication | Coffee beans + reference brew + target goals |
 | [library.md](features/library.md) | authentication | Filter papers + mineral profiles with tabbed UI |
 | [user-preferences.md](features/user-preferences.md) | authentication | Brew defaults, accessed via user menu |
 | [brew-tracking.md](features/brew-tracking.md) | authentication, coffees | Experiment entity + logging API + entry forms + reference sidebar |
-| [experiment-review.md](features/experiment-review.md) | brew-tracking | List/compare/analyze views, correlation analysis |
+| [sessions.md](features/sessions.md) | coffees, brew-tracking | Group experiments into variable-testing sessions with hypothesis + conclusion |
+| [dashboard.md](features/dashboard.md) | coffees, brew-tracking, sessions | Goal-focused analytics hub with correlations and insights |
+
+**Deprecated specs** (functionality absorbed by dashboard):
+| Spec | Status | Replaced By |
+|------|--------|-------------|
+| [experiment-review.md](features/experiment-review.md) | Deprecated | [dashboard.md](features/dashboard.md) — experiment detail is now a modal |
+| [analysis.md](features/analysis.md) | Deprecated | [dashboard.md](features/dashboard.md) — correlation analysis on dashboard |
 
 ### Dependency Graph
 
 ```
 authentication (core)
     │
-    ├── coffees (bean metadata + best brew + goals)
+    ├── coffees (bean metadata + reference brew + goals)
     │       │
-    │       └── brew-tracking
-    │               │
-    │               └── experiment-review
-    │                       (includes correlation analysis)
+    │       ├── brew-tracking (experiment logging + wizard + reference sidebar)
+    │       │       │
+    │       │       ├── sessions (variable testing groups)
+    │       │       │
+    │       │       └── dashboard (goal tracking + correlations + insights)
+    │       │               (uses: coffees, brew-tracking, sessions)
+    │       │
+    │       └── sessions (per-coffee experiment grouping)
     │
     ├── library (filter papers + mineral profiles)
     │
@@ -95,10 +108,15 @@ authentication (core)
 
 | Item | Route | Feature |
 |------|-------|---------|
-| Coffees | `/` | coffees (landing page with beans, best brew, goals) |
-| Experiments | `/experiments` | experiment-review (brew list and review) |
-| Analysis | `/analysis` | analysis |
+| Coffees | `/` | coffees (landing page with beans, reference brew, goals) |
+| Dashboard | `/dashboard` | dashboard (goal progress, correlations, insights) |
 | Library | `/library` | library (filter papers, mineral profiles) |
+
+**Dashboard Sub-Navigation:**
+| Route | View |
+|-------|------|
+| `/dashboard` | Landing — cross-coffee goal progress + correlations |
+| `/dashboard?coffee={id}` | Per-coffee drill-down — trends, insights, sessions, brew history |
 
 **User Menu:**
 | Item | Route | Feature |
@@ -118,3 +136,4 @@ authentication (core)
 - Each feature spec is self-contained
 - No need to read domain/ or system/ directories (they no longer exist)
 - Foundations provide shared conventions referenced by all features
+- Deprecated specs (experiment-review, analysis) should not be implemented — see dashboard.md instead

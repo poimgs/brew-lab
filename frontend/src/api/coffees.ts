@@ -36,6 +36,9 @@ export interface Coffee {
   // Enrichment fields (from list endpoint)
   best_experiment?: BestExperimentSummary;
   improvement_note?: string;
+  // Dashboard enrichment fields (populated when include_goals/include_trend params are set)
+  goals?: CoffeeGoalSummary;
+  latest_values?: GoalValues;
 }
 
 export interface FilterPaperSummary {
@@ -96,6 +99,38 @@ export interface CoffeeInput {
   notes?: string;
 }
 
+export interface GoalValues {
+  coffee_ml?: number;
+  tds?: number;
+  extraction_yield?: number;
+  aroma_intensity?: number;
+  sweetness_intensity?: number;
+  body_intensity?: number;
+  flavor_intensity?: number;
+  brightness_intensity?: number;
+  cleanliness_intensity?: number;
+  complexity_intensity?: number;
+  balance_intensity?: number;
+  aftertaste_intensity?: number;
+  overall_score?: number;
+}
+
+export interface GoalTrendValue {
+  brew_date: string;
+  value: number;
+}
+
+export interface GoalTrendMetric {
+  target: number;
+  values: GoalTrendValue[];
+  target_met: boolean;
+}
+
+export interface GoalTrendResponse {
+  coffee_id: string;
+  metrics: Record<string, GoalTrendMetric>;
+}
+
 export interface ListCoffeesParams {
   page?: number;
   per_page?: number;
@@ -105,6 +140,8 @@ export interface ListCoffeesParams {
   search?: string;
   archived_only?: boolean;
   include_deleted?: boolean;
+  include_goals?: boolean;
+  include_trend?: boolean;
 }
 
 export interface Pagination {
@@ -176,5 +213,10 @@ export async function setBestExperiment(
 
 export async function getReference(coffeeId: string): Promise<CoffeeReference> {
   const response = await client.get<CoffeeReference>(`/coffees/${coffeeId}/reference`);
+  return response.data;
+}
+
+export async function getGoalTrends(coffeeId: string): Promise<GoalTrendResponse> {
+  const response = await client.get<GoalTrendResponse>(`/coffees/${coffeeId}/goal-trends`);
   return response.data;
 }

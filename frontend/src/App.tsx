@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -6,12 +6,10 @@ import Layout from '@/components/layout/Layout';
 import LoginPage from '@/pages/LoginPage';
 import LibraryPage from '@/pages/LibraryPage';
 import PreferencesPage from '@/pages/PreferencesPage';
-import ExperimentsPage from '@/pages/ExperimentsPage';
 import ExperimentNewPage from '@/pages/ExperimentNewPage';
-import ExperimentDetailPage from '@/pages/ExperimentDetailPage';
-import AnalysisPage from '@/pages/AnalysisPage';
 import CoffeesPage from '@/pages/CoffeesPage';
 import CoffeeDetailPage from '@/pages/CoffeeDetailPage';
+import DashboardPage from '@/pages/DashboardPage';
 
 function App() {
   return (
@@ -36,6 +34,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <CoffeeDetailPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <DashboardPage />
                 </Layout>
               </ProtectedRoute>
             }
@@ -81,16 +89,6 @@ function App() {
             }
           />
           <Route
-            path="/experiments"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <ExperimentsPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/experiments/new"
             element={
               <ProtectedRoute>
@@ -100,26 +98,10 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/experiments/:id"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <ExperimentDetailPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/analysis"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <AnalysisPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
+          {/* Redirects for removed pages */}
+          <Route path="/experiments" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/experiments/:id" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/analysis" element={<Navigate to="/dashboard" replace />} />
         </Routes>
         </AuthProvider>
       </ThemeProvider>

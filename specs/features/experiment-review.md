@@ -1,5 +1,7 @@
 # Experiment Review
 
+> **DEPRECATED**: This spec has been superseded by [dashboard.md](dashboard.md). The Experiments list page is removed. Experiment detail is now a modal component (see Dashboard spec). The Comparison view is retained within the Dashboard. Do not implement this spec — refer to dashboard.md instead.
+
 ## Overview
 
 Experiment Review is how users browse, filter, and compare their brewing history. It provides two modes based on selection:

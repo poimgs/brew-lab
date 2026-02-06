@@ -17,12 +17,13 @@ import (
 
 // mockRepository implements Repository interface for testing
 type mockRepository struct {
-	coffees    map[uuid.UUID]*Coffee
-	createFunc func(ctx context.Context, userID uuid.UUID, input CreateCoffeeInput) (*Coffee, error)
-	getFunc    func(ctx context.Context, userID, coffeeID uuid.UUID) (*Coffee, error)
-	listFunc   func(ctx context.Context, userID uuid.UUID, params ListCoffeesParams) (*ListCoffeesResult, error)
-	updateFunc func(ctx context.Context, userID, coffeeID uuid.UUID, input UpdateCoffeeInput) (*Coffee, error)
-	deleteFunc func(ctx context.Context, userID, coffeeID uuid.UUID) error
+	coffees           map[uuid.UUID]*Coffee
+	createFunc        func(ctx context.Context, userID uuid.UUID, input CreateCoffeeInput) (*Coffee, error)
+	getFunc           func(ctx context.Context, userID, coffeeID uuid.UUID) (*Coffee, error)
+	listFunc          func(ctx context.Context, userID uuid.UUID, params ListCoffeesParams) (*ListCoffeesResult, error)
+	updateFunc        func(ctx context.Context, userID, coffeeID uuid.UUID, input UpdateCoffeeInput) (*Coffee, error)
+	deleteFunc        func(ctx context.Context, userID, coffeeID uuid.UUID) error
+	getGoalTrendsFunc func(ctx context.Context, userID, coffeeID uuid.UUID) (*GoalTrendResponse, error)
 }
 
 func newMockRepository() *mockRepository {
@@ -160,6 +161,20 @@ func (m *mockRepository) SetBestExperiment(ctx context.Context, userID, coffeeID
 	coffee.BestExperimentID = experimentID
 	coffee.UpdatedAt = time.Now()
 	return coffee, nil
+}
+
+func (m *mockRepository) GetGoalTrends(ctx context.Context, userID, coffeeID uuid.UUID) (*GoalTrendResponse, error) {
+	if m.getGoalTrendsFunc != nil {
+		return m.getGoalTrendsFunc(ctx, userID, coffeeID)
+	}
+	coffee, ok := m.coffees[coffeeID]
+	if !ok || coffee.UserID != userID {
+		return nil, ErrCoffeeNotFound
+	}
+	return &GoalTrendResponse{
+		CoffeeID: coffeeID,
+		Metrics:  map[string]GoalTrendMetric{},
+	}, nil
 }
 
 func (m *mockRepository) GetReference(ctx context.Context, userID, coffeeID uuid.UUID) (*CoffeeReference, error) {
@@ -1388,5 +1403,334 @@ func TestHandler_Update_DateOnlyFormat(t *testing.T) {
 				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
 			}
 		})
+	}
+}
+
+func TestHandler_GetGoalTrends(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+
+	repo.coffees[coffeeID] = &Coffee{
+		ID:        coffeeID,
+		UserID:    userID,
+		Roaster:   "Test Roaster",
+		Name:      "Test Coffee",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	tests := []struct {
+		name           string
+		coffeeID       string
+		expectedStatus int
+	}{
+		{
+			name:           "get goal trends successfully",
+			coffeeID:       coffeeID.String(),
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "coffee not found",
+			coffeeID:       uuid.New().String(),
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "invalid coffee id",
+			coffeeID:       "invalid",
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := createRequestWithUser("GET", "/coffees/"+tt.coffeeID+"/goal-trends", nil, userID)
+			rr := httptest.NewRecorder()
+
+			r := chi.NewRouter()
+			r.Get("/coffees/{id}/goal-trends", handler.GetGoalTrends)
+			r.ServeHTTP(rr, req)
+
+			if rr.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
+			}
+		})
+	}
+}
+
+func TestHandler_GetGoalTrends_ResponseStructure(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+
+	repo.coffees[coffeeID] = &Coffee{
+		ID:        coffeeID,
+		UserID:    userID,
+		Roaster:   "Test Roaster",
+		Name:      "Test Coffee",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	tdsTarget := 1.38
+	overallTarget := 9
+	repo.getGoalTrendsFunc = func(ctx context.Context, uid, cid uuid.UUID) (*GoalTrendResponse, error) {
+		if cid != coffeeID || uid != userID {
+			return nil, ErrCoffeeNotFound
+		}
+		return &GoalTrendResponse{
+			CoffeeID: coffeeID,
+			Metrics: map[string]GoalTrendMetric{
+				"tds": {
+					Target: tdsTarget,
+					Values: []GoalTrendValue{
+						{BrewDate: "2026-01-10", Value: 1.30},
+						{BrewDate: "2026-01-15", Value: 1.35},
+						{BrewDate: "2026-01-20", Value: 1.38},
+					},
+					TargetMet: true,
+				},
+				"overall_score": {
+					Target: float64(overallTarget),
+					Values: []GoalTrendValue{
+						{BrewDate: "2026-01-10", Value: 6},
+						{BrewDate: "2026-01-15", Value: 8},
+						{BrewDate: "2026-01-20", Value: 8},
+					},
+					TargetMet: false,
+				},
+			},
+		}, nil
+	}
+
+	req := createRequestWithUser("GET", "/coffees/"+coffeeID.String()+"/goal-trends", nil, userID)
+	rr := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Get("/coffees/{id}/goal-trends", handler.GetGoalTrends)
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	var result GoalTrendResponse
+	if err := json.NewDecoder(rr.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if result.CoffeeID != coffeeID {
+		t.Errorf("expected coffee_id %s, got %s", coffeeID, result.CoffeeID)
+	}
+
+	if len(result.Metrics) != 2 {
+		t.Fatalf("expected 2 metrics, got %d", len(result.Metrics))
+	}
+
+	tds, ok := result.Metrics["tds"]
+	if !ok {
+		t.Fatal("expected tds metric to be present")
+	}
+	if tds.Target != 1.38 {
+		t.Errorf("expected tds target 1.38, got %v", tds.Target)
+	}
+	if len(tds.Values) != 3 {
+		t.Errorf("expected 3 tds values, got %d", len(tds.Values))
+	}
+	if !tds.TargetMet {
+		t.Error("expected tds target_met to be true")
+	}
+
+	overall, ok := result.Metrics["overall_score"]
+	if !ok {
+		t.Fatal("expected overall_score metric to be present")
+	}
+	if overall.Target != 9 {
+		t.Errorf("expected overall_score target 9, got %v", overall.Target)
+	}
+	if overall.TargetMet {
+		t.Error("expected overall_score target_met to be false")
+	}
+}
+
+func TestHandler_GetGoalTrends_NoGoals(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+
+	repo.coffees[coffeeID] = &Coffee{
+		ID:        coffeeID,
+		UserID:    userID,
+		Roaster:   "Test Roaster",
+		Name:      "Test Coffee",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Default mock returns empty metrics (no goals set)
+	req := createRequestWithUser("GET", "/coffees/"+coffeeID.String()+"/goal-trends", nil, userID)
+	rr := httptest.NewRecorder()
+
+	r := chi.NewRouter()
+	r.Get("/coffees/{id}/goal-trends", handler.GetGoalTrends)
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	var result GoalTrendResponse
+	if err := json.NewDecoder(rr.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if len(result.Metrics) != 0 {
+		t.Errorf("expected 0 metrics for coffee with no goals, got %d", len(result.Metrics))
+	}
+}
+
+func TestHandler_List_WithGoalsAndTrend(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+
+	tds := 1.38
+	overallScore := 9
+	latestTDS := 1.35
+	latestOverall := 8
+
+	repo.listFunc = func(ctx context.Context, uid uuid.UUID, params ListCoffeesParams) (*ListCoffeesResult, error) {
+		coffee := Coffee{
+			ID:              coffeeID,
+			UserID:          uid,
+			Roaster:         "Cata Coffee",
+			Name:            "Kiamaina",
+			ExperimentCount: 8,
+			CreatedAt:       time.Now(),
+			UpdatedAt:       time.Now(),
+		}
+		if params.IncludeGoals {
+			coffee.Goals = &CoffeeGoal{
+				ID:           uuid.New(),
+				CoffeeID:     coffeeID,
+				UserID:       uid,
+				TDS:          &tds,
+				OverallScore: &overallScore,
+			}
+		}
+		if params.IncludeTrend {
+			coffee.LatestValues = &GoalValues{
+				TDS:          &latestTDS,
+				OverallScore: &latestOverall,
+			}
+		}
+		return &ListCoffeesResult{
+			Items:      []Coffee{coffee},
+			Pagination: Pagination{Page: 1, PerPage: 20, Total: 1, TotalPages: 1},
+		}, nil
+	}
+
+	// Test with include_goals=true and include_trend=true
+	req := createRequestWithUser("GET", "/coffees?include_goals=true&include_trend=true", nil, userID)
+	rr := httptest.NewRecorder()
+	handler.List(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &raw); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	items := raw["items"].([]interface{})
+	item := items[0].(map[string]interface{})
+
+	// Verify goals are present
+	goalsRaw, ok := item["goals"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected goals to be present when include_goals=true")
+	}
+	if goalsRaw["tds"] != tds {
+		t.Errorf("expected goals.tds %v, got %v", tds, goalsRaw["tds"])
+	}
+	if goalsRaw["overall_score"] != float64(overallScore) {
+		t.Errorf("expected goals.overall_score %v, got %v", overallScore, goalsRaw["overall_score"])
+	}
+
+	// Verify latest_values are present
+	latestRaw, ok := item["latest_values"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected latest_values to be present when include_trend=true")
+	}
+	if latestRaw["tds"] != latestTDS {
+		t.Errorf("expected latest_values.tds %v, got %v", latestTDS, latestRaw["tds"])
+	}
+	if latestRaw["overall_score"] != float64(latestOverall) {
+		t.Errorf("expected latest_values.overall_score %v, got %v", latestOverall, latestRaw["overall_score"])
+	}
+}
+
+func TestHandler_List_WithoutGoalsAndTrend(t *testing.T) {
+	repo := newMockRepository()
+	handler := NewHandler(repo)
+
+	userID := uuid.New()
+	coffeeID := uuid.New()
+
+	repo.listFunc = func(ctx context.Context, uid uuid.UUID, params ListCoffeesParams) (*ListCoffeesResult, error) {
+		// Verify params are false when not specified
+		if params.IncludeGoals {
+			t.Error("expected IncludeGoals to be false when not specified")
+		}
+		if params.IncludeTrend {
+			t.Error("expected IncludeTrend to be false when not specified")
+		}
+		return &ListCoffeesResult{
+			Items: []Coffee{
+				{
+					ID:        coffeeID,
+					UserID:    uid,
+					Roaster:   "Test Roaster",
+					Name:      "Test Coffee",
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				},
+			},
+			Pagination: Pagination{Page: 1, PerPage: 20, Total: 1, TotalPages: 1},
+		}, nil
+	}
+
+	req := createRequestWithUser("GET", "/coffees", nil, userID)
+	rr := httptest.NewRecorder()
+	handler.List(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &raw); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	items := raw["items"].([]interface{})
+	item := items[0].(map[string]interface{})
+
+	// goals and latest_values should be absent (omitempty)
+	if _, exists := item["goals"]; exists {
+		t.Error("expected goals to be absent when include_goals is not set")
+	}
+	if _, exists := item["latest_values"]; exists {
+		t.Error("expected latest_values to be absent when include_trend is not set")
 	}
 }

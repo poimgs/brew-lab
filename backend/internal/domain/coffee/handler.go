@@ -39,6 +39,8 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		IncludeArchived: r.URL.Query().Get("include_archived") == "true",
 		ArchivedOnly:    r.URL.Query().Get("archived_only") == "true",
 		IncludeDeleted:  r.URL.Query().Get("include_deleted") == "true",
+		IncludeGoals:    r.URL.Query().Get("include_goals") == "true",
+		IncludeTrend:    r.URL.Query().Get("include_trend") == "true",
 	}
 
 	result, err := h.repo.List(r.Context(), userID, params)
@@ -313,6 +315,32 @@ func (h *Handler) GetReference(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.JSON(w, http.StatusOK, reference)
+}
+
+func (h *Handler) GetGoalTrends(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.GetUserID(r.Context())
+	if !ok {
+		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+		return
+	}
+
+	coffeeID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid coffee id")
+		return
+	}
+
+	trends, err := h.repo.GetGoalTrends(r.Context(), userID, coffeeID)
+	if err != nil {
+		if errors.Is(err, ErrCoffeeNotFound) {
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get goal trends")
+		return
+	}
+
+	response.JSON(w, http.StatusOK, trends)
 }
 
 func parseIntOrDefault(s string, defaultVal int) int {

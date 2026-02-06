@@ -310,6 +310,15 @@ Creates a new experiment with same parameters:
 
 **Response:** `201 Created` with new experiment template
 
+### Experiment Detail Display
+
+Experiment details are displayed in a **modal dialog** (not a dedicated page). The modal is opened from:
+- Coffee detail page brew history rows
+- Dashboard brew history rows
+- Session experiment lists
+
+See [dashboard.md](dashboard.md) for the full experiment detail modal specification.
+
 ---
 
 ## User Defaults
@@ -826,12 +835,9 @@ Ratio is a numeric value (e.g., 15 for 1:15) that drives water calculation:
 - Intuitive for users
 - Matches common cupping conventions
 
-### No Experiment Grouping
+### Sessions for Experiment Grouping
 
-Experiments are not explicitly grouped into "sessions." The CSV shows multiple experiments done together (same experiment number), but for the app:
-- Filtering by date range achieves similar grouping
-- Comparison feature handles side-by-side analysis
-- Simplifies data model
+Experiments can be grouped into sessions for deliberate variable testing. See [sessions.md](sessions.md) for the full Sessions feature spec. Sessions are created from the coffee detail page and group experiments with a hypothesis and conclusion.
 
 ### Collapsible Sections
 

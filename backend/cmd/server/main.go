@@ -14,6 +14,7 @@ import (
 	"coffee-tracker/internal/domain/experiment"
 	"coffee-tracker/internal/domain/filter_paper"
 	"coffee-tracker/internal/domain/mineral_profile"
+	"coffee-tracker/internal/domain/session"
 	"coffee-tracker/internal/domain/user"
 	"coffee-tracker/internal/middleware"
 
@@ -66,6 +67,9 @@ func main() {
 	experimentRepo := experiment.NewRepository(db)
 	experimentHandler := experiment.NewHandler(experimentRepo)
 
+	sessionRepo := session.NewRepository(db)
+	sessionHandler := session.NewHandler(sessionRepo)
+
 	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.Logger)
@@ -107,6 +111,7 @@ func main() {
 				r.Post("/{id}/unarchive", coffeeHandler.Unarchive)
 				r.Post("/{id}/best-experiment", coffeeHandler.SetBestExperiment)
 				r.Get("/{id}/reference", coffeeHandler.GetReference)
+				r.Get("/{id}/goal-trends", coffeeHandler.GetGoalTrends)
 				r.Get("/{id}/goals", coffeeGoalHandler.Get)
 				r.Put("/{id}/goals", coffeeGoalHandler.Upsert)
 				r.Delete("/{id}/goals", coffeeGoalHandler.Delete)
@@ -142,6 +147,16 @@ func main() {
 				r.Put("/{id}", experimentHandler.Update)
 				r.Delete("/{id}", experimentHandler.Delete)
 				r.Post("/{id}/copy", experimentHandler.Copy)
+			})
+
+			r.Route("/sessions", func(r chi.Router) {
+				r.Get("/", sessionHandler.List)
+				r.Post("/", sessionHandler.Create)
+				r.Get("/{id}", sessionHandler.Get)
+				r.Put("/{id}", sessionHandler.Update)
+				r.Delete("/{id}", sessionHandler.Delete)
+				r.Post("/{id}/experiments", sessionHandler.LinkExperiments)
+				r.Delete("/{id}/experiments/{expId}", sessionHandler.UnlinkExperiment)
 			})
 
 		})

@@ -1,5 +1,7 @@
 # Analysis
 
+> **DEPRECATED**: This spec has been superseded by [dashboard.md](dashboard.md). Correlation analysis and insights are now part of the Dashboard (both landing page and per-coffee drill-down). The `AnalyzeView` component and analysis API endpoints are reused by the Dashboard. Do not implement this spec as a standalone page — refer to dashboard.md instead.
+
 ## Overview
 
 The Analysis feature provides filter-based correlation analysis across experiments. Unlike the selection-based approach formerly in Experiments, Analysis uses filters to define which experiments to include, enabling cross-coffee analysis and a more exploratory workflow.

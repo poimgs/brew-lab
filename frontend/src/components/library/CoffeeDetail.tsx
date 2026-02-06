@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -41,6 +41,7 @@ import { upsertCoffeeGoal, type CoffeeGoalInput } from '@/api/coffee-goals';
 import type { Experiment } from '@/api/experiments';
 import type { Session } from '@/api/sessions';
 import SessionList from '@/components/session/SessionList';
+import ExperimentDetailModal from '@/components/experiment/ExperimentDetailModal';
 
 interface CoffeeDetailProps {
   coffee: Coffee;
@@ -70,6 +71,8 @@ export default function CoffeeDetail({
   onDelete,
 }: CoffeeDetailProps) {
   const navigate = useNavigate();
+  const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
+  const [experimentModalOpen, setExperimentModalOpen] = useState(false);
   const [goalsDialogOpen, setGoalsDialogOpen] = useState(false);
   const [changeBestDialogOpen, setChangeBestDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
@@ -79,6 +82,13 @@ export default function CoffeeDetail({
   const [savingGoals, setSavingGoals] = useState(false);
   const [settingBest, setSettingBest] = useState<string | null>(null);
   const [goalsForm, setGoalsForm] = useState<CoffeeGoalInput>({});
+
+  const experimentIds = useMemo(() => experiments.slice(0, 10).map((e) => e.id), [experiments]);
+
+  const handleOpenExperiment = (id: string) => {
+    setSelectedExperimentId(id);
+    setExperimentModalOpen(true);
+  };
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
@@ -470,7 +480,7 @@ export default function CoffeeDetail({
                 <Button
                   variant="link"
                   size="sm"
-                  onClick={() => navigate(`/experiments?coffee_id=${coffee.id}`)}
+                  onClick={() => navigate(`/dashboard?coffee=${coffee.id}`)}
                 >
                   View All Experiments
                 </Button>
@@ -506,7 +516,7 @@ export default function CoffeeDetail({
                       <TableRow
                         key={exp.id}
                         className="cursor-pointer"
-                        onClick={() => navigate(`/experiments/${exp.id}`)}
+                        onClick={() => handleOpenExperiment(exp.id)}
                       >
                         <TableCell>
                           {isBest && (
@@ -772,6 +782,16 @@ export default function CoffeeDetail({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Experiment Detail Modal */}
+      <ExperimentDetailModal
+        experimentId={selectedExperimentId}
+        open={experimentModalOpen}
+        onOpenChange={setExperimentModalOpen}
+        onRefresh={onRefresh}
+        experimentIds={experimentIds}
+        onNavigate={(id) => setSelectedExperimentId(id)}
+      />
     </div>
   );
 }

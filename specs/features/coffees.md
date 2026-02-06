@@ -479,7 +479,8 @@ Returns the reference experiment (or latest if none marked) along with target go
   - **[+ New Experiment]** — Navigates to experiment form with coffee pre-selected
   - **[Edit]** — Opens edit form for this coffee
   - **[Archive]** — Archives the coffee (with confirmation)
-  - For archived cards: **[Re-activate]** replaces Archive button
+  - **[Delete]** — Soft-deletes the coffee (with confirmation dialog)
+  - For archived cards: **[Re-activate]** replaces Archive button, Delete still available
 
 **Card Behavior:**
 - Click card → Coffee detail view (`/coffees/:id`)
@@ -542,8 +543,9 @@ Note: No sort dropdown. Default sort is `-created_at` (newest first).
 - **[+ New Experiment]** - Navigates to `/experiments/new?coffee_id=:id` with coffee pre-selected
 - **[Edit]** - Opens edit form for coffee metadata
 - **[Archive]** / **[Unarchive]** - Archives or unarchives the coffee
+- **[Delete]** - Soft-deletes the coffee with confirmation dialog. Navigates back to coffee list after deletion.
 
-Note: Delete functionality is not exposed in the UI. Use archive to hide coffees while preserving experiment history.
+Delete uses a confirmation dialog: "Are you sure you want to delete {name} by {roaster}? This action cannot be undone. Existing experiments will be preserved but this coffee will no longer appear in your library." with Cancel (outline) and Delete (destructive) buttons.
 
 **Layout:**
 ```
@@ -630,6 +632,24 @@ Note: Delete functionality is not exposed in the UI. Use archive to hide coffees
 - All fields optional
 - No notes field — goals are purely numerical targets
 
+### Sessions Section
+
+Sessions appear between Target Goals and Brew History, showing grouped experiments for this coffee.
+
+**Display:**
+- List of session cards (most recent first)
+- Each card shows: name, variable tested, experiment count, hypothesis snippet, conclusion snippet
+- Actions per card: View (opens session detail modal), Edit, Delete
+- [+ New Session] button opens create session dialog
+
+**[+ New Session] Dialog:**
+- Name, variable tested, hypothesis fields
+- Checkbox list of this coffee's experiments for linking
+- See [sessions.md](sessions.md) for full session UI spec
+
+**Empty State:**
+- "No sessions yet. Create a session to group experiments and track what you learn."
+
 ### Brew History Section
 
 **Display:**
@@ -637,10 +657,16 @@ Note: Delete functionality is not exposed in the UI. Use archive to hide coffees
 - Columns: Date, Days Off Roast, Score, Grind, Ratio, Temp
 - Star icon indicates reference brew
 - Shows most recent experiments (paginated or limited to ~10 with "View All" link)
-- Row actions: "Mark as Reference", "View" (navigates to experiment detail)
+- Row actions: "Mark as Reference", click row to open experiment detail modal
+
+**Experiment Detail Modal:**
+- Clicking a brew history row opens the experiment in a modal dialog (not a page navigation)
+- Modal shows all experiment details with actions: Edit, Copy as Template, Mark as Reference, Delete
+- Previous/Next navigation within the brew history context
+- See [dashboard.md](dashboard.md) for full experiment detail modal spec
 
 **[View All Experiments] Link:**
-- Navigates to `/experiments?coffee_id=:id`
+- Navigates to `/dashboard?coffee=:id` (per-coffee drill-down on dashboard)
 
 ### Mark as Reference Action
 

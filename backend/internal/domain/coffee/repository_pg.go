@@ -204,6 +204,16 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 		if err := r.populateImprovementNotes(ctx, userID, coffeeMap); err != nil {
 			return nil, err
 		}
+		if params.IncludeGoals {
+			if err := r.populateGoals(ctx, userID, coffeeMap); err != nil {
+				return nil, err
+			}
+		}
+		if params.IncludeTrend {
+			if err := r.populateLatestValues(ctx, userID, coffeeMap); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	totalPages := total / params.PerPage
@@ -539,6 +549,275 @@ func (r *PostgresRepository) GetReference(ctx context.Context, userID, coffeeID 
 	}
 
 	return ref, nil
+}
+
+func (r *PostgresRepository) GetGoalTrends(ctx context.Context, userID, coffeeID uuid.UUID) (*GoalTrendResponse, error) {
+	// Verify coffee exists
+	_, err := r.GetByID(ctx, userID, coffeeID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch goals for this coffee
+	goalsQuery := `
+		SELECT coffee_ml, tds, extraction_yield,
+			aroma_intensity, sweetness_intensity, body_intensity, flavor_intensity,
+			brightness_intensity, cleanliness_intensity, complexity_intensity,
+			balance_intensity, aftertaste_intensity, overall_score
+		FROM coffee_goals
+		WHERE coffee_id = $1 AND user_id = $2
+	`
+	var goals struct {
+		CoffeeMl             *float64
+		TDS                  *float64
+		ExtractionYield      *float64
+		AromaIntensity       *int
+		SweetnessIntensity   *int
+		BodyIntensity        *int
+		FlavorIntensity      *int
+		BrightnessIntensity  *int
+		CleanlinessIntensity *int
+		ComplexityIntensity  *int
+		BalanceIntensity     *int
+		AftertasteIntensity  *int
+		OverallScore         *int
+	}
+
+	err = r.db.QueryRowContext(ctx, goalsQuery, coffeeID, userID).Scan(
+		&goals.CoffeeMl, &goals.TDS, &goals.ExtractionYield,
+		&goals.AromaIntensity, &goals.SweetnessIntensity, &goals.BodyIntensity, &goals.FlavorIntensity,
+		&goals.BrightnessIntensity, &goals.CleanlinessIntensity, &goals.ComplexityIntensity,
+		&goals.BalanceIntensity, &goals.AftertasteIntensity, &goals.OverallScore,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// No goals set — return empty metrics
+			return &GoalTrendResponse{
+				CoffeeID: coffeeID,
+				Metrics:  map[string]GoalTrendMetric{},
+			}, nil
+		}
+		return nil, err
+	}
+
+	// Fetch experiments for this coffee, ordered chronologically
+	expQuery := `
+		SELECT brew_date, coffee_ml, tds, extraction_yield,
+			aroma_intensity, sweetness_intensity, body_intensity, flavor_intensity,
+			brightness_intensity, cleanliness_intensity, complexity_intensity,
+			balance_intensity, aftertaste_intensity, overall_score
+		FROM experiments
+		WHERE coffee_id = $1 AND user_id = $2 AND is_draft = false
+		ORDER BY brew_date ASC
+	`
+
+	rows, err := r.db.QueryContext(ctx, expQuery, coffeeID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	type expRow struct {
+		BrewDate             time.Time
+		CoffeeMl             *float64
+		TDS                  *float64
+		ExtractionYield      *float64
+		AromaIntensity       *int
+		SweetnessIntensity   *int
+		BodyIntensity        *int
+		FlavorIntensity      *int
+		BrightnessIntensity  *int
+		CleanlinessIntensity *int
+		ComplexityIntensity  *int
+		BalanceIntensity     *int
+		AftertasteIntensity  *int
+		OverallScore         *int
+	}
+
+	var experiments []expRow
+	for rows.Next() {
+		var e expRow
+		if err := rows.Scan(
+			&e.BrewDate, &e.CoffeeMl, &e.TDS, &e.ExtractionYield,
+			&e.AromaIntensity, &e.SweetnessIntensity, &e.BodyIntensity, &e.FlavorIntensity,
+			&e.BrightnessIntensity, &e.CleanlinessIntensity, &e.ComplexityIntensity,
+			&e.BalanceIntensity, &e.AftertasteIntensity, &e.OverallScore,
+		); err != nil {
+			return nil, err
+		}
+		experiments = append(experiments, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	metrics := make(map[string]GoalTrendMetric)
+
+	// Helper to build trend for float64 metrics
+	addFloat := func(name string, target *float64, getter func(expRow) *float64) {
+		if target == nil {
+			return
+		}
+		var values []GoalTrendValue
+		var lastVal *float64
+		for _, e := range experiments {
+			v := getter(e)
+			if v != nil {
+				values = append(values, GoalTrendValue{
+					BrewDate: e.BrewDate.Format("2006-01-02"),
+					Value:    *v,
+				})
+				lastVal = v
+			}
+		}
+		if len(values) > 0 {
+			metrics[name] = GoalTrendMetric{
+				Target:    *target,
+				Values:    values,
+				TargetMet: lastVal != nil && *lastVal >= *target,
+			}
+		}
+	}
+
+	// Helper to build trend for int metrics
+	addInt := func(name string, target *int, getter func(expRow) *int) {
+		if target == nil {
+			return
+		}
+		var values []GoalTrendValue
+		var lastVal *int
+		for _, e := range experiments {
+			v := getter(e)
+			if v != nil {
+				values = append(values, GoalTrendValue{
+					BrewDate: e.BrewDate.Format("2006-01-02"),
+					Value:    float64(*v),
+				})
+				lastVal = v
+			}
+		}
+		if len(values) > 0 {
+			metrics[name] = GoalTrendMetric{
+				Target:    float64(*target),
+				Values:    values,
+				TargetMet: lastVal != nil && *lastVal >= *target,
+			}
+		}
+	}
+
+	addFloat("coffee_ml", goals.CoffeeMl, func(e expRow) *float64 { return e.CoffeeMl })
+	addFloat("tds", goals.TDS, func(e expRow) *float64 { return e.TDS })
+	addFloat("extraction_yield", goals.ExtractionYield, func(e expRow) *float64 { return e.ExtractionYield })
+	addInt("aroma_intensity", goals.AromaIntensity, func(e expRow) *int { return e.AromaIntensity })
+	addInt("sweetness_intensity", goals.SweetnessIntensity, func(e expRow) *int { return e.SweetnessIntensity })
+	addInt("body_intensity", goals.BodyIntensity, func(e expRow) *int { return e.BodyIntensity })
+	addInt("flavor_intensity", goals.FlavorIntensity, func(e expRow) *int { return e.FlavorIntensity })
+	addInt("brightness_intensity", goals.BrightnessIntensity, func(e expRow) *int { return e.BrightnessIntensity })
+	addInt("cleanliness_intensity", goals.CleanlinessIntensity, func(e expRow) *int { return e.CleanlinessIntensity })
+	addInt("complexity_intensity", goals.ComplexityIntensity, func(e expRow) *int { return e.ComplexityIntensity })
+	addInt("balance_intensity", goals.BalanceIntensity, func(e expRow) *int { return e.BalanceIntensity })
+	addInt("aftertaste_intensity", goals.AftertasteIntensity, func(e expRow) *int { return e.AftertasteIntensity })
+	addInt("overall_score", goals.OverallScore, func(e expRow) *int { return e.OverallScore })
+
+	return &GoalTrendResponse{
+		CoffeeID: coffeeID,
+		Metrics:  metrics,
+	}, nil
+}
+
+func (r *PostgresRepository) populateGoals(ctx context.Context, userID uuid.UUID, coffeeMap map[uuid.UUID]*Coffee) error {
+	if len(coffeeMap) == 0 {
+		return nil
+	}
+
+	coffeeIDs := make([]uuid.UUID, 0, len(coffeeMap))
+	for id := range coffeeMap {
+		coffeeIDs = append(coffeeIDs, id)
+	}
+
+	query := `
+		SELECT id, coffee_id, user_id, coffee_ml, tds, extraction_yield,
+			aroma_intensity, sweetness_intensity, body_intensity, flavor_intensity,
+			brightness_intensity, cleanliness_intensity, complexity_intensity,
+			balance_intensity, aftertaste_intensity,
+			overall_score, created_at, updated_at
+		FROM coffee_goals
+		WHERE coffee_id = ANY($1) AND user_id = $2
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(coffeeIDs), userID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var g CoffeeGoal
+		if err := rows.Scan(
+			&g.ID, &g.CoffeeID, &g.UserID, &g.CoffeeMl, &g.TDS, &g.ExtractionYield,
+			&g.AromaIntensity, &g.SweetnessIntensity, &g.BodyIntensity, &g.FlavorIntensity,
+			&g.BrightnessIntensity, &g.CleanlinessIntensity, &g.ComplexityIntensity,
+			&g.BalanceIntensity, &g.AftertasteIntensity,
+			&g.OverallScore, &g.CreatedAt, &g.UpdatedAt,
+		); err != nil {
+			return err
+		}
+
+		if coffee, ok := coffeeMap[g.CoffeeID]; ok {
+			goal := g
+			coffee.Goals = &goal
+		}
+	}
+
+	return rows.Err()
+}
+
+func (r *PostgresRepository) populateLatestValues(ctx context.Context, userID uuid.UUID, coffeeMap map[uuid.UUID]*Coffee) error {
+	if len(coffeeMap) == 0 {
+		return nil
+	}
+
+	coffeeIDs := make([]uuid.UUID, 0, len(coffeeMap))
+	for id := range coffeeMap {
+		coffeeIDs = append(coffeeIDs, id)
+	}
+
+	query := `
+		SELECT DISTINCT ON (e.coffee_id)
+			e.coffee_id, e.coffee_ml, e.tds, e.extraction_yield,
+			e.aroma_intensity, e.sweetness_intensity, e.body_intensity, e.flavor_intensity,
+			e.brightness_intensity, e.cleanliness_intensity, e.complexity_intensity,
+			e.balance_intensity, e.aftertaste_intensity, e.overall_score
+		FROM experiments e
+		WHERE e.coffee_id = ANY($1) AND e.user_id = $2 AND e.is_draft = false
+		ORDER BY e.coffee_id, e.brew_date DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(coffeeIDs), userID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var coffeeID uuid.UUID
+		var v GoalValues
+		if err := rows.Scan(
+			&coffeeID, &v.CoffeeMl, &v.TDS, &v.ExtractionYield,
+			&v.AromaIntensity, &v.SweetnessIntensity, &v.BodyIntensity, &v.FlavorIntensity,
+			&v.BrightnessIntensity, &v.CleanlinessIntensity, &v.ComplexityIntensity,
+			&v.BalanceIntensity, &v.AftertasteIntensity, &v.OverallScore,
+		); err != nil {
+			return err
+		}
+
+		if coffee, ok := coffeeMap[coffeeID]; ok {
+			vals := v
+			coffee.LatestValues = &vals
+		}
+	}
+
+	return rows.Err()
 }
 
 func (r *PostgresRepository) populateBestExperiments(ctx context.Context, userID uuid.UUID, coffeeMap map[uuid.UUID]*Coffee) error {

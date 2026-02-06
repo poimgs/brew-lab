@@ -55,7 +55,7 @@ describe('Header', () => {
       const links = within(desktopNav).getAllByRole('link');
       const labels = links.map((link) => link.textContent);
 
-      expect(labels).toEqual(['Coffees', 'Experiments', 'Analysis', 'Library']);
+      expect(labels).toEqual(['Coffees', 'Dashboard', 'Library']);
     });
 
     it('renders the correct routes for desktop nav items', () => {
@@ -65,7 +65,15 @@ describe('Header', () => {
       const links = within(desktopNav).getAllByRole('link');
       const hrefs = links.map((link) => link.getAttribute('href'));
 
-      expect(hrefs).toEqual(['/', '/experiments', '/analysis', '/library']);
+      expect(hrefs).toEqual(['/', '/dashboard', '/library']);
+    });
+
+    it('does not render Experiments or Analysis nav items', () => {
+      renderAtRoute('/');
+
+      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
+      expect(within(desktopNav).queryByText('Experiments')).not.toBeInTheDocument();
+      expect(within(desktopNav).queryByText('Analysis')).not.toBeInTheDocument();
     });
 
     it('renders Coffee Tracker logo link pointing to /', () => {
@@ -97,41 +105,23 @@ describe('Header', () => {
       expect(coffeesLink).toHaveClass('border-primary');
     });
 
-    it('does not highlight Coffees when on /experiments', () => {
-      renderAtRoute('/experiments');
+    it('highlights Dashboard when on /dashboard', () => {
+      renderAtRoute('/dashboard');
+
+      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
+      const dashboardLink = within(desktopNav).getByText('Dashboard');
+
+      expect(dashboardLink).toHaveClass('text-primary');
+    });
+
+    it('does not highlight Coffees when on /dashboard', () => {
+      renderAtRoute('/dashboard');
 
       const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
       const coffeesLink = within(desktopNav).getByText('Coffees');
 
       expect(coffeesLink).toHaveClass('text-muted-foreground');
       expect(coffeesLink).not.toHaveClass('text-primary');
-    });
-
-    it('highlights Experiments when on /experiments', () => {
-      renderAtRoute('/experiments');
-
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
-      const experimentsLink = within(desktopNav).getByText('Experiments');
-
-      expect(experimentsLink).toHaveClass('text-primary');
-    });
-
-    it('highlights Experiments when on /experiments/:id', () => {
-      renderAtRoute('/experiments/some-uuid');
-
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
-      const experimentsLink = within(desktopNav).getByText('Experiments');
-
-      expect(experimentsLink).toHaveClass('text-primary');
-    });
-
-    it('does not highlight Coffees when on /analysis', () => {
-      renderAtRoute('/analysis');
-
-      const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
-      const coffeesLink = within(desktopNav).getByText('Coffees');
-
-      expect(coffeesLink).toHaveClass('text-muted-foreground');
     });
   });
 });

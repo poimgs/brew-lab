@@ -88,6 +88,10 @@ type Coffee struct {
 	// Enrichment fields for list responses
 	BestExperiment  *BestExperimentSummary `json:"best_experiment,omitempty"`
 	ImprovementNote *string                `json:"improvement_note,omitempty"`
+
+	// Dashboard enrichment fields (populated when include_goals/include_trend params are set)
+	Goals        *CoffeeGoal `json:"goals,omitempty"`
+	LatestValues *GoalValues `json:"latest_values,omitempty"`
 }
 
 // BestExperimentSummary is a compact summary of the best/latest experiment for coffee cards
@@ -163,6 +167,42 @@ type CoffeeGoal struct {
 	UpdatedAt            time.Time `json:"updated_at"`
 }
 
+// GoalValues contains the latest experiment values for goal-relevant metrics
+type GoalValues struct {
+	CoffeeMl             *float64 `json:"coffee_ml,omitempty"`
+	TDS                  *float64 `json:"tds,omitempty"`
+	ExtractionYield      *float64 `json:"extraction_yield,omitempty"`
+	AromaIntensity       *int     `json:"aroma_intensity,omitempty"`
+	SweetnessIntensity   *int     `json:"sweetness_intensity,omitempty"`
+	BodyIntensity        *int     `json:"body_intensity,omitempty"`
+	FlavorIntensity      *int     `json:"flavor_intensity,omitempty"`
+	BrightnessIntensity  *int     `json:"brightness_intensity,omitempty"`
+	CleanlinessIntensity *int     `json:"cleanliness_intensity,omitempty"`
+	ComplexityIntensity  *int     `json:"complexity_intensity,omitempty"`
+	BalanceIntensity     *int     `json:"balance_intensity,omitempty"`
+	AftertasteIntensity  *int     `json:"aftertaste_intensity,omitempty"`
+	OverallScore         *int     `json:"overall_score,omitempty"`
+}
+
+// GoalTrendValue represents a single data point in a goal trend
+type GoalTrendValue struct {
+	BrewDate string  `json:"brew_date"`
+	Value    float64 `json:"value"`
+}
+
+// GoalTrendMetric represents the trend for a single goal metric
+type GoalTrendMetric struct {
+	Target    float64          `json:"target"`
+	Values    []GoalTrendValue `json:"values"`
+	TargetMet bool             `json:"target_met"`
+}
+
+// GoalTrendResponse is the response for the goal trends endpoint
+type GoalTrendResponse struct {
+	CoffeeID uuid.UUID                  `json:"coffee_id"`
+	Metrics  map[string]GoalTrendMetric `json:"metrics"`
+}
+
 type CreateCoffeeInput struct {
 	Roaster      string    `json:"roaster"`
 	Name         string    `json:"name"`
@@ -197,6 +237,8 @@ type ListCoffeesParams struct {
 	IncludeArchived bool
 	ArchivedOnly    bool
 	IncludeDeleted  bool
+	IncludeGoals    bool
+	IncludeTrend    bool
 }
 
 type ListCoffeesResult struct {

@@ -46,6 +46,16 @@ vi.mock('@/api/sessions', async () => {
   };
 });
 
+vi.mock('@/api/experiments', async () => {
+  const actual = await vi.importActual('@/api/experiments');
+  return {
+    ...actual,
+    getExperiment: vi.fn(),
+    deleteExperiment: vi.fn(),
+    copyExperiment: vi.fn(),
+  };
+});
+
 function renderWithRouter(ui: React.ReactElement) {
   return render(<BrowserRouter>{ui}</BrowserRouter>);
 }
@@ -636,7 +646,7 @@ describe('CoffeeDetail', () => {
       });
     });
 
-    it('navigates to experiment detail when row is clicked', async () => {
+    it('opens experiment detail modal when row is clicked', async () => {
       const user = userEvent.setup();
       const coffee = createMockCoffee();
       const experiments = [createMockExperiment({ id: 'exp-1' })];
@@ -656,11 +666,11 @@ describe('CoffeeDetail', () => {
         />
       );
 
-      // Click on the table row
+      // Click on the table row - should not navigate, instead opens a modal
       const row = screen.getByText('Jan 15').closest('tr');
       if (row) {
         await user.click(row);
-        expect(mockNavigate).toHaveBeenCalledWith('/experiments/exp-1');
+        expect(mockNavigate).not.toHaveBeenCalledWith('/experiments/exp-1');
       }
     });
 
