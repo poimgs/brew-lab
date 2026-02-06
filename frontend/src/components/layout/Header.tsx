@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import ThemeToggle from './ThemeToggle';
 import {
   Sheet,
   SheetContent,
@@ -32,7 +33,7 @@ function NavLink({ to, children }: NavLinkProps) {
       className={cn(
         'px-3 py-2 text-sm font-medium transition-colors hover:text-foreground',
         isActive
-          ? 'text-teal-600 border-b-2 border-teal-600'
+          ? 'text-primary border-b-2 border-primary'
           : 'text-muted-foreground'
       )}
     >
@@ -63,42 +64,42 @@ export default function Header() {
                 <nav className="flex flex-col gap-4 mt-8">
                   <Link
                     to="/"
-                    className="text-lg font-medium hover:text-teal-600 transition-colors"
+                    className="text-lg font-medium hover:text-primary transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Home
                   </Link>
                   <Link
                     to="/experiments"
-                    className="text-lg font-medium hover:text-teal-600 transition-colors"
+                    className="text-lg font-medium hover:text-primary transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Experiments
                   </Link>
                   <Link
                     to="/analysis"
-                    className="text-lg font-medium hover:text-teal-600 transition-colors"
+                    className="text-lg font-medium hover:text-primary transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Analysis
                   </Link>
                   <Link
                     to="/coffees"
-                    className="text-lg font-medium hover:text-teal-600 transition-colors"
+                    className="text-lg font-medium hover:text-primary transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Coffees
                   </Link>
                   <Link
                     to="/library"
-                    className="text-lg font-medium hover:text-teal-600 transition-colors"
+                    className="text-lg font-medium hover:text-primary transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Library
                   </Link>
                   <Link
                     to="/preferences"
-                    className="text-lg font-medium hover:text-teal-600 transition-colors"
+                    className="text-lg font-medium hover:text-primary transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Preferences
@@ -129,6 +130,8 @@ export default function Header() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
+              <ThemeToggle />
+              <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link to="/preferences" className="flex items-center gap-2 cursor-pointer">
                   <Settings className="h-4 w-4" />

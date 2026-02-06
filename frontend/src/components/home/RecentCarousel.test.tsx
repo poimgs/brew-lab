@@ -162,9 +162,9 @@ describe('RecentCarousel', () => {
 
       const dots = screen.getAllByLabelText(/go to slide/i);
       // First dot should be teal (active)
-      expect(dots[0]).toHaveClass('bg-teal-600');
+      expect(dots[0]).toHaveClass('bg-primary');
       // Other dots should be gray
-      expect(dots[1]).toHaveClass('bg-gray-300');
+      expect(dots[1]).toHaveClass('bg-muted');
     });
   });
 

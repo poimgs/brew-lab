@@ -88,7 +88,7 @@ export default function CoffeeCard({ coffee }: CoffeeCardProps) {
               <span className="text-muted-foreground">
                 Best Brew ({formatDate(best_experiment.brew_date)})
               </span>
-              <span className="font-bold text-teal-600">
+              <span className="font-bold text-primary">
                 {best_experiment.overall_score !== null
                   ? `${best_experiment.overall_score}/10`
                   : '\u2014'}
@@ -124,7 +124,7 @@ export default function CoffeeCard({ coffee }: CoffeeCardProps) {
             size="sm"
             variant="outline"
             onClick={handleNewBrew}
-            className="text-teal-600 border-teal-600 hover:bg-teal-50"
+            className="text-primary border-primary hover:bg-primary/10"
           >
             <Plus className="h-4 w-4 mr-1" />
             New Brew

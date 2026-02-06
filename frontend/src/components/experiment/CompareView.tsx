@@ -30,7 +30,7 @@ function TrendIndicator({ trend }: { trend: TrendIcon }) {
     case 'up':
       return <ArrowUp className="h-4 w-4 text-emerald-500" />;
     case 'down':
-      return <ArrowDown className="h-4 w-4 text-red-500" />;
+      return <ArrowDown className="h-4 w-4 text-destructive" />;
     case 'same':
       return <Minus className="h-4 w-4 text-muted-foreground" />;
     case 'variable':
@@ -204,7 +204,7 @@ export default function CompareView({ result, onClose }: CompareViewProps) {
           Increasing
         </Badge>
         <Badge variant="outline" className="gap-1">
-          <ArrowDown className="h-3 w-3 text-red-500" />
+          <ArrowDown className="h-3 w-3 text-destructive" />
           Decreasing
         </Badge>
         <Badge variant="outline" className="gap-1">

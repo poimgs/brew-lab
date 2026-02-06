@@ -154,6 +154,9 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html, body {
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
   body {
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
     @apply bg-background text-foreground antialiased;

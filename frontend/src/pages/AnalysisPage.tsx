@@ -136,7 +136,7 @@ export default function AnalysisPage() {
       <Card className="mb-6">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <Info className="h-5 w-5 text-blue-500" />
+            <Info className="h-5 w-5 text-info" />
             <CardTitle className="text-base">How Analysis Works</CardTitle>
           </div>
         </CardHeader>

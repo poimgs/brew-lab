@@ -187,7 +187,7 @@ export default function DefaultsForm() {
           </div>
         )}
         {successMessage && (
-          <div className="mb-4 rounded-lg bg-green-100 dark:bg-green-900/20 p-3 text-green-700 dark:text-green-400 text-sm">
+          <div className="mb-4 rounded-lg bg-success-muted p-3 text-success text-sm">
             {successMessage}
           </div>
         )}

@@ -33,7 +33,7 @@ export default function ExperimentCard({ experiment }: ExperimentCardProps) {
       <CardContent className="h-full flex flex-col justify-between py-4">
         <div>
           <h3 className="font-semibold text-sm truncate">{experiment.coffee_name}</h3>
-          <p className="text-lg font-bold text-teal-600">
+          <p className="text-lg font-bold text-primary">
             {experiment.overall_score !== null ? `${experiment.overall_score}/10` : '—'}
           </p>
         </div>

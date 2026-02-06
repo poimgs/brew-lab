@@ -33,7 +33,7 @@ export default function HomePage() {
         <Button
           size="lg"
           onClick={() => navigate('/experiments/new')}
-          className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-6 text-lg h-auto"
+          className="px-8 py-6 text-lg h-auto"
         >
           <Plus className="h-5 w-5 mr-2" />
           New Experiment
