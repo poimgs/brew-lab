@@ -15,7 +15,7 @@ The Dashboard answers two questions:
 
 **Dependencies:** coffees, brew-tracking, sessions
 
-**Replaces:** [experiment-review.md](experiment-review.md) (deprecated), [analysis.md](analysis.md) (deprecated)
+**Replaces:** the former Experiments list page and Analysis page (both removed)
 
 ---
 

@@ -58,6 +58,7 @@ Conventions and patterns used across all features. Read these first.
 | [deployment.md](foundations/deployment.md) | VPS + Docker deployment setup |
 | [design-system.md](foundations/design-system.md) | UI patterns, colors, typography, components |
 | [e2e-testing.md](foundations/e2e-testing.md) | Playwright E2E tests, fixtures, patterns |
+| [pwa.md](foundations/pwa.md) | Progressive Web App setup, service worker, manifest |
 
 ---
 
@@ -76,13 +77,6 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | [brew-tracking.md](features/brew-tracking.md) | authentication, coffees | Experiment entity + logging API + entry forms + reference sidebar |
 | [sessions.md](features/sessions.md) | coffees, brew-tracking | Group experiments into variable-testing sessions with hypothesis + conclusion |
 | [dashboard.md](features/dashboard.md) | coffees, brew-tracking, sessions | Goal-focused analytics hub with correlations and insights |
-
-**Deprecated specs** (functionality absorbed by dashboard):
-| Spec | Status | Replaced By |
-|------|--------|-------------|
-| [experiment-review.md](features/experiment-review.md) | Deprecated | [dashboard.md](features/dashboard.md) — experiment detail is now a modal |
-| [analysis.md](features/analysis.md) | Deprecated | [dashboard.md](features/dashboard.md) — correlation analysis on dashboard |
-
 ### Dependency Graph
 
 ```
@@ -136,4 +130,4 @@ authentication (core)
 - Each feature spec is self-contained
 - No need to read domain/ or system/ directories (they no longer exist)
 - Foundations provide shared conventions referenced by all features
-- Deprecated specs (experiment-review, analysis) should not be implemented — see dashboard.md instead
+
