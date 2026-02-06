@@ -187,9 +187,9 @@ describe('DashboardPage', () => {
   });
 
   it('shows message when not enough experiments for correlations', async () => {
-    vi.mocked(experimentsApi.analyzeExperimentsWithFilters).mockRejectedValue(
-      new Error('minimum 5 experiments required')
-    );
+    vi.mocked(experimentsApi.analyzeExperimentsWithFilters).mockRejectedValue({
+      response: { data: { message: 'not enough valid experiments found (minimum 5 required)' } },
+    });
     renderDashboard();
 
     await waitFor(() => {

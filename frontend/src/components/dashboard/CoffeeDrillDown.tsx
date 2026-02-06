@@ -66,8 +66,10 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
     try {
       const result = await analyzeExperimentsWithFilters({ coffee_ids: [coffeeId] });
       setAnalyzeResult(result);
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('minimum')) {
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: string; error?: string } } };
+      const apiMessage = apiError.response?.data?.message || apiError.response?.data?.error || '';
+      if (apiMessage.includes('minimum')) {
         setAnalyzeResult(null);
       }
     } finally {

@@ -52,12 +52,14 @@ function DashboardLanding() {
     try {
       const result = await analyzeExperimentsWithFilters({});
       setAnalyzeResult(result);
-    } catch (err) {
+    } catch (err: unknown) {
       // Not enough experiments is expected, not an error to show
-      if (err instanceof Error && err.message.includes('minimum')) {
+      const apiError = err as { response?: { data?: { message?: string; error?: string } } };
+      const apiMessage = apiError.response?.data?.message || apiError.response?.data?.error || '';
+      if (apiMessage.includes('minimum')) {
         setAnalyzeResult(null);
       } else {
-        setAnalyzeError(err instanceof Error ? err.message : 'Failed to load correlations');
+        setAnalyzeError(apiMessage || 'Failed to load correlations');
       }
     } finally {
       setAnalyzeLoading(false);
