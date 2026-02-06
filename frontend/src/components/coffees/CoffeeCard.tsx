@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Plus, ArchiveRestore, Pencil, Archive } from 'lucide-react';
+import { Plus, ArchiveRestore, Pencil, Archive, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ interface CoffeeCardProps {
   onEdit: (coffee: Coffee) => void;
   onArchive: (coffeeId: string) => void;
   onReactivate?: (coffeeId: string) => void;
+  onDelete?: (coffeeId: string) => void;
 }
 
 function formatDate(dateStr: string): string {
@@ -40,7 +41,7 @@ function formatPourInfo(bloomTime?: number, pourCount?: number, pourStyles?: str
   return parts.join(' \u2192 ');
 }
 
-export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive, onReactivate }: CoffeeCardProps) {
+export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive, onReactivate, onDelete }: CoffeeCardProps) {
   const navigate = useNavigate();
   const { best_experiment, improvement_note } = coffee;
   const isArchived = !!coffee.archived_at;
@@ -67,6 +68,11 @@ export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive,
   const handleReactivate = (e: React.MouseEvent) => {
     e.stopPropagation();
     onReactivate?.(coffee.id);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete?.(coffee.id);
   };
 
   // Build params string: ratio, temp, filter, minerals
@@ -143,16 +149,26 @@ export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive,
         )}
 
         {/* Action buttons */}
-        <div className="mt-3 flex flex-wrap gap-2 justify-end">
+        <div className="mt-3 flex flex-wrap gap-1 justify-end">
           {isArchived ? (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleReactivate}
-            >
-              <ArchiveRestore className="h-4 w-4 sm:mr-1" />
-              <span className="hidden sm:inline">Re-activate</span>
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleReactivate}
+              >
+                <ArchiveRestore className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Re-activate</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDelete}
+              >
+                <Trash2 className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Delete</span>
+              </Button>
+            </>
           ) : (
             <>
               <Button
@@ -178,6 +194,14 @@ export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive,
               >
                 <Archive className="h-4 w-4 sm:mr-1" />
                 <span className="hidden sm:inline">Archive</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDelete}
+              >
+                <Trash2 className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Delete</span>
               </Button>
             </>
           )}

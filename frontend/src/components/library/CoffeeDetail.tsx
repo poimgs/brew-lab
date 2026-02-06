@@ -12,6 +12,7 @@ import {
   Pencil,
   Archive,
   ArchiveRestore,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,35 +39,43 @@ import type { Coffee, CoffeeReference, ReferenceExperiment } from '@/api/coffees
 import { setBestExperiment } from '@/api/coffees';
 import { upsertCoffeeGoal, type CoffeeGoalInput } from '@/api/coffee-goals';
 import type { Experiment } from '@/api/experiments';
+import type { Session } from '@/api/sessions';
+import SessionList from '@/components/session/SessionList';
 
 interface CoffeeDetailProps {
   coffee: Coffee;
   reference: CoffeeReference | null;
   experiments: Experiment[];
+  sessions: Session[];
   experimentsLoading: boolean;
   onBack: () => void;
   onEdit: () => void;
   onRefresh: () => void;
   onArchive: () => Promise<void>;
   onUnarchive: () => Promise<void>;
+  onDelete: () => Promise<void>;
 }
 
 export default function CoffeeDetail({
   coffee,
   reference,
   experiments,
+  sessions,
   experimentsLoading,
   onBack,
   onEdit,
   onRefresh,
   onArchive,
   onUnarchive,
+  onDelete,
 }: CoffeeDetailProps) {
   const navigate = useNavigate();
   const [goalsDialogOpen, setGoalsDialogOpen] = useState(false);
   const [changeBestDialogOpen, setChangeBestDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [savingGoals, setSavingGoals] = useState(false);
   const [settingBest, setSettingBest] = useState<string | null>(null);
   const [goalsForm, setGoalsForm] = useState<CoffeeGoalInput>({});
@@ -164,6 +173,18 @@ export default function CoffeeDetail({
       console.error('Failed to unarchive coffee:', error);
     } finally {
       setArchiving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await onDelete();
+      setDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to delete coffee:', error);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -296,7 +317,7 @@ export default function CoffeeDetail({
                 </Badge>
               )}
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-1 sm:gap-2">
               <Button size="sm" onClick={handleNewExperiment}>
                 <Plus className="h-4 w-4 sm:mr-1" />
                 <span className="hidden sm:inline">New Experiment</span>
@@ -330,6 +351,15 @@ export default function CoffeeDetail({
                   <span className="hidden sm:inline">Archive</span>
                 </Button>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={deleting}
+              >
+                <Trash2 className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Delete</span>
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -423,6 +453,14 @@ export default function CoffeeDetail({
             </div>
             {renderGoalsSection()}
           </div>
+
+          {/* Sessions */}
+          <SessionList
+            coffeeId={coffee.id}
+            sessions={sessions}
+            experiments={experiments}
+            onRefresh={onRefresh}
+          />
 
           {/* Brew History */}
           <div className="pt-4 border-t">
@@ -643,6 +681,28 @@ export default function CoffeeDetail({
             <Button onClick={handleArchive} disabled={archiving}>
               {archiving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Archive
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Coffee</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{coffee.name}" by {coffee.roaster}? This action cannot be undone. Existing experiments will be preserved but this coffee will no longer appear in your library.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

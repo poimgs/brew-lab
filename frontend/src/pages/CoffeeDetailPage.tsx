@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { getCoffee, getReference, archiveCoffee, unarchiveCoffee, type Coffee, type CoffeeReference } from '@/api/coffees';
+import { getCoffee, getReference, archiveCoffee, unarchiveCoffee, deleteCoffee, type Coffee, type CoffeeReference } from '@/api/coffees';
 import { listExperiments, type Experiment } from '@/api/experiments';
+import { listSessions, type Session } from '@/api/sessions';
 import CoffeeDetail from '@/components/library/CoffeeDetail';
 import CoffeeForm from '@/components/library/CoffeeForm';
 
@@ -12,6 +13,7 @@ export default function CoffeeDetailPage() {
   const [coffee, setCoffee] = useState<Coffee | null>(null);
   const [reference, setReference] = useState<CoffeeReference | null>(null);
   const [experiments, setExperiments] = useState<Experiment[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [experimentsLoading, setExperimentsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +59,18 @@ export default function CoffeeDetailPage() {
     }
   }, [id]);
 
+  const fetchSessions = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      const response = await listSessions(id);
+      setSessions(response.items);
+    } catch (err) {
+      console.error('Error fetching sessions:', err);
+      setSessions([]);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -65,8 +79,12 @@ export default function CoffeeDetailPage() {
     fetchExperiments();
   }, [fetchExperiments]);
 
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
+
   const handleRefresh = async () => {
-    await Promise.all([fetchData(), fetchExperiments()]);
+    await Promise.all([fetchData(), fetchExperiments(), fetchSessions()]);
   };
 
   const handleBack = () => {
@@ -96,6 +114,12 @@ export default function CoffeeDetailPage() {
     if (!id) return;
     await unarchiveCoffee(id);
     await handleRefresh();
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    await deleteCoffee(id);
+    navigate('/');
   };
 
   if (isLoading) {
@@ -136,12 +160,14 @@ export default function CoffeeDetailPage() {
         coffee={coffee}
         reference={reference}
         experiments={experiments}
+        sessions={sessions}
         experimentsLoading={experimentsLoading}
         onBack={handleBack}
         onEdit={handleEdit}
         onRefresh={handleRefresh}
         onArchive={handleArchive}
         onUnarchive={handleUnarchive}
+        onDelete={handleDelete}
       />
     </div>
   );

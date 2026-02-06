@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import CoffeeDetail from './CoffeeDetail';
 import type { Coffee, CoffeeReference, ReferenceExperiment } from '@/api/coffees';
 import type { Experiment } from '@/api/experiments';
+import type { Session } from '@/api/sessions';
 import * as coffeesApi from '@/api/coffees';
 import * as coffeeGoalsApi from '@/api/coffee-goals';
 
@@ -37,6 +38,14 @@ vi.mock('@/api/coffee-goals', async () => {
   };
 });
 
+vi.mock('@/api/sessions', async () => {
+  const actual = await vi.importActual('@/api/sessions');
+  return {
+    ...actual,
+    deleteSession: vi.fn(),
+  };
+});
+
 function renderWithRouter(ui: React.ReactElement) {
   return render(<BrowserRouter>{ui}</BrowserRouter>);
 }
@@ -47,6 +56,7 @@ describe('CoffeeDetail', () => {
   const mockOnRefresh = vi.fn();
   const mockOnArchive = vi.fn().mockResolvedValue(undefined);
   const mockOnUnarchive = vi.fn().mockResolvedValue(undefined);
+  const mockOnDelete = vi.fn().mockResolvedValue(undefined);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -139,12 +149,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -159,12 +171,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -179,12 +193,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -200,12 +216,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -229,12 +247,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -251,12 +271,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -274,12 +296,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={reference}
           experiments={[createMockExperiment()]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -297,12 +321,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={reference}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -317,12 +343,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[createMockExperiment()]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -339,12 +367,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={reference}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -370,12 +400,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={reference}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -390,12 +422,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -417,12 +451,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -456,12 +492,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={experiments}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -477,12 +515,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={true}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -498,12 +538,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference({ experiment: null, goals: null })}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -522,12 +564,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={experiments}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -547,12 +591,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={experiments}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -571,12 +617,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={experiments}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -597,12 +645,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={experiments}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -627,12 +677,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={experiments}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -650,12 +702,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={experiments}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -672,12 +726,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={experiments}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -694,12 +750,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={experiments}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -721,12 +779,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -741,12 +801,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -762,12 +824,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -784,12 +848,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -816,12 +882,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -843,12 +911,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 
@@ -869,12 +939,14 @@ describe('CoffeeDetail', () => {
           coffee={coffee}
           reference={createMockReference()}
           experiments={[]}
+          sessions={[]}
           experimentsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
           onArchive={mockOnArchive}
           onUnarchive={mockOnUnarchive}
+          onDelete={mockOnDelete}
         />
       );
 

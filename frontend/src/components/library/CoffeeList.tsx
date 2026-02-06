@@ -1,14 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Archive, Loader2 } from 'lucide-react';
+import { Plus, Search, Archive, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   type Coffee,
   type ListCoffeesParams,
   listCoffees,
   archiveCoffee,
   unarchiveCoffee,
+  deleteCoffee,
 } from '@/api/coffees';
 import CoffeeCard from '@/components/coffees/CoffeeCard';
 import CoffeeForm from './CoffeeForm';
@@ -32,6 +41,7 @@ export default function CoffeeList() {
   // UI state
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingCoffee, setEditingCoffee] = useState<Coffee | null>(null);
+  const [deletingCoffeeId, setDeletingCoffeeId] = useState<string | null>(null);
 
   const fetchCoffees = useCallback(async () => {
     setIsLoading(true);
@@ -102,6 +112,17 @@ export default function CoffeeList() {
     setShowAddForm(false);
     setEditingCoffee(null);
     fetchCoffees();
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingCoffeeId) return;
+    try {
+      await deleteCoffee(deletingCoffeeId);
+      setDeletingCoffeeId(null);
+      await fetchCoffees();
+    } catch (err) {
+      console.error('Error deleting coffee:', err);
+    }
   };
 
   if (showAddForm) {
@@ -199,6 +220,7 @@ export default function CoffeeList() {
                 onEdit={handleEdit}
                 onArchive={handleArchive}
                 onReactivate={showArchived ? handleReactivate : undefined}
+                onDelete={(id) => setDeletingCoffeeId(id)}
               />
             ))}
           </div>
@@ -231,6 +253,31 @@ export default function CoffeeList() {
           )}
         </>
       )}
+      {/* Delete Confirmation Dialog */}
+      {(() => {
+        const coffeeToDelete = coffees.find((c) => c.id === deletingCoffeeId);
+        return (
+          <Dialog open={!!deletingCoffeeId} onOpenChange={(open) => { if (!open) setDeletingCoffeeId(null); }}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Delete Coffee</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete "{coffeeToDelete?.name}" by {coffeeToDelete?.roaster}? This action cannot be undone. Existing experiments will be preserved but this coffee will no longer appear in your library.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeletingCoffeeId(null)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteConfirm}>
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }
