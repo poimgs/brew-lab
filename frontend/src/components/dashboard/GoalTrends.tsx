@@ -53,10 +53,6 @@ export default function GoalTrends({ trends }: GoalTrendsProps) {
         const metric = trends.metrics[key];
         const label = metricLabels[key] || key;
         const trend = getTrend(metric.values);
-        const latestValue = metric.values.length > 0
-          ? metric.values[metric.values.length - 1].value
-          : null;
-
         return (
           <div key={key} className="flex items-center gap-3">
             <span className="text-sm font-medium w-24 shrink-0">{label}</span>

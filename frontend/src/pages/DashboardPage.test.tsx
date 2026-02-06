@@ -227,7 +227,6 @@ describe('DashboardPage', () => {
     });
 
     // Kiamaina (has goals) should appear before El Calagual (no goals) in the DOM
-    const cards = screen.getAllByText(/View/);
     const kiamainaCard = screen.getByText('Kiamaina').closest('[class*="card"]');
     const calagualCard = screen.getByText('El Calagual').closest('[class*="card"]');
 

@@ -1,4 +1,4 @@
-import { Lightbulb, Check, TrendingUp } from 'lucide-react';
+import { Lightbulb, Check } from 'lucide-react';
 import type { GoalTrendResponse } from '@/api/coffees';
 import type { AnalyzeResponse } from '@/api/experiments';
 

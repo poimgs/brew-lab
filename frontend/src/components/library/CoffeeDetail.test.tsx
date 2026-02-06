@@ -5,7 +5,6 @@ import { BrowserRouter } from 'react-router-dom';
 import CoffeeDetail from './CoffeeDetail';
 import type { Coffee, CoffeeReference, ReferenceExperiment } from '@/api/coffees';
 import type { Experiment } from '@/api/experiments';
-import type { Session } from '@/api/sessions';
 import * as coffeesApi from '@/api/coffees';
 import * as coffeeGoalsApi from '@/api/coffee-goals';
 
