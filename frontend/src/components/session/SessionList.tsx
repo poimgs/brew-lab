@@ -14,16 +14,16 @@ import type { Session } from '@/api/sessions';
 import { deleteSession } from '@/api/sessions';
 import SessionForm from './SessionForm';
 import SessionDetailModal from './SessionDetailModal';
-import type { Experiment } from '@/api/experiments';
+import type { Brew } from '@/api/brews';
 
 interface SessionListProps {
   coffeeId: string;
   sessions: Session[];
-  experiments: Experiment[];
+  brews: Brew[];
   onRefresh: () => void;
 }
 
-export default function SessionList({ coffeeId, sessions, experiments, onRefresh }: SessionListProps) {
+export default function SessionList({ coffeeId, sessions, brews, onRefresh }: SessionListProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editSession, setEditSession] = useState<Session | null>(null);
   const [viewSession, setViewSession] = useState<Session | null>(null);
@@ -62,7 +62,7 @@ export default function SessionList({ coffeeId, sessions, experiments, onRefresh
 
       {sessions.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No sessions yet. Create a session to group experiments and track what you learn from testing different variables.
+          No sessions yet. Create a session to group brews and track what you learn from testing different variables.
         </p>
       ) : (
         <div className="space-y-3">
@@ -75,7 +75,7 @@ export default function SessionList({ coffeeId, sessions, experiments, onRefresh
                       <FlaskConical className="h-4 w-4 text-muted-foreground shrink-0" />
                       <h4 className="font-medium text-sm truncate">{session.name}</h4>
                       <span className="text-xs text-muted-foreground shrink-0">
-                        {session.experiment_count} experiment{session.experiment_count !== 1 ? 's' : ''}
+                        {session.brew_count} brew{session.brew_count !== 1 ? 's' : ''}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground mb-1">
@@ -130,7 +130,7 @@ export default function SessionList({ coffeeId, sessions, experiments, onRefresh
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         coffeeId={coffeeId}
-        experiments={experiments}
+        brews={brews}
         onSuccess={handleFormSuccess}
       />
 
@@ -140,7 +140,7 @@ export default function SessionList({ coffeeId, sessions, experiments, onRefresh
           open={true}
           onOpenChange={(open) => { if (!open) setEditSession(null); }}
           coffeeId={coffeeId}
-          experiments={experiments}
+          brews={brews}
           session={editSession}
           onSuccess={handleFormSuccess}
         />
@@ -153,7 +153,7 @@ export default function SessionList({ coffeeId, sessions, experiments, onRefresh
           open={true}
           onOpenChange={(open) => { if (!open) setViewSession(null); }}
           onRefresh={onRefresh}
-          experiments={experiments}
+          brews={brews}
         />
       )}
 
@@ -163,7 +163,7 @@ export default function SessionList({ coffeeId, sessions, experiments, onRefresh
           <DialogHeader>
             <DialogTitle>Delete Session</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{deleteConfirm?.name}"? This will remove the session grouping but will not delete any experiments.
+              Are you sure you want to delete "{deleteConfirm?.name}"? This will remove the session grouping but will not delete any brews.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

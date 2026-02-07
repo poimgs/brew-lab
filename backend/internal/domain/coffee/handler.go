@@ -251,7 +251,7 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, map[string][]string{"items": suggestions})
 }
 
-func (h *Handler) SetBestExperiment(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) SetBestBrew(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.GetUserID(r.Context())
 	if !ok {
 		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
@@ -264,27 +264,27 @@ func (h *Handler) SetBestExperiment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var input SetBestExperimentInput
+	var input SetBestBrewInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid request body")
 		return
 	}
 
-	coffee, err := h.repo.SetBestExperiment(r.Context(), userID, coffeeID, input.ExperimentID)
+	coffee, err := h.repo.SetBestBrew(r.Context(), userID, coffeeID, input.BrewID)
 	if err != nil {
 		if errors.Is(err, ErrCoffeeNotFound) {
 			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
 			return
 		}
-		if errors.Is(err, ErrExperimentNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "experiment not found")
+		if errors.Is(err, ErrBrewNotFound) {
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "brew not found")
 			return
 		}
-		if errors.Is(err, ErrExperimentWrongCoffee) {
-			response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "experiment does not belong to this coffee")
+		if errors.Is(err, ErrBrewWrongCoffee) {
+			response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "brew does not belong to this coffee")
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to set best experiment")
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to set best brew")
 		return
 	}
 

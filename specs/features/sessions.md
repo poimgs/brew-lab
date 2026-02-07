@@ -2,13 +2,13 @@
 
 ## Overview
 
-Sessions group related experiments within a single coffee to encode deliberate variable testing. A session captures what you changed, what you expected, and what you learned.
+Sessions group related brews within a single coffee to encode deliberate variable testing. A session captures what you changed, what you expected, and what you learned.
 
 **Key capabilities:**
-- Group 2+ experiments that test the same variable(s)
+- Group 2+ brews that test the same variable(s)
 - Record hypothesis before brewing and conclusion after
-- Retroactive grouping — create sessions from existing experiments
-- Upfront creation — plan a session, then brew experiments into it
+- Retroactive grouping — create sessions from existing brews
+- Upfront creation — plan a session, then brew into it
 
 **Dependencies:** coffees, brew-tracking
 
@@ -35,15 +35,15 @@ Sessions group related experiments within a single coffee to encode deliberate v
 1. `name` required, max 255 characters
 2. `variable_tested` required, max 255 characters
 3. `coffee_id` must reference an existing, non-deleted coffee owned by the user
-4. A session must have at least 1 experiment linked (enforced at UI level, not DB)
+4. A session must have at least 1 brew linked (enforced at UI level, not DB)
 
 ### Relationships
 
 - **Many-to-One with Coffee**: Each session belongs to one coffee
-- **Many-to-Many with Experiment**: Sessions link to experiments via `session_experiments` join table
-- An experiment can belong to multiple sessions
-- Deleting a session does NOT delete its experiments (only removes the grouping)
-- Deleting an experiment removes it from all sessions (cascade on join table)
+- **Many-to-Many with Brew**: Sessions link to brews via `session_brews` join table
+- A brew can belong to multiple sessions
+- Deleting a session does NOT delete its brews (only removes the grouping)
+- Deleting a brew removes it from all sessions (cascade on join table)
 
 ### Database Schema
 
@@ -60,15 +60,15 @@ CREATE TABLE sessions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE session_experiments (
+CREATE TABLE session_brews (
     session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    experiment_id UUID NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
-    PRIMARY KEY (session_id, experiment_id)
+    brew_id UUID NOT NULL REFERENCES brews(id) ON DELETE CASCADE,
+    PRIMARY KEY (session_id, brew_id)
 );
 
 CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX idx_sessions_coffee_id ON sessions(coffee_id);
-CREATE INDEX idx_session_experiments_experiment_id ON session_experiments(experiment_id);
+CREATE INDEX idx_session_brews_brew_id ON session_brews(brew_id);
 ```
 
 ---
@@ -98,7 +98,7 @@ GET /api/v1/sessions
       "variable_tested": "grind size",
       "hypothesis": "Finer grind will increase sweetness",
       "conclusion": "Confirmed — 3.0 was noticeably sweeter than 4.0",
-      "experiment_count": 3,
+      "brew_count": 3,
       "created_at": "2026-01-20T10:00:00Z",
       "updated_at": "2026-01-22T14:30:00Z"
     }
@@ -112,7 +112,7 @@ GET /api/v1/sessions
 }
 ```
 
-Note: `experiment_count` is computed via subquery on `session_experiments`.
+Note: `brew_count` is computed via subquery on `session_brews`.
 
 ### Create Session
 
@@ -127,14 +127,14 @@ POST /api/v1/sessions
   "name": "Grind size sweep",
   "variable_tested": "grind size",
   "hypothesis": "Finer grind will increase sweetness",
-  "experiment_ids": ["uuid1", "uuid2"]
+  "brew_ids": ["uuid1", "uuid2"]
 }
 ```
 
-- `experiment_ids` is optional — allows linking existing experiments at creation time
-- All referenced experiments must belong to the same coffee as the session
+- `brew_ids` is optional — allows linking existing brews at creation time
+- All referenced brews must belong to the same coffee as the session
 
-**Response:** `201 Created` with session object including linked experiments
+**Response:** `201 Created` with session object including linked brews
 
 ### Get Session
 
@@ -151,7 +151,7 @@ GET /api/v1/sessions/:id
   "variable_tested": "grind size",
   "hypothesis": "Finer grind will increase sweetness",
   "conclusion": "Confirmed — 3.0 was noticeably sweeter than 4.0",
-  "experiments": [
+  "brews": [
     {
       "id": "uuid1",
       "brew_date": "2026-01-20T10:00:00Z",
@@ -179,7 +179,7 @@ GET /api/v1/sessions/:id
 }
 ```
 
-Experiments are returned in `brew_date` order (oldest first) to show the progression.
+Brews are returned in `brew_date` order (oldest first) to show the progression.
 
 ### Update Session
 
@@ -197,7 +197,7 @@ PUT /api/v1/sessions/:id
 }
 ```
 
-Updates metadata only. Use the link/unlink endpoints to modify experiment membership.
+Updates metadata only. Use the link/unlink endpoints to modify brew membership.
 
 **Response:** `200 OK` with updated session object
 
@@ -207,35 +207,35 @@ Updates metadata only. Use the link/unlink endpoints to modify experiment member
 DELETE /api/v1/sessions/:id
 ```
 
-Deletes the session and all join table entries. Does NOT delete experiments.
+Deletes the session and all join table entries. Does NOT delete brews.
 
 **Response:** `204 No Content`
 
-### Link Experiments to Session
+### Link Brews to Session
 
 ```
-POST /api/v1/sessions/:id/experiments
+POST /api/v1/sessions/:id/brews
 ```
 
 **Request:**
 ```json
 {
-  "experiment_ids": ["uuid3", "uuid4"]
+  "brew_ids": ["uuid3", "uuid4"]
 }
 ```
 
-- Experiments must belong to the same coffee as the session
+- Brews must belong to the same coffee as the session
 - Duplicates are silently ignored (idempotent)
 
 **Response:** `200 OK` with updated session object
 
-### Unlink Experiment from Session
+### Unlink Brew from Session
 
 ```
-DELETE /api/v1/sessions/:id/experiments/:experiment_id
+DELETE /api/v1/sessions/:id/brews/:brew_id
 ```
 
-Removes the experiment from the session without deleting it.
+Removes the brew from the session without deleting it.
 
 **Response:** `204 No Content`
 
@@ -248,27 +248,27 @@ Removes the experiment from the session without deleting it.
 Sessions appear as a section on the coffee detail page, between Target Goals and Brew History:
 
 ```
-┌─────────────────────────────────────────────────────┐
-│ ─── Sessions ───                      [+ New Session]│
-│                                                     │
-│ ┌─────────────────────────────────────────────────┐ │
-│ │ Grind size sweep              3 experiments     │ │
-│ │ Variable: grind size                            │ │
-│ │ "Finer grind will increase sweetness"           │ │
-│ │ Conclusion: Confirmed — 3.0 was noticeably...   │ │
-│ │                            [View] [Edit] [Delete]│ │
-│ └─────────────────────────────────────────────────┘ │
-│                                                     │
-│ ┌─────────────────────────────────────────────────┐ │
-│ │ Temperature range test        2 experiments     │ │
-│ │ Variable: water temperature                     │ │
-│ │ "Higher temp = more brightness"                 │ │
-│ │ Conclusion: Not yet recorded                    │ │
-│ │                            [View] [Edit] [Delete]│ │
-│ └─────────────────────────────────────────────────┘ │
-│                                                     │
-│ No more sessions.                                   │
-└─────────────────────────────────────────────────────┘
++-----------------------------------------------------+
+| --- Sessions ---                      [+ New Session]|
+|                                                     |
+| +---------------------------------------------+    |
+| | Grind size sweep              3 brews        |    |
+| | Variable: grind size                         |    |
+| | "Finer grind will increase sweetness"        |    |
+| | Conclusion: Confirmed — 3.0 was noticeably...|    |
+| |                         [View] [Edit] [Delete]|    |
+| +---------------------------------------------+    |
+|                                                     |
+| +---------------------------------------------+    |
+| | Temperature range test        2 brews        |    |
+| | Variable: water temperature                  |    |
+| | "Higher temp = more brightness"              |    |
+| | Conclusion: Not yet recorded                 |    |
+| |                         [View] [Edit] [Delete]|    |
+| +---------------------------------------------+    |
+|                                                     |
+| No more sessions.                                   |
++-----------------------------------------------------+
 ```
 
 ### Create Session Dialog
@@ -276,76 +276,76 @@ Sessions appear as a section on the coffee detail page, between Target Goals and
 Opened from the [+ New Session] button on coffee detail:
 
 ```
-┌─────────────────────────────────────────┐
-│ New Session                        [×]  │
-├─────────────────────────────────────────┤
-│ Name*            [________________]     │
-│ Variable Tested* [________________]     │
-│ Hypothesis       [                ]     │
-│                  [                ]     │
-│                                         │
-│ ─── Link Experiments ───                │
-│ Select experiments to include:          │
-│                                         │
-│ [☑] Jan 20 · 3.0 grind · Score 8      │
-│ [☑] Jan 20 · 3.5 grind · Score 7      │
-│ [☑] Jan 20 · 4.0 grind · Score 6      │
-│ [☐] Jan 18 · 3.5 grind · Score 7      │
-│ [☐] Jan 15 · 3.5 grind · Score 8      │
-│                                         │
-│         [Cancel]  [Create Session]      │
-└─────────────────────────────────────────┘
++---------------------------------------+
+| New Session                      [x]  |
++---------------------------------------+
+| Name*            [________________]   |
+| Variable Tested* [________________]   |
+| Hypothesis       [                ]   |
+|                  [                ]   |
+|                                       |
+| --- Link Brews ---                    |
+| Select brews to include:             |
+|                                       |
+| [x] Jan 20 - 3.0 grind - Score 8    |
+| [x] Jan 20 - 3.5 grind - Score 7    |
+| [x] Jan 20 - 4.0 grind - Score 6    |
+| [ ] Jan 18 - 3.5 grind - Score 7    |
+| [ ] Jan 15 - 3.5 grind - Score 8    |
+|                                       |
+|         [Cancel]  [Create Session]    |
++---------------------------------------+
 ```
 
-- Shows all experiments for this coffee (most recent first)
-- Checkboxes to select which experiments belong to the session
-- At least 1 experiment should be selected (UI validation)
+- Shows all brews for this coffee (most recent first)
+- Checkboxes to select which brews belong to the session
+- At least 1 brew should be selected (UI validation)
 
 ### Session Detail View
 
 Opened from [View] button on a session card. Displayed as a dialog/modal:
 
 ```
-┌─────────────────────────────────────────────────────┐
-│ Grind size sweep                             [×]    │
-│ Variable: grind size · 3 experiments                │
-├─────────────────────────────────────────────────────┤
-│ Hypothesis                                          │
-│ "Finer grind will increase sweetness"               │
-│                                                     │
-│ ─── Experiments ───                                 │
-│ ┌──────────┬───────┬───────┬───────┬───────┐       │
-│ │ Date     │ Grind │ Score │ Sweet │ Notes │       │
-│ ├──────────┼───────┼───────┼───────┼───────┤       │
-│ │ Jan 20   │ 4.0   │ 6     │ 4     │ Thin  │       │
-│ │ Jan 20   │ 3.5   │ 7     │ 6     │ Better│       │
-│ │ Jan 20   │ 3.0   │ 8     │ 8     │ Best  │       │
-│ └──────────┴───────┴───────┴───────┴───────┘       │
-│                                                     │
-│ ─── Conclusion ───                           [Edit] │
-│ "Confirmed — 3.0 was noticeably sweeter than 4.0.   │
-│ Going forward, use 3.0-3.2 range for this coffee."  │
-│                                                     │
-│ [+ Add Experiments]           [Edit Session] [Delete]│
-└─────────────────────────────────────────────────────┘
++-----------------------------------------------------+
+| Grind size sweep                               [x]   |
+| Variable: grind size - 3 brews                       |
++-----------------------------------------------------+
+| Hypothesis                                           |
+| "Finer grind will increase sweetness"                |
+|                                                     |
+| --- Brews ---                                        |
+| +----------+-------+-------+-------+-------+        |
+| | Date     | Grind | Score | Sweet | Notes |        |
+| +----------+-------+-------+-------+-------+        |
+| | Jan 20   | 4.0   | 6     | 4     | Thin  |        |
+| | Jan 20   | 3.5   | 7     | 6     | Better|        |
+| | Jan 20   | 3.0   | 8     | 8     | Best  |        |
+| +----------+-------+-------+-------+-------+        |
+|                                                     |
+| --- Conclusion ---                           [Edit]  |
+| "Confirmed — 3.0 was noticeably sweeter than 4.0.   |
+| Going forward, use 3.0-3.2 range for this coffee."  |
+|                                                     |
+| [+ Add Brews]                [Edit Session] [Delete] |
++-----------------------------------------------------+
 ```
 
-**Dynamic columns:** The experiments table highlights the tested variable column (e.g., "Grind" when `variable_tested` is "grind size").
+**Dynamic columns:** The brews table highlights the tested variable column (e.g., "Grind" when `variable_tested` is "grind size").
 
 ### Edit Session
 
-Same dialog as Create, but pre-populated with existing values. Experiment linking is managed separately via the [+ Add Experiments] action in the detail view.
+Same dialog as Create, but pre-populated with existing values. Brew linking is managed separately via the [+ Add Brews] action in the detail view.
 
 ### Empty State
 
 When a coffee has no sessions:
 
 ```
-│ ─── Sessions ───                      [+ New Session]│
-│                                                     │
-│ No sessions yet. Create a session to group          │
-│ experiments and track what you learn from            │
-│ testing different variables.                         │
+| --- Sessions ---                      [+ New Session]|
+|                                                     |
+| No sessions yet. Create a session to group          |
+| brews and track what you learn from                 |
+| testing different variables.                        |
 ```
 
 ---
@@ -357,17 +357,17 @@ When a coffee has no sessions:
 1. User is about to test a variable (e.g., grind size)
 2. Goes to coffee detail → [+ New Session]
 3. Fills in name, variable, hypothesis
-4. Optionally links existing experiments
-5. Brews new experiments (from coffee detail [+ New Experiment])
-6. Returns to session → [+ Add Experiments] to link new brews
+4. Optionally links existing brews
+5. Brews new brews (from coffee detail [+ New Brew])
+6. Returns to session → [+ Add Brews] to link new brews
 7. Writes conclusion after evaluating results
 
 ### Retroactive Grouping
 
-1. User has already brewed several experiments varying a parameter
+1. User has already brewed several brews varying a parameter
 2. Goes to coffee detail → [+ New Session]
 3. Fills in name, variable, hypothesis
-4. Selects the relevant experiments from the list
+4. Selects the relevant brews from the list
 5. Writes conclusion based on what they observed
 
 Both workflows converge — the session captures the same structured learning either way.
@@ -386,24 +386,24 @@ Sessions are scoped to a single coffee because:
 
 ### Many-to-Many Join Table
 
-Experiments link to sessions via a join table because:
-- An experiment can participate in multiple sessions (e.g., testing grind AND temperature)
-- Clean separation — sessions don't own experiments
-- Deleting a session doesn't affect experiments
-- Easy to add/remove experiments from sessions
+Brews link to sessions via a join table because:
+- A brew can participate in multiple sessions (e.g., testing grind AND temperature)
+- Clean separation — sessions don't own brews
+- Deleting a session doesn't affect brews
+- Easy to add/remove brews from sessions
 
 ### Variable + Hypothesis + Conclusion
 
 This triple captures the scientific method in minimal form:
 - **Variable**: What you changed (structured enough to be useful, free-text for flexibility)
 - **Hypothesis**: What you expected (optional — some sessions are exploratory)
-- **Conclusion**: What you learned (the primary value — often filled in after all experiments)
+- **Conclusion**: What you learned (the primary value — often filled in after all brews)
 
 ### No Session Status/State
 
 Sessions don't have an explicit "open/closed" status because:
 - Conclusion being empty effectively means "in progress"
-- Users can always add more experiments or update the conclusion
+- Users can always add more brews or update the conclusion
 - Avoids workflow ceremony — sessions are lightweight documentation
 
 ---
@@ -411,5 +411,5 @@ Sessions don't have an explicit "open/closed" status because:
 ## Open Questions
 
 1. **Session Templates**: Pre-built session templates for common variables (grind sweep, temp sweep)?
-2. **Auto-Suggest Sessions**: Detect when user brews multiple experiments with one variable changed and suggest creating a session?
+2. **Auto-Suggest Sessions**: Detect when user brews multiple brews with one variable changed and suggest creating a session?
 3. **Session Comparison**: Compare two sessions side-by-side (e.g., grind sweep at two different temperatures)?

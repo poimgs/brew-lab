@@ -12,6 +12,6 @@ type Repository interface {
 	List(ctx context.Context, userID uuid.UUID, params ListSessionsParams) (*ListSessionsResult, error)
 	Update(ctx context.Context, userID, sessionID uuid.UUID, input UpdateSessionInput) (*Session, error)
 	Delete(ctx context.Context, userID, sessionID uuid.UUID) error
-	LinkExperiments(ctx context.Context, userID, sessionID uuid.UUID, experimentIDs []uuid.UUID) (*Session, error)
-	UnlinkExperiment(ctx context.Context, userID, sessionID, experimentID uuid.UUID) error
+	LinkBrews(ctx context.Context, userID, sessionID uuid.UUID, brewIDs []uuid.UUID) (*Session, error)
+	UnlinkBrew(ctx context.Context, userID, sessionID, brewID uuid.UUID) error
 }

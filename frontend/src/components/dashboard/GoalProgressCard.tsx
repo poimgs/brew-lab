@@ -84,7 +84,7 @@ export default function GoalProgressCard({ coffee }: GoalProgressCardProps) {
               <span className="font-normal text-muted-foreground"> · {coffee.roaster}</span>
             </h3>
             <p className="text-sm text-muted-foreground">
-              {coffee.experiment_count} experiment{coffee.experiment_count !== 1 ? 's' : ''}
+              {coffee.brew_count} brew{coffee.brew_count !== 1 ? 's' : ''}
               {coffee.last_brewed && (
                 <>
                   {' · Last brewed: '}
@@ -134,7 +134,7 @@ export default function GoalProgressCard({ coffee }: GoalProgressCardProps) {
           </div>
         ) : hasGoals ? (
           <p className="text-sm text-muted-foreground">
-            No experiment data yet to compare against goals.
+            No brew data yet to compare against goals.
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">

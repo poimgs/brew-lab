@@ -14,8 +14,8 @@ import (
 var (
 	ErrSessionNotFound        = errors.New("session not found")
 	ErrCoffeeNotFound         = errors.New("coffee not found")
-	ErrExperimentWrongCoffee  = errors.New("experiment does not belong to this coffee")
-	ErrExperimentNotFound     = errors.New("experiment not found")
+	ErrBrewWrongCoffee  = errors.New("brew does not belong to this coffee")
+	ErrBrewNotFound     = errors.New("brew not found")
 )
 
 type PostgresRepository struct {
@@ -66,12 +66,12 @@ func (r *PostgresRepository) Create(ctx context.Context, userID uuid.UUID, input
 		return nil, err
 	}
 
-	// Link experiments if provided
-	if len(input.ExperimentIDs) > 0 {
-		if err := r.linkExperimentsInTx(ctx, tx, userID, session.ID, input.CoffeeID, input.ExperimentIDs); err != nil {
+	// Link brews if provided
+	if len(input.BrewIDs) > 0 {
+		if err := r.linkBrewsInTx(ctx, tx, userID, session.ID, input.CoffeeID, input.BrewIDs); err != nil {
 			return nil, err
 		}
-		session.ExperimentCount = len(input.ExperimentIDs)
+		session.BrewCount = len(input.BrewIDs)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -86,13 +86,13 @@ func (r *PostgresRepository) GetByID(ctx context.Context, userID, sessionID uuid
 	err := r.db.QueryRowContext(ctx, `
 		SELECT s.id, s.user_id, s.coffee_id, s.name, s.variable_tested, s.hypothesis, s.conclusion,
 			s.created_at, s.updated_at,
-			(SELECT COUNT(*) FROM session_experiments WHERE session_id = s.id) AS experiment_count
+			(SELECT COUNT(*) FROM session_brews WHERE session_id = s.id) AS brew_count
 		FROM sessions s
 		WHERE s.id = $1 AND s.user_id = $2
 	`, sessionID, userID).Scan(
 		&session.ID, &session.UserID, &session.CoffeeID, &session.Name,
 		&session.VariableTested, &session.Hypothesis, &session.Conclusion,
-		&session.CreatedAt, &session.UpdatedAt, &session.ExperimentCount,
+		&session.CreatedAt, &session.UpdatedAt, &session.BrewCount,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -101,12 +101,12 @@ func (r *PostgresRepository) GetByID(ctx context.Context, userID, sessionID uuid
 		return nil, err
 	}
 
-	// Fetch linked experiments
+	// Fetch linked brews
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT e.id, e.brew_date, e.grind_size, e.overall_score, e.overall_notes
-		FROM experiments e
-		JOIN session_experiments se ON se.experiment_id = e.id
-		WHERE se.session_id = $1
+		FROM brews e
+		JOIN session_brews sb ON sb.brew_id = e.id
+		WHERE sb.session_id = $1
 		ORDER BY e.brew_date ASC
 	`, sessionID)
 	if err != nil {
@@ -115,11 +115,11 @@ func (r *PostgresRepository) GetByID(ctx context.Context, userID, sessionID uuid
 	defer rows.Close()
 
 	for rows.Next() {
-		var exp ExperimentSummary
-		if err := rows.Scan(&exp.ID, &exp.BrewDate, &exp.GrindSize, &exp.OverallScore, &exp.OverallNotes); err != nil {
+		var b BrewSummary
+		if err := rows.Scan(&b.ID, &b.BrewDate, &b.GrindSize, &b.OverallScore, &b.OverallNotes); err != nil {
 			return nil, err
 		}
-		session.Experiments = append(session.Experiments, exp)
+		session.Brews = append(session.Brews, b)
 	}
 
 	return session, nil
@@ -141,7 +141,7 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT s.id, s.user_id, s.coffee_id, s.name, s.variable_tested, s.hypothesis, s.conclusion,
 			s.created_at, s.updated_at,
-			(SELECT COUNT(*) FROM session_experiments WHERE session_id = s.id) AS experiment_count
+			(SELECT COUNT(*) FROM session_brews WHERE session_id = s.id) AS brew_count
 		FROM sessions s
 		WHERE s.user_id = $1 AND s.coffee_id = $2
 		ORDER BY s.created_at DESC
@@ -157,7 +157,7 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 		var s Session
 		if err := rows.Scan(
 			&s.ID, &s.UserID, &s.CoffeeID, &s.Name, &s.VariableTested,
-			&s.Hypothesis, &s.Conclusion, &s.CreatedAt, &s.UpdatedAt, &s.ExperimentCount,
+			&s.Hypothesis, &s.Conclusion, &s.CreatedAt, &s.UpdatedAt, &s.BrewCount,
 		); err != nil {
 			return nil, err
 		}
@@ -251,7 +251,7 @@ func (r *PostgresRepository) Delete(ctx context.Context, userID, sessionID uuid.
 	return nil
 }
 
-func (r *PostgresRepository) LinkExperiments(ctx context.Context, userID, sessionID uuid.UUID, experimentIDs []uuid.UUID) (*Session, error) {
+func (r *PostgresRepository) LinkBrews(ctx context.Context, userID, sessionID uuid.UUID, brewIDs []uuid.UUID) (*Session, error) {
 	// Get session to verify ownership and get coffee_id
 	session, err := r.GetByID(ctx, userID, sessionID)
 	if err != nil {
@@ -264,7 +264,7 @@ func (r *PostgresRepository) LinkExperiments(ctx context.Context, userID, sessio
 	}
 	defer tx.Rollback()
 
-	if err := r.linkExperimentsInTx(ctx, tx, userID, sessionID, session.CoffeeID, experimentIDs); err != nil {
+	if err := r.linkBrewsInTx(ctx, tx, userID, sessionID, session.CoffeeID, brewIDs); err != nil {
 		return nil, err
 	}
 
@@ -275,7 +275,7 @@ func (r *PostgresRepository) LinkExperiments(ctx context.Context, userID, sessio
 	return r.GetByID(ctx, userID, sessionID)
 }
 
-func (r *PostgresRepository) UnlinkExperiment(ctx context.Context, userID, sessionID, experimentID uuid.UUID) error {
+func (r *PostgresRepository) UnlinkBrew(ctx context.Context, userID, sessionID, brewID uuid.UUID) error {
 	// Verify session belongs to user
 	var exists bool
 	err := r.db.QueryRowContext(ctx,
@@ -290,36 +290,36 @@ func (r *PostgresRepository) UnlinkExperiment(ctx context.Context, userID, sessi
 	}
 
 	_, err = r.db.ExecContext(ctx,
-		`DELETE FROM session_experiments WHERE session_id = $1 AND experiment_id = $2`,
-		sessionID, experimentID,
+		`DELETE FROM session_brews WHERE session_id = $1 AND brew_id = $2`,
+		sessionID, brewID,
 	)
 	return err
 }
 
-// linkExperimentsInTx links experiments to a session within a transaction,
-// validating that all experiments belong to the same coffee as the session.
-func (r *PostgresRepository) linkExperimentsInTx(ctx context.Context, tx *sql.Tx, userID, sessionID, coffeeID uuid.UUID, experimentIDs []uuid.UUID) error {
-	for _, expID := range experimentIDs {
-		// Verify experiment exists, belongs to user, and matches coffee
-		var expCoffeeID uuid.UUID
+// linkBrewsInTx links brews to a session within a transaction,
+// validating that all brews belong to the same coffee as the session.
+func (r *PostgresRepository) linkBrewsInTx(ctx context.Context, tx *sql.Tx, userID, sessionID, coffeeID uuid.UUID, brewIDs []uuid.UUID) error {
+	for _, bID := range brewIDs {
+		// Verify brew exists, belongs to user, and matches coffee
+		var brewCoffeeID uuid.UUID
 		err := tx.QueryRowContext(ctx,
-			`SELECT coffee_id FROM experiments WHERE id = $1 AND user_id = $2`,
-			expID, userID,
-		).Scan(&expCoffeeID)
+			`SELECT coffee_id FROM brews WHERE id = $1 AND user_id = $2`,
+			bID, userID,
+		).Scan(&brewCoffeeID)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return ErrExperimentNotFound
+				return ErrBrewNotFound
 			}
 			return err
 		}
-		if expCoffeeID != coffeeID {
-			return ErrExperimentWrongCoffee
+		if brewCoffeeID != coffeeID {
+			return ErrBrewWrongCoffee
 		}
 
 		// Insert with ON CONFLICT for idempotency
 		_, err = tx.ExecContext(ctx,
-			`INSERT INTO session_experiments (session_id, experiment_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-			sessionID, expID,
+			`INSERT INTO session_brews (session_id, brew_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+			sessionID, bID,
 		)
 		if err != nil {
 			return err

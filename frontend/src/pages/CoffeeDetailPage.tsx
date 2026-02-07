@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { getCoffee, getReference, archiveCoffee, unarchiveCoffee, deleteCoffee, type Coffee, type CoffeeReference } from '@/api/coffees';
-import { listExperiments, type Experiment } from '@/api/experiments';
+import { listBrews, type Brew } from '@/api/brews';
 import { listSessions, type Session } from '@/api/sessions';
 import CoffeeDetail from '@/components/library/CoffeeDetail';
 import CoffeeForm from '@/components/library/CoffeeForm';
@@ -12,10 +12,10 @@ export default function CoffeeDetailPage() {
   const navigate = useNavigate();
   const [coffee, setCoffee] = useState<Coffee | null>(null);
   const [reference, setReference] = useState<CoffeeReference | null>(null);
-  const [experiments, setExperiments] = useState<Experiment[]>([]);
+  const [brews, setBrews] = useState<Brew[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [experimentsLoading, setExperimentsLoading] = useState(true);
+  const [brewsLoading, setBrewsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -40,22 +40,22 @@ export default function CoffeeDetailPage() {
     }
   }, [id]);
 
-  const fetchExperiments = useCallback(async () => {
+  const fetchBrews = useCallback(async () => {
     if (!id) return;
 
-    setExperimentsLoading(true);
+    setBrewsLoading(true);
     try {
-      const response = await listExperiments({
+      const response = await listBrews({
         coffee_id: id,
         sort: '-brew_date',
         per_page: 20,
       });
-      setExperiments(response.items);
+      setBrews(response.items);
     } catch (err) {
-      console.error('Error fetching experiments:', err);
-      setExperiments([]);
+      console.error('Error fetching brews:', err);
+      setBrews([]);
     } finally {
-      setExperimentsLoading(false);
+      setBrewsLoading(false);
     }
   }, [id]);
 
@@ -76,15 +76,15 @@ export default function CoffeeDetailPage() {
   }, [fetchData]);
 
   useEffect(() => {
-    fetchExperiments();
-  }, [fetchExperiments]);
+    fetchBrews();
+  }, [fetchBrews]);
 
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
 
   const handleRefresh = async () => {
-    await Promise.all([fetchData(), fetchExperiments(), fetchSessions()]);
+    await Promise.all([fetchData(), fetchBrews(), fetchSessions()]);
   };
 
   const handleBack = () => {
@@ -159,9 +159,9 @@ export default function CoffeeDetailPage() {
       <CoffeeDetail
         coffee={coffee}
         reference={reference}
-        experiments={experiments}
+        brews={brews}
         sessions={sessions}
-        experimentsLoading={experimentsLoading}
+        brewsLoading={brewsLoading}
         onBack={handleBack}
         onEdit={handleEdit}
         onRefresh={handleRefresh}

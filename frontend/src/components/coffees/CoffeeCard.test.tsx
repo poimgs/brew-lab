@@ -22,14 +22,14 @@ const baseCoffee: Coffee = {
   farm: 'Kiamaina Estate',
   process: 'Washed',
   roast_level: 'Light',
-  experiment_count: 8,
+  brew_count: 8,
   created_at: '2025-11-22T15:00:00Z',
   updated_at: '2025-11-22T15:00:00Z',
 };
 
-const coffeeWithBestExperiment: Coffee = {
+const coffeeWithBestBrew: Coffee = {
   ...baseCoffee,
-  best_experiment: {
+  best_brew: {
     id: 'exp-1',
     brew_date: '2026-01-15T10:30:00Z',
     overall_score: 8,
@@ -49,8 +49,8 @@ const archivedCoffee: Coffee = {
   archived_at: '2026-01-20T00:00:00Z',
 };
 
-function renderCard(coffee: Coffee, props?: Partial<{ onNewExperiment: (id: string) => void; onEdit: (coffee: Coffee) => void; onArchive: (id: string) => void; onReactivate: (id: string) => void }>) {
-  const onNewExperiment = props?.onNewExperiment ?? vi.fn();
+function renderCard(coffee: Coffee, props?: Partial<{ onNewBrew: (id: string) => void; onEdit: (coffee: Coffee) => void; onArchive: (id: string) => void; onReactivate: (id: string) => void }>) {
+  const onNewBrew = props?.onNewBrew ?? vi.fn();
   const onEdit = props?.onEdit ?? vi.fn();
   const onArchive = props?.onArchive ?? vi.fn();
   const onReactivate = props?.onReactivate;
@@ -58,7 +58,7 @@ function renderCard(coffee: Coffee, props?: Partial<{ onNewExperiment: (id: stri
     <BrowserRouter>
       <CoffeeCard
         coffee={coffee}
-        onNewExperiment={onNewExperiment}
+        onNewBrew={onNewBrew}
         onEdit={onEdit}
         onArchive={onArchive}
         onReactivate={onReactivate}
@@ -79,21 +79,21 @@ describe('CoffeeCard', () => {
     expect(screen.getByText('Cata Coffee')).toBeInTheDocument();
   });
 
-  it('shows "No experiments yet" when no best experiment', () => {
+  it('shows "No brews yet" when no best brew', () => {
     renderCard(baseCoffee);
 
-    expect(screen.getByText('No experiments yet')).toBeInTheDocument();
+    expect(screen.getByText('No brews yet')).toBeInTheDocument();
   });
 
   it('displays best brew date and score', () => {
-    renderCard(coffeeWithBestExperiment);
+    renderCard(coffeeWithBestBrew);
 
     expect(screen.getByText(/Reference Brew/)).toBeInTheDocument();
     expect(screen.getByText('8/10')).toBeInTheDocument();
   });
 
   it('displays brew parameters line', () => {
-    renderCard(coffeeWithBestExperiment);
+    renderCard(coffeeWithBestBrew);
 
     // Ratio, temp, filter, minerals joined by middle dot
     expect(screen.getByText(/1:15/)).toBeInTheDocument();
@@ -103,14 +103,14 @@ describe('CoffeeCard', () => {
   });
 
   it('displays pour info', () => {
-    renderCard(coffeeWithBestExperiment);
+    renderCard(coffeeWithBestBrew);
 
     expect(screen.getByText(/Bloom 30s/)).toBeInTheDocument();
     expect(screen.getByText(/2 pours/)).toBeInTheDocument();
   });
 
   it('displays improvement note when present', () => {
-    renderCard(coffeeWithBestExperiment);
+    renderCard(coffeeWithBestBrew);
 
     expect(screen.getByText(/Try finer grind to boost sweetness/)).toBeInTheDocument();
   });
@@ -133,10 +133,10 @@ describe('CoffeeCard', () => {
     expect(screen.queryByText('Archived')).not.toBeInTheDocument();
   });
 
-  it('shows "New Experiment" button for active coffee', () => {
+  it('shows "New Brew" button for active coffee', () => {
     renderCard(baseCoffee);
 
-    expect(screen.getByRole('button', { name: /new experiment/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /new brew/i })).toBeInTheDocument();
   });
 
   it('shows "Re-activate" button for archived coffee with onReactivate', () => {
@@ -154,14 +154,14 @@ describe('CoffeeCard', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/coffees/coffee-1');
   });
 
-  it('calls onNewExperiment when "New Experiment" button is clicked', async () => {
+  it('calls onNewBrew when "New Brew" button is clicked', async () => {
     const user = userEvent.setup();
-    const onNewExperiment = vi.fn();
-    renderCard(baseCoffee, { onNewExperiment });
+    const onNewBrew = vi.fn();
+    renderCard(baseCoffee, { onNewBrew });
 
-    await user.click(screen.getByRole('button', { name: /new experiment/i }));
+    await user.click(screen.getByRole('button', { name: /new brew/i }));
 
-    expect(onNewExperiment).toHaveBeenCalledWith('coffee-1');
+    expect(onNewBrew).toHaveBeenCalledWith('coffee-1');
     // Should NOT navigate to detail page
     expect(mockNavigate).not.toHaveBeenCalledWith('/coffees/coffee-1');
   });
@@ -180,7 +180,7 @@ describe('CoffeeCard', () => {
   it('does not show score badge when overall_score is null', () => {
     const coffeeNoScore: Coffee = {
       ...baseCoffee,
-      best_experiment: {
+      best_brew: {
         id: 'exp-2',
         brew_date: '2026-01-15T10:30:00Z',
         ratio: 15,
@@ -206,7 +206,7 @@ describe('CoffeeCard', () => {
 
     expect(screen.queryByRole('button', { name: /^edit$/i })).not.toBeInTheDocument();
     // The Archive button from lucide has text "Archive" but "Re-activate" is shown instead
-    expect(screen.queryByRole('button', { name: /new experiment/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /new brew/i })).not.toBeInTheDocument();
   });
 
   it('calls onEdit with coffee object when Edit button is clicked', async () => {

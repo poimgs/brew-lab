@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Session represents a group of related experiments testing a variable
+// Session represents a group of related brews testing a variable
 type Session struct {
 	ID             uuid.UUID `json:"id"`
 	UserID         uuid.UUID `json:"user_id"`
@@ -19,14 +19,14 @@ type Session struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 
 	// Computed properties
-	ExperimentCount int `json:"experiment_count"`
+	BrewCount int `json:"brew_count"`
 
 	// Nested data (populated on GetByID)
-	Experiments []ExperimentSummary `json:"experiments,omitempty"`
+	Brews []BrewSummary `json:"brews,omitempty"`
 }
 
-// ExperimentSummary is a compact experiment representation for session detail
-type ExperimentSummary struct {
+// BrewSummary is a compact brew representation for session detail
+type BrewSummary struct {
 	ID           uuid.UUID `json:"id"`
 	BrewDate     time.Time `json:"brew_date"`
 	GrindSize    *float64  `json:"grind_size,omitempty"`
@@ -40,7 +40,7 @@ type CreateSessionInput struct {
 	Name           string      `json:"name"`
 	VariableTested string      `json:"variable_tested"`
 	Hypothesis     *string     `json:"hypothesis,omitempty"`
-	ExperimentIDs  []uuid.UUID `json:"experiment_ids,omitempty"`
+	BrewIDs  []uuid.UUID `json:"brew_ids,omitempty"`
 }
 
 // UpdateSessionInput is the input for updating a session
@@ -51,9 +51,9 @@ type UpdateSessionInput struct {
 	Conclusion     *string `json:"conclusion,omitempty"`
 }
 
-// LinkExperimentsInput is the input for linking experiments to a session
-type LinkExperimentsInput struct {
-	ExperimentIDs []uuid.UUID `json:"experiment_ids"`
+// LinkBrewsInput is the input for linking brews to a session
+type LinkBrewsInput struct {
+	BrewIDs []uuid.UUID `json:"brew_ids"`
 }
 
 // ListSessionsParams defines query parameters for listing sessions

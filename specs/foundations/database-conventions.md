@@ -2,12 +2,12 @@
 
 ## Context
 
-This specification defines the PostgreSQL database conventions for the Coffee Experiment Tracker. Feature-specific table schemas are documented in their respective feature specs.
+This specification defines the PostgreSQL database conventions for the Coffee Tracker. Feature-specific table schemas are documented in their respective feature specs.
 
 ## Database Choice
 
 PostgreSQL (cloud-hosted) chosen for:
-- Robust relational model suits structured experiment data
+- Robust relational model suits structured brew data
 - JSONB support for flexible fields
 - Strong typing and constraints
 - Excellent query optimizer
@@ -62,10 +62,10 @@ user_id UUID NOT NULL REFERENCES users(id)
 
 | Element | Convention | Example |
 |---------|------------|---------|
-| Tables | Plural, snake_case | `experiments`, `coffees` |
+| Tables | Plural, snake_case | `brews`, `coffees` |
 | Columns | Singular, snake_case | `coffee_id`, `brew_date` |
 | Foreign keys | `{singular_table}_id` | `user_id`, `coffee_id` |
-| Indexes | `idx_{table}_{column(s)}` | `idx_experiments_brew_date` |
+| Indexes | `idx_{table}_{column(s)}` | `idx_brews_brew_date` |
 
 ### Check Constraints
 
@@ -125,7 +125,7 @@ Always index foreign keys:
 
 ```sql
 CREATE INDEX idx_coffees_user_id ON coffees(user_id);
-CREATE INDEX idx_experiments_coffee_id ON experiments(coffee_id);
+CREATE INDEX idx_brews_coffee_id ON brews(coffee_id);
 ```
 
 ### Query Optimization Indexes
@@ -134,7 +134,7 @@ Add indexes for common query patterns:
 
 ```sql
 -- Sorting by date
-CREATE INDEX idx_experiments_brew_date ON experiments(brew_date);
+CREATE INDEX idx_brews_brew_date ON brews(brew_date);
 
 -- Filtering by roaster
 CREATE INDEX idx_coffees_roaster ON coffees(roaster);
@@ -234,9 +234,9 @@ CREATE INDEX idx_coffees_deleted_at
 
 | Entity | Soft Delete | Archive | Reason |
 |--------|-------------|---------|--------|
-| Coffee | ✓ | ✓ | Preserve experiment history; archive for finished bags |
-| Filter Paper | ✓ | — | Preserve experiment history |
-| Experiment | — | — | Hard delete OK; user owns the data |
+| Coffee | ✓ | ✓ | Preserve brew history; archive for finished bags |
+| Filter Paper | ✓ | — | Preserve brew history |
+| Brew | — | — | Hard delete OK; user owns the data |
 | User | — | — | Account deletion handled separately |
 
 ### Archive Pattern
@@ -267,12 +267,12 @@ Use cascade deletes carefully:
 ON DELETE CASCADE
 
 -- Core entities: restrict or application-level handling
--- (e.g., don't cascade delete experiments when deleting coffee)
+-- (e.g., don't cascade delete brews when deleting coffee)
 ```
 
 ### Foreign Keys to Soft-Deleted Records
 
 When referencing entities that use soft delete:
 - Remove `ON DELETE SET NULL` from FK constraints
-- Let experiments retain their FK to deleted coffees/filter papers
+- Let brews retain their FK to deleted coffees/filter papers
 - Display "(deleted)" indicator in UI when showing historical references

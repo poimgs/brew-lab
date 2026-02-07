@@ -15,10 +15,10 @@ import {
 import {
   type AnalyzeResponse,
   type AnalyzeFilters,
-  analyzeExperimentsWithFilters,
-} from '@/api/experiments';
+  analyzeBrewsWithFilters,
+} from '@/api/brews';
 import { listCoffees, type Coffee } from '@/api/coffees';
-import AnalyzeView from '@/components/experiment/AnalyzeView';
+import AnalyzeView from '@/components/brew/AnalyzeView';
 
 export default function AnalysisPage() {
   // Filter state
@@ -89,14 +89,14 @@ export default function AnalysisPage() {
         filters.score_max = parseInt(scoreMax, 10);
       }
 
-      const result = await analyzeExperimentsWithFilters(filters);
+      const result = await analyzeBrewsWithFilters(filters);
       setAnalyzeResult(result);
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : 'Failed to analyze experiments';
-      // Check for specific error about minimum experiments
+        err instanceof Error ? err.message : 'Failed to analyze brews';
+      // Check for specific error about minimum brews
       if (errorMessage.includes('not enough') || errorMessage.includes('minimum')) {
-        setError('Not enough experiments match your filters. At least 5 experiments are required for analysis.');
+        setError('Not enough brews match your filters. At least 5 brews are required for analysis.');
       } else {
         setError(errorMessage);
       }
@@ -113,7 +113,7 @@ export default function AnalysisPage() {
       <div className="container mx-auto py-8 px-4">
         <AnalyzeView
           result={analyzeResult}
-          experimentIds={analyzeResult.experiment_ids || []}
+          brewIds={analyzeResult.brew_ids || []}
           onClose={() => setAnalyzeResult(null)}
         />
       </div>
@@ -144,11 +144,11 @@ export default function AnalysisPage() {
           <CardDescription className="text-sm">
             Analysis calculates correlations between your brewing parameters (temperature, grind
             size, dose, etc.) and outcomes (score, acidity, sweetness, etc.). Use the filters
-            below to select which experiments to include. Cross-coffee analysis is supported -
+            below to select which brews to include. Cross-coffee analysis is supported -
             you can analyze patterns across multiple coffees or focus on a single coffee.
           </CardDescription>
           <div className="flex gap-4 mt-3 text-sm text-muted-foreground">
-            <span>Minimum: 5 experiments</span>
+            <span>Minimum: 5 brews</span>
             <span>Recommended: 10+ for reliable correlations</span>
           </div>
         </CardContent>
@@ -160,7 +160,7 @@ export default function AnalysisPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Filter className="h-5 w-5" />
-              <CardTitle className="text-base">Filter Experiments</CardTitle>
+              <CardTitle className="text-base">Filter Brews</CardTitle>
             </div>
             <Button
               variant="ghost"
@@ -199,7 +199,7 @@ export default function AnalysisPage() {
                       </div>
                     </div>
                     <Badge variant="outline" className="text-xs shrink-0">
-                      {coffee.experiment_count}
+                      {coffee.brew_count}
                     </Badge>
                   </div>
                 ))}
@@ -286,11 +286,11 @@ export default function AnalysisPage() {
         <Card className="border-destructive/50 bg-destructive/10">
           <CardContent className="pt-6">
             <p className="text-destructive text-sm">{error}</p>
-            {error.includes('5 experiments') && (
+            {error.includes('5 brews') && (
               <p className="text-muted-foreground text-sm mt-2">
-                Try expanding your filters to include more experiments, or{' '}
-                <Link to="/experiments/new" className="text-primary hover:underline">
-                  log more experiments
+                Try expanding your filters to include more brews, or{' '}
+                <Link to="/brews/new" className="text-primary hover:underline">
+                  log more brews
                 </Link>
                 .
               </p>
@@ -306,11 +306,11 @@ export default function AnalysisPage() {
             <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
               {hasFilters
-                ? 'Click "Run Analysis" to discover correlations in your filtered experiments.'
-                : 'Select filters above to narrow down experiments, then run analysis.'}
+                ? 'Click "Run Analysis" to discover correlations in your filtered brews.'
+                : 'Select filters above to narrow down brews, then run analysis.'}
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              Leave filters empty to analyze all your experiments.
+              Leave filters empty to analyze all your brews.
             </p>
           </CardContent>
         </Card>

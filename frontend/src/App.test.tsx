@@ -39,14 +39,14 @@ vi.mock('@/pages/CoffeesPage', () => ({
 vi.mock('@/pages/LoginPage', () => ({
   default: () => <div data-testid="login-page">Login Page</div>,
 }));
-vi.mock('@/pages/ExperimentsPage', () => ({
-  default: () => <div data-testid="experiments-page">Experiments Page</div>,
+vi.mock('@/pages/BrewsPage', () => ({
+  default: () => <div data-testid="brews-page">Brews Page</div>,
 }));
-vi.mock('@/pages/ExperimentNewPage', () => ({
-  default: () => <div data-testid="experiment-new-page" />,
+vi.mock('@/pages/BrewFormPage', () => ({
+  default: () => <div data-testid="brew-form-page" />,
 }));
-vi.mock('@/pages/ExperimentDetailPage', () => ({
-  default: () => <div data-testid="experiment-detail-page" />,
+vi.mock('@/pages/BrewDetailPage', () => ({
+  default: () => <div data-testid="brew-detail-page" />,
 }));
 vi.mock('@/pages/AnalysisPage', () => ({
   default: () => <div data-testid="analysis-page" />,

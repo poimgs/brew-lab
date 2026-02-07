@@ -14,13 +14,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { createSession, updateSession, type Session } from '@/api/sessions';
-import type { Experiment } from '@/api/experiments';
+import type { Brew } from '@/api/brews';
 
 interface SessionFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   coffeeId: string;
-  experiments: Experiment[];
+  brews: Brew[];
   session?: Session;
   onSuccess: () => void;
 }
@@ -29,7 +29,7 @@ export default function SessionForm({
   open,
   onOpenChange,
   coffeeId,
-  experiments,
+  brews,
   session,
   onSuccess,
 }: SessionFormProps) {
@@ -38,7 +38,7 @@ export default function SessionForm({
   const [variableTested, setVariableTested] = useState('');
   const [hypothesis, setHypothesis] = useState('');
   const [conclusion, setConclusion] = useState('');
-  const [selectedExperiments, setSelectedExperiments] = useState<Set<string>>(new Set());
+  const [selectedBrews, setSelectedBrews] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,13 +49,13 @@ export default function SessionForm({
         setVariableTested(session.variable_tested);
         setHypothesis(session.hypothesis ?? '');
         setConclusion(session.conclusion ?? '');
-        setSelectedExperiments(new Set());
+        setSelectedBrews(new Set());
       } else {
         setName('');
         setVariableTested('');
         setHypothesis('');
         setConclusion('');
-        setSelectedExperiments(new Set());
+        setSelectedBrews(new Set());
       }
       setError(null);
     }
@@ -68,13 +68,13 @@ export default function SessionForm({
     });
   };
 
-  const handleToggleExperiment = (experimentId: string) => {
-    setSelectedExperiments((prev) => {
+  const handleToggleBrew = (brewId: string) => {
+    setSelectedBrews((prev) => {
       const next = new Set(prev);
-      if (next.has(experimentId)) {
-        next.delete(experimentId);
+      if (next.has(brewId)) {
+        next.delete(brewId);
       } else {
-        next.add(experimentId);
+        next.add(brewId);
       }
       return next;
     });
@@ -107,7 +107,7 @@ export default function SessionForm({
           name: name.trim(),
           variable_tested: variableTested.trim(),
           hypothesis: hypothesis.trim() || undefined,
-          experiment_ids: selectedExperiments.size > 0 ? Array.from(selectedExperiments) : undefined,
+          brew_ids: selectedBrews.size > 0 ? Array.from(selectedBrews) : undefined,
         });
       }
       onSuccess();
@@ -127,7 +127,7 @@ export default function SessionForm({
           <DialogDescription>
             {isEditing
               ? 'Update session details.'
-              : 'Create a session to group experiments testing the same variable.'}
+              : 'Create a session to group brews testing the same variable.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -182,21 +182,21 @@ export default function SessionForm({
             </div>
           )}
 
-          {!isEditing && experiments.length > 0 && (
+          {!isEditing && brews.length > 0 && (
             <div className="space-y-2">
-              <Label>Link Experiments</Label>
+              <Label>Link Brews</Label>
               <p className="text-xs text-muted-foreground">
-                Select experiments to include in this session.
+                Select brews to include in this session.
               </p>
               <div className="border rounded-md max-h-[200px] overflow-y-auto">
-                {experiments.map((exp) => (
+                {brews.map((exp) => (
                   <label
                     key={exp.id}
                     className="flex items-center gap-3 p-2 hover:bg-accent/50 cursor-pointer border-b last:border-b-0"
                   >
                     <Checkbox
-                      checked={selectedExperiments.has(exp.id)}
-                      onCheckedChange={() => handleToggleExperiment(exp.id)}
+                      checked={selectedBrews.has(exp.id)}
+                      onCheckedChange={() => handleToggleBrew(exp.id)}
                     />
                     <div className="flex-1 min-w-0">
                       <span className="text-sm">

@@ -155,7 +155,7 @@ export default function FilterPaperList() {
         open={!!deleteConfirm}
         onOpenChange={(open) => !open && setDeleteConfirm(null)}
         title="Delete Filter Paper?"
-        description={`Delete "${deleteConfirm?.name}"? This filter paper will be hidden but your experiment history will be preserved.`}
+        description={`Delete "${deleteConfirm?.name}"? This filter paper will be hidden but your brew history will be preserved.`}
         onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
         isLoading={!!actionLoading}
       />

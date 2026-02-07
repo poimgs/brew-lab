@@ -3,8 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import CoffeeDetail from './CoffeeDetail';
-import type { Coffee, CoffeeReference, ReferenceExperiment } from '@/api/coffees';
-import type { Experiment } from '@/api/experiments';
+import type { Coffee, CoffeeReference, ReferenceBrew } from '@/api/coffees';
+import type { Brew } from '@/api/brews';
 import * as coffeesApi from '@/api/coffees';
 import * as coffeeGoalsApi from '@/api/coffee-goals';
 
@@ -23,7 +23,7 @@ vi.mock('@/api/coffees', async () => {
   const actual = await vi.importActual('@/api/coffees');
   return {
     ...actual,
-    setBestExperiment: vi.fn(),
+    setBestBrew: vi.fn(),
     archiveCoffee: vi.fn(),
     unarchiveCoffee: vi.fn(),
   };
@@ -45,13 +45,13 @@ vi.mock('@/api/sessions', async () => {
   };
 });
 
-vi.mock('@/api/experiments', async () => {
-  const actual = await vi.importActual('@/api/experiments');
+vi.mock('@/api/brews', async () => {
+  const actual = await vi.importActual('@/api/brews');
   return {
     ...actual,
-    getExperiment: vi.fn(),
-    deleteExperiment: vi.fn(),
-    copyExperiment: vi.fn(),
+    getBrew: vi.fn(),
+    deleteBrew: vi.fn(),
+    copyBrew: vi.fn(),
   };
 });
 
@@ -69,7 +69,7 @@ describe('CoffeeDetail', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(coffeesApi.setBestExperiment).mockResolvedValue({} as Coffee);
+    vi.mocked(coffeesApi.setBestBrew).mockResolvedValue({} as Coffee);
     vi.mocked(coffeeGoalsApi.upsertCoffeeGoal).mockResolvedValue({
       id: 'goal-1',
       coffee_id: 'coffee-1',
@@ -89,7 +89,7 @@ describe('CoffeeDetail', () => {
     roast_date: '2025-11-19',
     tasting_notes: 'Apricot Nectar, Lemon Sorbet',
     notes: 'Best around 3-4 weeks',
-    experiment_count: 8,
+    brew_count: 8,
     days_off_roast: 61,
     last_brewed: '2026-01-15T10:30:00Z',
     created_at: '2025-11-22T15:00:00Z',
@@ -97,9 +97,9 @@ describe('CoffeeDetail', () => {
     ...overrides,
   });
 
-  const createMockReferenceExperiment = (
-    overrides: Partial<ReferenceExperiment> = {}
-  ): ReferenceExperiment => ({
+  const createMockReferenceBrew = (
+    overrides: Partial<ReferenceBrew> = {}
+  ): ReferenceBrew => ({
     id: 'exp-1',
     brew_date: '2026-01-15T10:30:00Z',
     coffee_weight: 15,
@@ -121,7 +121,7 @@ describe('CoffeeDetail', () => {
   const createMockReference = (
     overrides: Partial<CoffeeReference> = {}
   ): CoffeeReference => ({
-    experiment: createMockReferenceExperiment(),
+    brew: createMockReferenceBrew(),
     goals: {
       id: 'goal-1',
       coffee_ml: 180,
@@ -134,7 +134,7 @@ describe('CoffeeDetail', () => {
     ...overrides,
   });
 
-  const createMockExperiment = (overrides: Partial<Experiment> = {}): Experiment => ({
+  const createMockBrew = (overrides: Partial<Brew> = {}): Brew => ({
     id: 'exp-1',
     user_id: 'user-1',
     coffee_id: 'coffee-1',
@@ -157,9 +157,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -179,9 +179,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -201,9 +201,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -224,9 +224,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -236,7 +236,7 @@ describe('CoffeeDetail', () => {
         />
       );
 
-      // Find the Edit button next to New Experiment (in the header)
+      // Find the Edit button next to New Brew (in the header)
       const editButtons = screen.getAllByRole('button', { name: /Edit/i });
       // The first Edit button is in the header (with "Edit" text)
       // We need to find the one that's an outline variant (header edit)
@@ -248,16 +248,16 @@ describe('CoffeeDetail', () => {
       expect(mockOnEdit).toHaveBeenCalledOnce();
     });
 
-    it('navigates to new experiment page when New Experiment is clicked', async () => {
+    it('navigates to new brew page when New Brew is clicked', async () => {
       const user = userEvent.setup();
       const coffee = createMockCoffee();
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -267,8 +267,8 @@ describe('CoffeeDetail', () => {
         />
       );
 
-      await user.click(screen.getByRole('button', { name: /New Experiment/i }));
-      expect(mockNavigate).toHaveBeenCalledWith('/experiments/new?coffee_id=coffee-1');
+      await user.click(screen.getByRole('button', { name: /New Brew/i }));
+      expect(mockNavigate).toHaveBeenCalledWith('/brews/new?coffee_id=coffee-1');
     });
   });
 
@@ -279,9 +279,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -292,7 +292,7 @@ describe('CoffeeDetail', () => {
       );
 
       expect(screen.getByText('61')).toBeInTheDocument(); // Days off roast
-      expect(screen.getByText('8')).toBeInTheDocument(); // Experiment count
+      expect(screen.getByText('8')).toBeInTheDocument(); // Brew count
     });
   });
 
@@ -304,9 +304,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={reference}
-          experiments={[createMockExperiment()]}
+          brews={[createMockBrew()]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -322,16 +322,16 @@ describe('CoffeeDetail', () => {
       expect(screen.getByText(/TDS: 1.38%.*EY: 20.1%/)).toBeInTheDocument();
     });
 
-    it('renders empty state when no experiments exist', () => {
-      const coffee = createMockCoffee({ experiment_count: 0 });
-      const reference = createMockReference({ experiment: null, goals: null });
+    it('renders empty state when no brews exist', () => {
+      const coffee = createMockCoffee({ brew_count: 0 });
+      const reference = createMockReference({ brew: null, goals: null });
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
           reference={reference}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -342,18 +342,18 @@ describe('CoffeeDetail', () => {
       );
 
       // In best brew section
-      expect(screen.getByText(/No experiments yet.*Log your first brew/)).toBeInTheDocument();
+      expect(screen.getByText(/No brews yet.*Log your first brew/)).toBeInTheDocument();
     });
 
-    it('shows Change button when experiments exist', () => {
+    it('shows Change button when brews exist', () => {
       const coffee = createMockCoffee();
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[createMockExperiment()]}
+          brews={[createMockBrew()]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -375,9 +375,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={reference}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -408,9 +408,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={reference}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -430,9 +430,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -459,9 +459,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -490,19 +490,19 @@ describe('CoffeeDetail', () => {
   });
 
   describe('brew history section', () => {
-    it('renders experiment list', () => {
+    it('renders brew list', () => {
       const coffee = createMockCoffee();
-      const experiments = [
-        createMockExperiment({ id: 'exp-1', brew_date: '2026-01-15T10:30:00Z', overall_score: 8 }),
-        createMockExperiment({ id: 'exp-2', brew_date: '2026-01-12T10:30:00Z', overall_score: 7 }),
+      const brews = [
+        createMockBrew({ id: 'exp-1', brew_date: '2026-01-15T10:30:00Z', overall_score: 8 }),
+        createMockBrew({ id: 'exp-2', brew_date: '2026-01-12T10:30:00Z', overall_score: 7 }),
       ];
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={experiments}
+          brews={brews}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -517,15 +517,15 @@ describe('CoffeeDetail', () => {
       expect(screen.getByText('Jan 12')).toBeInTheDocument();
     });
 
-    it('shows loading state when experiments are loading', () => {
+    it('shows loading state when brews are loading', () => {
       const coffee = createMockCoffee();
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={true}
+          brewsLoading={true}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -540,15 +540,15 @@ describe('CoffeeDetail', () => {
       expect(loader).toBeInTheDocument();
     });
 
-    it('shows empty state when no experiments exist', () => {
-      const coffee = createMockCoffee({ experiment_count: 0 });
+    it('shows empty state when no brews exist', () => {
+      const coffee = createMockCoffee({ brew_count: 0 });
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
-          reference={createMockReference({ experiment: null, goals: null })}
-          experiments={[]}
+          reference={createMockReference({ brew: null, goals: null })}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -559,22 +559,22 @@ describe('CoffeeDetail', () => {
       );
 
       // In brew history section
-      expect(screen.getByText(/Click "New Experiment" to log your first brew/)).toBeInTheDocument();
+      expect(screen.getByText(/Click "New Brew" to log your first brew/)).toBeInTheDocument();
     });
 
-    it('marks best experiment with star icon', () => {
-      const coffee = createMockCoffee({ best_experiment_id: 'exp-1' });
-      const experiments = [
-        createMockExperiment({ id: 'exp-1', brew_date: '2026-01-15T10:30:00Z' }),
-        createMockExperiment({ id: 'exp-2', brew_date: '2026-01-12T10:30:00Z' }),
+    it('marks best brew with star icon', () => {
+      const coffee = createMockCoffee({ best_brew_id: 'exp-1' });
+      const brews = [
+        createMockBrew({ id: 'exp-1', brew_date: '2026-01-15T10:30:00Z' }),
+        createMockBrew({ id: 'exp-2', brew_date: '2026-01-12T10:30:00Z' }),
       ];
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={experiments}
+          brews={brews}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -584,24 +584,24 @@ describe('CoffeeDetail', () => {
         />
       );
 
-      // The best experiment should have a filled star (yellow-500 class)
+      // The best brew should have a filled star (yellow-500 class)
       const stars = document.querySelectorAll('.fill-yellow-500');
       expect(stars.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('shows Mark as Reference button for non-reference experiments', () => {
-      const coffee = createMockCoffee({ best_experiment_id: 'exp-1' });
-      const experiments = [
-        createMockExperiment({ id: 'exp-1', brew_date: '2026-01-15T10:30:00Z' }),
-        createMockExperiment({ id: 'exp-2', brew_date: '2026-01-12T10:30:00Z' }),
+    it('shows Mark as Reference button for non-reference brews', () => {
+      const coffee = createMockCoffee({ best_brew_id: 'exp-1' });
+      const brews = [
+        createMockBrew({ id: 'exp-1', brew_date: '2026-01-15T10:30:00Z' }),
+        createMockBrew({ id: 'exp-2', brew_date: '2026-01-12T10:30:00Z' }),
       ];
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={experiments}
+          brews={brews}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -614,20 +614,20 @@ describe('CoffeeDetail', () => {
       expect(screen.getByRole('button', { name: /Mark as Reference/i })).toBeInTheDocument();
     });
 
-    it('sets reference experiment when Mark as Reference is clicked', async () => {
+    it('sets reference brew when Mark as Reference is clicked', async () => {
       const user = userEvent.setup();
-      const coffee = createMockCoffee({ best_experiment_id: 'exp-1' });
-      const experiments = [
-        createMockExperiment({ id: 'exp-1', brew_date: '2026-01-15T10:30:00Z' }),
-        createMockExperiment({ id: 'exp-2', brew_date: '2026-01-12T10:30:00Z' }),
+      const coffee = createMockCoffee({ best_brew_id: 'exp-1' });
+      const brews = [
+        createMockBrew({ id: 'exp-1', brew_date: '2026-01-15T10:30:00Z' }),
+        createMockBrew({ id: 'exp-2', brew_date: '2026-01-12T10:30:00Z' }),
       ];
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={experiments}
+          brews={brews}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -640,22 +640,22 @@ describe('CoffeeDetail', () => {
       await user.click(screen.getByRole('button', { name: /Mark as Reference/i }));
 
       await waitFor(() => {
-        expect(coffeesApi.setBestExperiment).toHaveBeenCalledWith('coffee-1', 'exp-2');
+        expect(coffeesApi.setBestBrew).toHaveBeenCalledWith('coffee-1', 'exp-2');
         expect(mockOnRefresh).toHaveBeenCalled();
       });
     });
 
-    it('opens experiment detail modal when row is clicked', async () => {
+    it('opens brew detail modal when row is clicked', async () => {
       const user = userEvent.setup();
       const coffee = createMockCoffee();
-      const experiments = [createMockExperiment({ id: 'exp-1' })];
+      const brews = [createMockBrew({ id: 'exp-1' })];
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={experiments}
+          brews={brews}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -669,14 +669,14 @@ describe('CoffeeDetail', () => {
       const row = screen.getByText('Jan 15').closest('tr');
       if (row) {
         await user.click(row);
-        expect(mockNavigate).not.toHaveBeenCalledWith('/experiments/exp-1');
+        expect(mockNavigate).not.toHaveBeenCalledWith('/brews/exp-1');
       }
     });
 
-    it('shows View All Experiments link when more than 10 experiments', () => {
+    it('shows View All Brews link when more than 10 brews', () => {
       const coffee = createMockCoffee();
-      const experiments = Array.from({ length: 11 }, (_, i) =>
-        createMockExperiment({
+      const brews = Array.from({ length: 11 }, (_, i) =>
+        createMockBrew({
           id: `exp-${i}`,
           brew_date: `2026-01-${String(15 - i).padStart(2, '0')}T10:30:00Z`,
         })
@@ -685,9 +685,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={experiments}
+          brews={brews}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -697,22 +697,22 @@ describe('CoffeeDetail', () => {
         />
       );
 
-      expect(screen.getByRole('button', { name: /View All Experiments/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /View All Brews/i })).toBeInTheDocument();
     });
   });
 
-  describe('change reference experiment dialog', () => {
+  describe('change reference brew dialog', () => {
     it('opens dialog when Change button is clicked', async () => {
       const user = userEvent.setup();
       const coffee = createMockCoffee();
-      const experiments = [createMockExperiment()];
+      const brews = [createMockBrew()];
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={experiments}
+          brews={brews}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -726,17 +726,17 @@ describe('CoffeeDetail', () => {
       expect(screen.getByText('Select Reference Brew')).toBeInTheDocument();
     });
 
-    it('shows Clear Selection button when best experiment is set', async () => {
+    it('shows Clear Selection button when best brew is set', async () => {
       const user = userEvent.setup();
-      const coffee = createMockCoffee({ best_experiment_id: 'exp-1' });
-      const experiments = [createMockExperiment()];
+      const coffee = createMockCoffee({ best_brew_id: 'exp-1' });
+      const brews = [createMockBrew()];
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={experiments}
+          brews={brews}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -750,17 +750,17 @@ describe('CoffeeDetail', () => {
       expect(screen.getByRole('button', { name: 'Clear Selection' })).toBeInTheDocument();
     });
 
-    it('clears best experiment when Clear Selection is clicked', async () => {
+    it('clears best brew when Clear Selection is clicked', async () => {
       const user = userEvent.setup();
-      const coffee = createMockCoffee({ best_experiment_id: 'exp-1' });
-      const experiments = [createMockExperiment()];
+      const coffee = createMockCoffee({ best_brew_id: 'exp-1' });
+      const brews = [createMockBrew()];
       renderWithRouter(
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={experiments}
+          brews={brews}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -774,7 +774,7 @@ describe('CoffeeDetail', () => {
       await user.click(screen.getByRole('button', { name: 'Clear Selection' }));
 
       await waitFor(() => {
-        expect(coffeesApi.setBestExperiment).toHaveBeenCalledWith('coffee-1', null);
+        expect(coffeesApi.setBestBrew).toHaveBeenCalledWith('coffee-1', null);
         expect(mockOnRefresh).toHaveBeenCalled();
       });
     });
@@ -787,9 +787,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -809,9 +809,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -832,9 +832,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -856,9 +856,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -890,9 +890,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -919,9 +919,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}
@@ -947,9 +947,9 @@ describe('CoffeeDetail', () => {
         <CoffeeDetail
           coffee={coffee}
           reference={createMockReference()}
-          experiments={[]}
+          brews={[]}
           sessions={[]}
-          experimentsLoading={false}
+          brewsLoading={false}
           onBack={mockOnBack}
           onEdit={mockOnEdit}
           onRefresh={mockOnRefresh}

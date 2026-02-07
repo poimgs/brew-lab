@@ -1,6 +1,6 @@
 import client from './client';
 
-export interface ExperimentSummary {
+export interface BrewSummary {
   id: string;
   brew_date: string;
   grind_size?: number;
@@ -16,8 +16,8 @@ export interface Session {
   variable_tested: string;
   hypothesis?: string;
   conclusion?: string;
-  experiment_count: number;
-  experiments?: ExperimentSummary[];
+  brew_count: number;
+  brews?: BrewSummary[];
   created_at: string;
   updated_at: string;
 }
@@ -27,7 +27,7 @@ export interface CreateSessionInput {
   name: string;
   variable_tested: string;
   hypothesis?: string;
-  experiment_ids?: string[];
+  brew_ids?: string[];
 }
 
 export interface UpdateSessionInput {
@@ -75,13 +75,13 @@ export async function deleteSession(id: string): Promise<void> {
   await client.delete(`/sessions/${id}`);
 }
 
-export async function linkExperiments(sessionId: string, experimentIds: string[]): Promise<Session> {
-  const response = await client.post<Session>(`/sessions/${sessionId}/experiments`, {
-    experiment_ids: experimentIds,
+export async function linkBrews(sessionId: string, brewIds: string[]): Promise<Session> {
+  const response = await client.post<Session>(`/sessions/${sessionId}/brews`, {
+    brew_ids: brewIds,
   });
   return response.data;
 }
 
-export async function unlinkExperiment(sessionId: string, experimentId: string): Promise<void> {
-  await client.delete(`/sessions/${sessionId}/experiments/${experimentId}`);
+export async function unlinkBrew(sessionId: string, brewId: string): Promise<void> {
+  await client.delete(`/sessions/${sessionId}/brews/${brewId}`);
 }

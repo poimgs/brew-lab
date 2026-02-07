@@ -6,7 +6,7 @@ import Layout from '@/components/layout/Layout';
 import LoginPage from '@/pages/LoginPage';
 import LibraryPage from '@/pages/LibraryPage';
 import PreferencesPage from '@/pages/PreferencesPage';
-import ExperimentNewPage from '@/pages/ExperimentNewPage';
+import BrewFormPage from '@/pages/BrewFormPage';
 import CoffeesPage from '@/pages/CoffeesPage';
 import CoffeeDetailPage from '@/pages/CoffeeDetailPage';
 import DashboardPage from '@/pages/DashboardPage';
@@ -89,18 +89,27 @@ function App() {
             }
           />
           <Route
-            path="/experiments/new"
+            path="/brews/new"
             element={
               <ProtectedRoute>
                 <Layout>
-                  <ExperimentNewPage />
+                  <BrewFormPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/brews/:id/edit"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <BrewFormPage />
                 </Layout>
               </ProtectedRoute>
             }
           />
           {/* Redirects for removed pages */}
-          <Route path="/experiments" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/experiments/:id" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/brews" element={<Navigate to="/dashboard" replace />} />
           <Route path="/analysis" element={<Navigate to="/dashboard" replace />} />
         </Routes>
         </AuthProvider>

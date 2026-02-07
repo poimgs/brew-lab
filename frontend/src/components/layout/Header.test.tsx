@@ -68,11 +68,11 @@ describe('Header', () => {
       expect(hrefs).toEqual(['/', '/dashboard', '/library']);
     });
 
-    it('does not render Experiments or Analysis nav items', () => {
+    it('does not render Brews or Analysis nav items', () => {
       renderAtRoute('/');
 
       const desktopNav = document.querySelector('nav.hidden.md\\:flex') as HTMLElement;
-      expect(within(desktopNav).queryByText('Experiments')).not.toBeInTheDocument();
+      expect(within(desktopNav).queryByText('Brews')).not.toBeInTheDocument();
       expect(within(desktopNav).queryByText('Analysis')).not.toBeInTheDocument();
     });
 

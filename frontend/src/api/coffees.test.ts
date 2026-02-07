@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import client from './client';
 import {
   listCoffees,
-  setBestExperiment,
+  setBestBrew,
   getReference,
   type Coffee,
   type CoffeeReference,
-  type BestExperimentSummary,
+  type BestBrewSummary,
   type ListCoffeesResponse,
 } from './coffees';
 
@@ -29,16 +29,16 @@ const mockCoffee: Coffee = {
   process: 'Washed',
   roast_level: 'Light',
   roast_date: '2025-11-19',
-  best_experiment_id: 'exp-456',
+  best_brew_id: 'exp-456',
   created_at: '2025-11-22T15:00:00Z',
   updated_at: '2025-11-22T15:00:00Z',
   days_off_roast: 61,
-  experiment_count: 8,
+  brew_count: 8,
   last_brewed: '2026-01-19T10:30:00Z',
 };
 
 const mockCoffeeReference: CoffeeReference = {
-  experiment: {
+  brew: {
     id: 'exp-456',
     brew_date: '2026-01-15T10:30:00Z',
     coffee_weight: 15.0,
@@ -75,8 +75,8 @@ describe('coffees API - List with enrichment data', () => {
     vi.clearAllMocks();
   });
 
-  it('BestExperimentSummary type has all expected fields', () => {
-    const summary: BestExperimentSummary = {
+  it('BestBrewSummary type has all expected fields', () => {
+    const summary: BestBrewSummary = {
       id: 'exp-456',
       brew_date: '2026-01-15T10:30:00Z',
       overall_score: 8,
@@ -100,10 +100,10 @@ describe('coffees API - List with enrichment data', () => {
     expect(summary.pour_styles).toEqual(['circular', 'center']);
   });
 
-  it('Coffee type supports optional best_experiment and improvement_note', () => {
+  it('Coffee type supports optional best_brew and improvement_note', () => {
     const coffeeWithEnrichment: Coffee = {
       ...mockCoffee,
-      best_experiment: {
+      best_brew: {
         id: 'exp-456',
         brew_date: '2026-01-15T10:30:00Z',
         overall_score: 8,
@@ -117,14 +117,14 @@ describe('coffees API - List with enrichment data', () => {
       improvement_note: 'Try finer grind',
     };
 
-    expect(coffeeWithEnrichment.best_experiment).toBeDefined();
-    expect(coffeeWithEnrichment.best_experiment?.overall_score).toBe(8);
+    expect(coffeeWithEnrichment.best_brew).toBeDefined();
+    expect(coffeeWithEnrichment.best_brew?.overall_score).toBe(8);
     expect(coffeeWithEnrichment.improvement_note).toBe('Try finer grind');
   });
 
   it('Coffee type works without enrichment fields', () => {
     const plain: Coffee = { ...mockCoffee };
-    expect(plain.best_experiment).toBeUndefined();
+    expect(plain.best_brew).toBeUndefined();
     expect(plain.improvement_note).toBeUndefined();
   });
 
@@ -133,7 +133,7 @@ describe('coffees API - List with enrichment data', () => {
       items: [
         {
           ...mockCoffee,
-          best_experiment: {
+          best_brew: {
             id: 'exp-456',
             brew_date: '2026-01-15T10:30:00Z',
             overall_score: 8,
@@ -155,8 +155,8 @@ describe('coffees API - List with enrichment data', () => {
 
     expect(client.get).toHaveBeenCalledWith('/coffees', { params: {} });
     expect(result.items).toHaveLength(1);
-    expect(result.items[0].best_experiment?.pour_count).toBe(3);
-    expect(result.items[0].best_experiment?.pour_styles).toEqual([
+    expect(result.items[0].best_brew?.pour_count).toBe(3);
+    expect(result.items[0].best_brew?.pour_styles).toEqual([
       'circular',
       'circular',
       'center',
@@ -165,82 +165,82 @@ describe('coffees API - List with enrichment data', () => {
   });
 });
 
-describe('coffees API - Best Experiment and Reference', () => {
+describe('coffees API - Best Brew and Reference', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('setBestExperiment', () => {
-    it('sets a best experiment for a coffee', async () => {
-      const updatedCoffee = { ...mockCoffee, best_experiment_id: 'exp-new' };
+  describe('setBestBrew', () => {
+    it('sets a best brew for a coffee', async () => {
+      const updatedCoffee = { ...mockCoffee, best_brew_id: 'exp-new' };
       vi.mocked(client.post).mockResolvedValueOnce({ data: updatedCoffee });
 
-      const result = await setBestExperiment('coffee-123', 'exp-new');
+      const result = await setBestBrew('coffee-123', 'exp-new');
 
-      expect(client.post).toHaveBeenCalledWith('/coffees/coffee-123/best-experiment', {
-        experiment_id: 'exp-new',
+      expect(client.post).toHaveBeenCalledWith('/coffees/coffee-123/best-brew', {
+        brew_id: 'exp-new',
       });
       expect(result).toEqual(updatedCoffee);
-      expect(result.best_experiment_id).toBe('exp-new');
+      expect(result.best_brew_id).toBe('exp-new');
     });
 
-    it('clears the best experiment when passing null', async () => {
-      const updatedCoffee = { ...mockCoffee, best_experiment_id: undefined };
+    it('clears the best brew when passing null', async () => {
+      const updatedCoffee = { ...mockCoffee, best_brew_id: undefined };
       vi.mocked(client.post).mockResolvedValueOnce({ data: updatedCoffee });
 
-      const result = await setBestExperiment('coffee-123', null);
+      const result = await setBestBrew('coffee-123', null);
 
-      expect(client.post).toHaveBeenCalledWith('/coffees/coffee-123/best-experiment', {
-        experiment_id: null,
+      expect(client.post).toHaveBeenCalledWith('/coffees/coffee-123/best-brew', {
+        brew_id: null,
       });
-      expect(result.best_experiment_id).toBeUndefined();
+      expect(result.best_brew_id).toBeUndefined();
     });
   });
 
   describe('getReference', () => {
-    it('fetches reference data with experiment and goals', async () => {
+    it('fetches reference data with brew and goals', async () => {
       vi.mocked(client.get).mockResolvedValueOnce({ data: mockCoffeeReference });
 
       const result = await getReference('coffee-123');
 
       expect(client.get).toHaveBeenCalledWith('/coffees/coffee-123/reference');
       expect(result).toEqual(mockCoffeeReference);
-      expect(result.experiment).not.toBeNull();
-      expect(result.experiment?.is_best).toBe(true);
+      expect(result.brew).not.toBeNull();
+      expect(result.brew?.is_best).toBe(true);
       expect(result.goals).not.toBeNull();
       expect(result.goals?.coffee_ml).toBe(180);
     });
 
-    it('handles reference with null experiment (no experiments yet)', async () => {
-      const referenceNoExperiment: CoffeeReference = {
-        experiment: null,
+    it('handles reference with null brew (no brews yet)', async () => {
+      const referenceNoBrew: CoffeeReference = {
+        brew: null,
         goals: mockCoffeeReference.goals,
       };
-      vi.mocked(client.get).mockResolvedValueOnce({ data: referenceNoExperiment });
+      vi.mocked(client.get).mockResolvedValueOnce({ data: referenceNoBrew });
 
       const result = await getReference('coffee-new');
 
-      expect(result.experiment).toBeNull();
+      expect(result.brew).toBeNull();
       expect(result.goals).not.toBeNull();
     });
 
     it('handles reference with null goals (no goals set)', async () => {
       const referenceNoGoals: CoffeeReference = {
-        experiment: mockCoffeeReference.experiment,
+        brew: mockCoffeeReference.brew,
         goals: null,
       };
       vi.mocked(client.get).mockResolvedValueOnce({ data: referenceNoGoals });
 
       const result = await getReference('coffee-123');
 
-      expect(result.experiment).not.toBeNull();
+      expect(result.brew).not.toBeNull();
       expect(result.goals).toBeNull();
     });
 
-    it('handles reference with is_best false (latest experiment)', async () => {
+    it('handles reference with is_best false (latest brew)', async () => {
       const referenceLatest: CoffeeReference = {
-        experiment: {
-          ...mockCoffeeReference.experiment!,
+        brew: {
+          ...mockCoffeeReference.brew!,
           is_best: false,
         },
         goals: null,
@@ -249,14 +249,14 @@ describe('coffees API - Best Experiment and Reference', () => {
 
       const result = await getReference('coffee-123');
 
-      expect(result.experiment?.is_best).toBe(false);
+      expect(result.brew?.is_best).toBe(false);
     });
 
-    it('includes all experiment fields in reference', async () => {
+    it('includes all brew fields in reference', async () => {
       vi.mocked(client.get).mockResolvedValueOnce({ data: mockCoffeeReference });
 
       const result = await getReference('coffee-123');
-      const exp = result.experiment!;
+      const exp = result.brew!;
 
       expect(exp.coffee_weight).toBe(15.0);
       expect(exp.water_weight).toBe(225.0);
@@ -274,7 +274,7 @@ describe('coffees API - Best Experiment and Reference', () => {
 
     it('includes all goal fields in reference', async () => {
       const fullGoals: CoffeeReference = {
-        experiment: null,
+        brew: null,
         goals: {
           id: 'goal-789',
           coffee_ml: 185,

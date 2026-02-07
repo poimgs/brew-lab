@@ -18,19 +18,19 @@ import (
 // mockRepository implements Repository interface for testing
 type mockRepository struct {
 	sessions    map[uuid.UUID]*Session
-	experiments map[uuid.UUID]*mockExperiment // experiment ID -> mock experiment
-	links       map[uuid.UUID][]uuid.UUID    // session ID -> experiment IDs
+	brews map[uuid.UUID]*mockBrew // brew ID -> mock brew
+	links       map[uuid.UUID][]uuid.UUID    // session ID -> brew IDs
 
 	createFunc          func(ctx context.Context, userID uuid.UUID, input CreateSessionInput) (*Session, error)
 	getByIDFunc         func(ctx context.Context, userID, sessionID uuid.UUID) (*Session, error)
 	listFunc            func(ctx context.Context, userID uuid.UUID, params ListSessionsParams) (*ListSessionsResult, error)
 	updateFunc          func(ctx context.Context, userID, sessionID uuid.UUID, input UpdateSessionInput) (*Session, error)
 	deleteFunc          func(ctx context.Context, userID, sessionID uuid.UUID) error
-	linkFunc            func(ctx context.Context, userID, sessionID uuid.UUID, experimentIDs []uuid.UUID) (*Session, error)
-	unlinkFunc          func(ctx context.Context, userID, sessionID, experimentID uuid.UUID) error
+	linkFunc            func(ctx context.Context, userID, sessionID uuid.UUID, brewIDs []uuid.UUID) (*Session, error)
+	unlinkFunc          func(ctx context.Context, userID, sessionID, brewID uuid.UUID) error
 }
 
-type mockExperiment struct {
+type mockBrew struct {
 	ID       uuid.UUID
 	CoffeeID uuid.UUID
 	UserID   uuid.UUID
@@ -39,7 +39,7 @@ type mockExperiment struct {
 func newMockRepository() *mockRepository {
 	return &mockRepository{
 		sessions:    make(map[uuid.UUID]*Session),
-		experiments: make(map[uuid.UUID]*mockExperiment),
+		brews: make(map[uuid.UUID]*mockBrew),
 		links:       make(map[uuid.UUID][]uuid.UUID),
 	}
 }
@@ -58,19 +58,19 @@ func (m *mockRepository) Create(ctx context.Context, userID uuid.UUID, input Cre
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
-	if len(input.ExperimentIDs) > 0 {
-		// Validate experiments belong to same coffee
-		for _, expID := range input.ExperimentIDs {
-			exp, ok := m.experiments[expID]
+	if len(input.BrewIDs) > 0 {
+		// Validate brews belong to same coffee
+		for _, expID := range input.BrewIDs {
+			exp, ok := m.brews[expID]
 			if !ok {
-				return nil, ErrExperimentNotFound
+				return nil, ErrBrewNotFound
 			}
 			if exp.CoffeeID != input.CoffeeID {
-				return nil, ErrExperimentWrongCoffee
+				return nil, ErrBrewWrongCoffee
 			}
 		}
-		s.ExperimentCount = len(input.ExperimentIDs)
-		m.links[s.ID] = input.ExperimentIDs
+		s.BrewCount = len(input.BrewIDs)
+		m.links[s.ID] = input.BrewIDs
 	}
 	m.sessions[s.ID] = s
 	return s, nil
@@ -84,17 +84,17 @@ func (m *mockRepository) GetByID(ctx context.Context, userID, sessionID uuid.UUI
 	if !ok || s.UserID != userID {
 		return nil, ErrSessionNotFound
 	}
-	// Populate experiments from links
+	// Populate brews from links
 	if expIDs, ok := m.links[sessionID]; ok {
-		s.ExperimentCount = len(expIDs)
-		var exps []ExperimentSummary
+		s.BrewCount = len(expIDs)
+		var exps []BrewSummary
 		for _, id := range expIDs {
-			exps = append(exps, ExperimentSummary{
+			exps = append(exps, BrewSummary{
 				ID:       id,
 				BrewDate: time.Now(),
 			})
 		}
-		s.Experiments = exps
+		s.Brews = exps
 	}
 	return s, nil
 }
@@ -160,25 +160,25 @@ func (m *mockRepository) Delete(ctx context.Context, userID, sessionID uuid.UUID
 	return nil
 }
 
-func (m *mockRepository) LinkExperiments(ctx context.Context, userID, sessionID uuid.UUID, experimentIDs []uuid.UUID) (*Session, error) {
+func (m *mockRepository) LinkBrews(ctx context.Context, userID, sessionID uuid.UUID, brewIDs []uuid.UUID) (*Session, error) {
 	if m.linkFunc != nil {
-		return m.linkFunc(ctx, userID, sessionID, experimentIDs)
+		return m.linkFunc(ctx, userID, sessionID, brewIDs)
 	}
 	s, ok := m.sessions[sessionID]
 	if !ok || s.UserID != userID {
 		return nil, ErrSessionNotFound
 	}
-	for _, expID := range experimentIDs {
-		exp, ok := m.experiments[expID]
+	for _, bID := range brewIDs {
+		b, ok := m.brews[bID]
 		if !ok {
-			return nil, ErrExperimentNotFound
+			return nil, ErrBrewNotFound
 		}
-		if exp.CoffeeID != s.CoffeeID {
-			return nil, ErrExperimentWrongCoffee
+		if b.CoffeeID != s.CoffeeID {
+			return nil, ErrBrewWrongCoffee
 		}
 	}
 	existing := m.links[sessionID]
-	for _, id := range experimentIDs {
+	for _, id := range brewIDs {
 		found := false
 		for _, e := range existing {
 			if e == id {
@@ -191,22 +191,22 @@ func (m *mockRepository) LinkExperiments(ctx context.Context, userID, sessionID 
 		}
 	}
 	m.links[sessionID] = existing
-	s.ExperimentCount = len(existing)
+	s.BrewCount = len(existing)
 	return s, nil
 }
 
-func (m *mockRepository) UnlinkExperiment(ctx context.Context, userID, sessionID, experimentID uuid.UUID) error {
+func (m *mockRepository) UnlinkBrew(ctx context.Context, userID, sessionID, brewID uuid.UUID) error {
 	if m.unlinkFunc != nil {
-		return m.unlinkFunc(ctx, userID, sessionID, experimentID)
+		return m.unlinkFunc(ctx, userID, sessionID, brewID)
 	}
 	s, ok := m.sessions[sessionID]
 	if !ok || s.UserID != userID {
 		return ErrSessionNotFound
 	}
-	expIDs := m.links[sessionID]
+	bIDs := m.links[sessionID]
 	var filtered []uuid.UUID
-	for _, id := range expIDs {
-		if id != experimentID {
+	for _, id := range bIDs {
+		if id != brewID {
 			filtered = append(filtered, id)
 		}
 	}
@@ -314,7 +314,7 @@ func TestHandler_Create(t *testing.T) {
 	}
 }
 
-func TestHandler_Create_WithExperimentLinking(t *testing.T) {
+func TestHandler_Create_WithBrewLinking(t *testing.T) {
 	repo := newMockRepository()
 	handler := NewHandler(repo)
 
@@ -325,10 +325,10 @@ func TestHandler_Create_WithExperimentLinking(t *testing.T) {
 	wrongCoffeeExpID := uuid.New()
 	otherCoffeeID := uuid.New()
 
-	// Add experiments to mock
-	repo.experiments[expID1] = &mockExperiment{ID: expID1, CoffeeID: coffeeID, UserID: userID}
-	repo.experiments[expID2] = &mockExperiment{ID: expID2, CoffeeID: coffeeID, UserID: userID}
-	repo.experiments[wrongCoffeeExpID] = &mockExperiment{ID: wrongCoffeeExpID, CoffeeID: otherCoffeeID, UserID: userID}
+	// Add brews to mock
+	repo.brews[expID1] = &mockBrew{ID: expID1, CoffeeID: coffeeID, UserID: userID}
+	repo.brews[expID2] = &mockBrew{ID: expID2, CoffeeID: coffeeID, UserID: userID}
+	repo.brews[wrongCoffeeExpID] = &mockBrew{ID: wrongCoffeeExpID, CoffeeID: otherCoffeeID, UserID: userID}
 
 	tests := []struct {
 		name           string
@@ -336,32 +336,32 @@ func TestHandler_Create_WithExperimentLinking(t *testing.T) {
 		expectedStatus int
 	}{
 		{
-			name: "with valid experiment IDs",
+			name: "with valid brew IDs",
 			body: CreateSessionInput{
 				CoffeeID:       coffeeID,
 				Name:           "Grind sweep",
 				VariableTested: "grind size",
-				ExperimentIDs:  []uuid.UUID{expID1, expID2},
+				BrewIDs:  []uuid.UUID{expID1, expID2},
 			},
 			expectedStatus: http.StatusCreated,
 		},
 		{
-			name: "with experiment from wrong coffee",
+			name: "with brew from wrong coffee",
 			body: CreateSessionInput{
 				CoffeeID:       coffeeID,
 				Name:           "Wrong coffee test",
 				VariableTested: "grind size",
-				ExperimentIDs:  []uuid.UUID{expID1, wrongCoffeeExpID},
+				BrewIDs:  []uuid.UUID{expID1, wrongCoffeeExpID},
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name: "with non-existent experiment",
+			name: "with non-existent brew",
 			body: CreateSessionInput{
 				CoffeeID:       coffeeID,
 				Name:           "Missing exp test",
 				VariableTested: "grind size",
-				ExperimentIDs:  []uuid.UUID{uuid.New()},
+				BrewIDs:  []uuid.UUID{uuid.New()},
 			},
 			expectedStatus: http.StatusNotFound,
 		},
@@ -442,7 +442,7 @@ func TestHandler_Get(t *testing.T) {
 	}
 }
 
-func TestHandler_Get_ResponseContainsExperiments(t *testing.T) {
+func TestHandler_Get_ResponseContainsBrews(t *testing.T) {
 	repo := newMockRepository()
 	handler := NewHandler(repo)
 
@@ -478,11 +478,11 @@ func TestHandler_Get_ResponseContainsExperiments(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if result.ExperimentCount != 1 {
-		t.Errorf("expected experiment_count 1, got %d", result.ExperimentCount)
+	if result.BrewCount != 1 {
+		t.Errorf("expected brew_count 1, got %d", result.BrewCount)
 	}
-	if len(result.Experiments) != 1 {
-		t.Errorf("expected 1 experiment, got %d", len(result.Experiments))
+	if len(result.Brews) != 1 {
+		t.Errorf("expected 1 brew, got %d", len(result.Brews))
 	}
 }
 
@@ -692,7 +692,7 @@ func TestHandler_Delete(t *testing.T) {
 	}
 }
 
-func TestHandler_LinkExperiments(t *testing.T) {
+func TestHandler_LinkBrews(t *testing.T) {
 	repo := newMockRepository()
 	handler := NewHandler(repo)
 
@@ -712,8 +712,8 @@ func TestHandler_LinkExperiments(t *testing.T) {
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
-	repo.experiments[expID] = &mockExperiment{ID: expID, CoffeeID: coffeeID, UserID: userID}
-	repo.experiments[wrongCoffeeExpID] = &mockExperiment{ID: wrongCoffeeExpID, CoffeeID: otherCoffeeID, UserID: userID}
+	repo.brews[expID] = &mockBrew{ID: expID, CoffeeID: coffeeID, UserID: userID}
+	repo.brews[wrongCoffeeExpID] = &mockBrew{ID: wrongCoffeeExpID, CoffeeID: otherCoffeeID, UserID: userID}
 
 	tests := []struct {
 		name           string
@@ -722,33 +722,33 @@ func TestHandler_LinkExperiments(t *testing.T) {
 		expectedStatus int
 	}{
 		{
-			name:           "link valid experiment",
+			name:           "link valid brew",
 			sessionID:      sessionID.String(),
-			body:           LinkExperimentsInput{ExperimentIDs: []uuid.UUID{expID}},
+			body:           LinkBrewsInput{BrewIDs: []uuid.UUID{expID}},
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name:           "link experiment from wrong coffee",
+			name:           "link brew from wrong coffee",
 			sessionID:      sessionID.String(),
-			body:           LinkExperimentsInput{ExperimentIDs: []uuid.UUID{wrongCoffeeExpID}},
+			body:           LinkBrewsInput{BrewIDs: []uuid.UUID{wrongCoffeeExpID}},
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name:           "link non-existent experiment",
+			name:           "link non-existent brew",
 			sessionID:      sessionID.String(),
-			body:           LinkExperimentsInput{ExperimentIDs: []uuid.UUID{uuid.New()}},
+			body:           LinkBrewsInput{BrewIDs: []uuid.UUID{uuid.New()}},
 			expectedStatus: http.StatusNotFound,
 		},
 		{
-			name:           "empty experiment_ids",
+			name:           "empty brew_ids",
 			sessionID:      sessionID.String(),
-			body:           LinkExperimentsInput{ExperimentIDs: []uuid.UUID{}},
+			body:           LinkBrewsInput{BrewIDs: []uuid.UUID{}},
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "session not found",
 			sessionID:      uuid.New().String(),
-			body:           LinkExperimentsInput{ExperimentIDs: []uuid.UUID{expID}},
+			body:           LinkBrewsInput{BrewIDs: []uuid.UUID{expID}},
 			expectedStatus: http.StatusNotFound,
 		},
 	}
@@ -760,11 +760,11 @@ func TestHandler_LinkExperiments(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			req := createRequestWithUser("POST", "/sessions/"+tt.sessionID+"/experiments", body, userID)
+			req := createRequestWithUser("POST", "/sessions/"+tt.sessionID+"/brews", body, userID)
 			rr := httptest.NewRecorder()
 
 			r := chi.NewRouter()
-			r.Post("/sessions/{id}/experiments", handler.LinkExperiments)
+			r.Post("/sessions/{id}/brews", handler.LinkBrews)
 			r.ServeHTTP(rr, req)
 
 			if rr.Code != tt.expectedStatus {
@@ -774,7 +774,7 @@ func TestHandler_LinkExperiments(t *testing.T) {
 	}
 }
 
-func TestHandler_UnlinkExperiment(t *testing.T) {
+func TestHandler_UnlinkBrew(t *testing.T) {
 	repo := newMockRepository()
 	handler := NewHandler(repo)
 
@@ -797,42 +797,42 @@ func TestHandler_UnlinkExperiment(t *testing.T) {
 	tests := []struct {
 		name           string
 		sessionID      string
-		experimentID   string
+		brewID   string
 		expectedStatus int
 	}{
 		{
-			name:           "unlink existing experiment",
+			name:           "unlink existing brew",
 			sessionID:      sessionID.String(),
-			experimentID:   expID.String(),
+			brewID:   expID.String(),
 			expectedStatus: http.StatusNoContent,
 		},
 		{
 			name:           "session not found",
 			sessionID:      uuid.New().String(),
-			experimentID:   expID.String(),
+			brewID:   expID.String(),
 			expectedStatus: http.StatusNotFound,
 		},
 		{
 			name:           "invalid session id",
 			sessionID:      "invalid",
-			experimentID:   expID.String(),
+			brewID:   expID.String(),
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name:           "invalid experiment id",
+			name:           "invalid brew id",
 			sessionID:      sessionID.String(),
-			experimentID:   "invalid",
+			brewID:   "invalid",
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := createRequestWithUser("DELETE", "/sessions/"+tt.sessionID+"/experiments/"+tt.experimentID, nil, userID)
+			req := createRequestWithUser("DELETE", "/sessions/"+tt.sessionID+"/brews/"+tt.brewID, nil, userID)
 			rr := httptest.NewRecorder()
 
 			r := chi.NewRouter()
-			r.Delete("/sessions/{id}/experiments/{expId}", handler.UnlinkExperiment)
+			r.Delete("/sessions/{id}/brews/{brewId}", handler.UnlinkBrew)
 			r.ServeHTTP(rr, req)
 
 			if rr.Code != tt.expectedStatus {

@@ -95,12 +95,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
 			return
 		}
-		if errors.Is(err, ErrExperimentNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "experiment not found")
+		if errors.Is(err, ErrBrewNotFound) {
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "brew not found")
 			return
 		}
-		if errors.Is(err, ErrExperimentWrongCoffee) {
-			response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "experiment does not belong to this coffee")
+		if errors.Is(err, ErrBrewWrongCoffee) {
+			response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "brew does not belong to this coffee")
 			return
 		}
 		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create session")
@@ -203,7 +203,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) LinkExperiments(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) LinkBrews(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.GetUserID(r.Context())
 	if !ok {
 		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
@@ -216,39 +216,39 @@ func (h *Handler) LinkExperiments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var input LinkExperimentsInput
+	var input LinkBrewsInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid request body")
 		return
 	}
 
-	if len(input.ExperimentIDs) == 0 {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "experiment_ids is required")
+	if len(input.BrewIDs) == 0 {
+		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "brew_ids is required")
 		return
 	}
 
-	session, err := h.repo.LinkExperiments(r.Context(), userID, sessionID, input.ExperimentIDs)
+	session, err := h.repo.LinkBrews(r.Context(), userID, sessionID, input.BrewIDs)
 	if err != nil {
 		if errors.Is(err, ErrSessionNotFound) {
 			response.Error(w, http.StatusNotFound, "NOT_FOUND", "session not found")
 			return
 		}
-		if errors.Is(err, ErrExperimentNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "experiment not found")
+		if errors.Is(err, ErrBrewNotFound) {
+			response.Error(w, http.StatusNotFound, "NOT_FOUND", "brew not found")
 			return
 		}
-		if errors.Is(err, ErrExperimentWrongCoffee) {
-			response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "experiment does not belong to this coffee")
+		if errors.Is(err, ErrBrewWrongCoffee) {
+			response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "brew does not belong to this coffee")
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to link experiments")
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to link brews")
 		return
 	}
 
 	response.JSON(w, http.StatusOK, session)
 }
 
-func (h *Handler) UnlinkExperiment(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UnlinkBrew(w http.ResponseWriter, r *http.Request) {
 	userID, ok := auth.GetUserID(r.Context())
 	if !ok {
 		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
@@ -261,19 +261,19 @@ func (h *Handler) UnlinkExperiment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	experimentID, err := uuid.Parse(chi.URLParam(r, "expId"))
+	brewID, err := uuid.Parse(chi.URLParam(r, "brewId"))
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid experiment id")
+		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid brew id")
 		return
 	}
 
-	err = h.repo.UnlinkExperiment(r.Context(), userID, sessionID, experimentID)
+	err = h.repo.UnlinkBrew(r.Context(), userID, sessionID, brewID)
 	if err != nil {
 		if errors.Is(err, ErrSessionNotFound) {
 			response.Error(w, http.StatusNotFound, "NOT_FOUND", "session not found")
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to unlink experiment")
+		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to unlink brew")
 		return
 	}
 

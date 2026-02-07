@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import SessionList from './SessionList';
 import type { Session } from '@/api/sessions';
-import type { Experiment } from '@/api/experiments';
+import type { Brew } from '@/api/brews';
 import * as sessionsApi from '@/api/sessions';
 
 vi.mock('@/api/sessions', async () => {
@@ -15,8 +15,8 @@ vi.mock('@/api/sessions', async () => {
     getSession: vi.fn(),
     createSession: vi.fn(),
     updateSession: vi.fn(),
-    linkExperiments: vi.fn(),
-    unlinkExperiment: vi.fn(),
+    linkBrews: vi.fn(),
+    unlinkBrew: vi.fn(),
   };
 });
 
@@ -40,13 +40,13 @@ describe('SessionList', () => {
     variable_tested: 'grind size',
     hypothesis: 'Finer grind will increase sweetness',
     conclusion: 'Confirmed — 3.0 was noticeably sweeter than 4.0',
-    experiment_count: 3,
+    brew_count: 3,
     created_at: '2026-01-20T10:00:00Z',
     updated_at: '2026-01-22T14:30:00Z',
     ...overrides,
   });
 
-  const createMockExperiment = (overrides: Partial<Experiment> = {}): Experiment => ({
+  const createMockBrew = (overrides: Partial<Brew> = {}): Brew => ({
     id: 'exp-1',
     user_id: 'user-1',
     coffee_id: 'coffee-1',
@@ -66,7 +66,7 @@ describe('SessionList', () => {
         <SessionList
           coffeeId="coffee-1"
           sessions={[]}
-          experiments={[]}
+          brews={[]}
           onRefresh={mockOnRefresh}
         />
       );
@@ -80,7 +80,7 @@ describe('SessionList', () => {
         <SessionList
           coffeeId="coffee-1"
           sessions={[]}
-          experiments={[]}
+          brews={[]}
           onRefresh={mockOnRefresh}
         />
       );
@@ -90,14 +90,14 @@ describe('SessionList', () => {
   });
 
   describe('session cards', () => {
-    it('renders session cards with name, variable, and experiment count', () => {
+    it('renders session cards with name, variable, and brew count', () => {
       const sessions = [
         createMockSession(),
         createMockSession({
           id: 'session-2',
           name: 'Temperature range test',
           variable_tested: 'water temperature',
-          experiment_count: 2,
+          brew_count: 2,
           hypothesis: 'Higher temp = more brightness',
           conclusion: undefined,
         }),
@@ -107,18 +107,18 @@ describe('SessionList', () => {
         <SessionList
           coffeeId="coffee-1"
           sessions={sessions}
-          experiments={[]}
+          brews={[]}
           onRefresh={mockOnRefresh}
         />
       );
 
       expect(screen.getByText('Grind size sweep')).toBeInTheDocument();
       expect(screen.getByText('Variable: grind size')).toBeInTheDocument();
-      expect(screen.getByText('3 experiments')).toBeInTheDocument();
+      expect(screen.getByText('3 brews')).toBeInTheDocument();
 
       expect(screen.getByText('Temperature range test')).toBeInTheDocument();
       expect(screen.getByText('Variable: water temperature')).toBeInTheDocument();
-      expect(screen.getByText('2 experiments')).toBeInTheDocument();
+      expect(screen.getByText('2 brews')).toBeInTheDocument();
     });
 
     it('renders hypothesis when present', () => {
@@ -128,7 +128,7 @@ describe('SessionList', () => {
         <SessionList
           coffeeId="coffee-1"
           sessions={sessions}
-          experiments={[]}
+          brews={[]}
           onRefresh={mockOnRefresh}
         />
       );
@@ -143,7 +143,7 @@ describe('SessionList', () => {
         <SessionList
           coffeeId="coffee-1"
           sessions={sessions}
-          experiments={[]}
+          brews={[]}
           onRefresh={mockOnRefresh}
         />
       );
@@ -151,19 +151,19 @@ describe('SessionList', () => {
       expect(screen.getByText(/Confirmed — 3.0 was noticeably sweeter/)).toBeInTheDocument();
     });
 
-    it('uses singular "experiment" for count of 1', () => {
-      const sessions = [createMockSession({ experiment_count: 1 })];
+    it('uses singular "brew" for count of 1', () => {
+      const sessions = [createMockSession({ brew_count: 1 })];
 
       renderWithRouter(
         <SessionList
           coffeeId="coffee-1"
           sessions={sessions}
-          experiments={[]}
+          brews={[]}
           onRefresh={mockOnRefresh}
         />
       );
 
-      expect(screen.getByText('1 experiment')).toBeInTheDocument();
+      expect(screen.getByText('1 brew')).toBeInTheDocument();
     });
   });
 
@@ -176,7 +176,7 @@ describe('SessionList', () => {
         <SessionList
           coffeeId="coffee-1"
           sessions={sessions}
-          experiments={[]}
+          brews={[]}
           onRefresh={mockOnRefresh}
         />
       );
@@ -194,7 +194,7 @@ describe('SessionList', () => {
         <SessionList
           coffeeId="coffee-1"
           sessions={sessions}
-          experiments={[]}
+          brews={[]}
           onRefresh={mockOnRefresh}
         />
       );
@@ -216,7 +216,7 @@ describe('SessionList', () => {
         <SessionList
           coffeeId="coffee-1"
           sessions={sessions}
-          experiments={[]}
+          brews={[]}
           onRefresh={mockOnRefresh}
         />
       );
@@ -236,7 +236,7 @@ describe('SessionList', () => {
         <SessionList
           coffeeId="coffee-1"
           sessions={[]}
-          experiments={[createMockExperiment()]}
+          brews={[createMockBrew()]}
           onRefresh={mockOnRefresh}
         />
       );
@@ -247,24 +247,24 @@ describe('SessionList', () => {
       expect(screen.getByLabelText(/Variable Tested/)).toBeInTheDocument();
     });
 
-    it('shows experiment checkboxes in create dialog', async () => {
+    it('shows brew checkboxes in create dialog', async () => {
       const user = userEvent.setup();
-      const experiments = [
-        createMockExperiment({ id: 'exp-1', grind_size: 3.0, overall_score: 8 }),
-        createMockExperiment({ id: 'exp-2', grind_size: 3.5, overall_score: 7, brew_date: '2026-01-19T10:00:00Z' }),
+      const brews = [
+        createMockBrew({ id: 'exp-1', grind_size: 3.0, overall_score: 8 }),
+        createMockBrew({ id: 'exp-2', grind_size: 3.5, overall_score: 7, brew_date: '2026-01-19T10:00:00Z' }),
       ];
 
       renderWithRouter(
         <SessionList
           coffeeId="coffee-1"
           sessions={[]}
-          experiments={experiments}
+          brews={brews}
           onRefresh={mockOnRefresh}
         />
       );
 
       await user.click(screen.getByRole('button', { name: /New Session/i }));
-      expect(screen.getByText('Link Experiments')).toBeInTheDocument();
+      expect(screen.getByText('Link Brews')).toBeInTheDocument();
       expect(screen.getByText(/Jan 20.*3 grind.*Score 8/)).toBeInTheDocument();
       expect(screen.getByText(/Jan 19.*3.5 grind.*Score 7/)).toBeInTheDocument();
     });
@@ -277,7 +277,7 @@ describe('SessionList', () => {
         <SessionList
           coffeeId="coffee-1"
           sessions={[]}
-          experiments={[]}
+          brews={[]}
           onRefresh={mockOnRefresh}
         />
       );
@@ -297,7 +297,7 @@ describe('SessionList', () => {
         <SessionList
           coffeeId="coffee-1"
           sessions={[]}
-          experiments={[]}
+          brews={[]}
           onRefresh={mockOnRefresh}
         />
       );
@@ -314,7 +314,7 @@ describe('SessionList', () => {
           name: 'Grind sweep',
           variable_tested: 'grind size',
           hypothesis: 'Finer = sweeter',
-          experiment_ids: undefined,
+          brew_ids: undefined,
         });
         expect(mockOnRefresh).toHaveBeenCalled();
       });
@@ -328,7 +328,7 @@ describe('SessionList', () => {
 
       vi.mocked(sessionsApi.getSession).mockResolvedValue({
         ...createMockSession(),
-        experiments: [
+        brews: [
           { id: 'exp-1', brew_date: '2026-01-20T10:00:00Z', grind_size: 3.0, overall_score: 8, overall_notes: 'Best balance' },
         ],
       });
@@ -337,7 +337,7 @@ describe('SessionList', () => {
         <SessionList
           coffeeId="coffee-1"
           sessions={sessions}
-          experiments={[]}
+          brews={[]}
           onRefresh={mockOnRefresh}
         />
       );

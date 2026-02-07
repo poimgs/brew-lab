@@ -300,7 +300,7 @@ export default function DefaultsForm() {
           <div>
             <CardTitle>Brew Defaults</CardTitle>
             <CardDescription>
-              These values will be pre-filled when creating a new experiment.
+              These values will be pre-filled when creating a new brew.
             </CardDescription>
           </div>
           <Button onClick={handleSave} disabled={!hasChanges || isSaving}>
@@ -347,7 +347,7 @@ export default function DefaultsForm() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h4 className="text-sm font-medium">Pour Defaults</h4>
-              <p className="text-sm text-muted-foreground">Default pour templates for new experiments.</p>
+              <p className="text-sm text-muted-foreground">Default pour templates for new brews.</p>
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -380,7 +380,7 @@ export default function DefaultsForm() {
 
           {pourDefaults.length === 0 && (
             <p className="text-sm text-muted-foreground py-4 text-center">
-              No pour defaults set. Add pours to pre-fill them in new experiments.
+              No pour defaults set. Add pours to pre-fill them in new brews.
             </p>
           )}
 

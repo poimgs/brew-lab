@@ -104,8 +104,8 @@ export default function CoffeeList() {
     setEditingCoffee(coffee);
   };
 
-  const handleNewExperiment = (coffeeId: string) => {
-    navigate(`/experiments/new?coffee_id=${coffeeId}`);
+  const handleNewBrew = (coffeeId: string) => {
+    navigate(`/brews/new?coffee_id=${coffeeId}`);
   };
 
   const handleFormSuccess = () => {
@@ -216,7 +216,7 @@ export default function CoffeeList() {
               <CoffeeCard
                 key={coffee.id}
                 coffee={coffee}
-                onNewExperiment={handleNewExperiment}
+                onNewBrew={handleNewBrew}
                 onEdit={handleEdit}
                 onArchive={handleArchive}
                 onReactivate={showArchived ? handleReactivate : undefined}
@@ -262,7 +262,7 @@ export default function CoffeeList() {
               <DialogHeader>
                 <DialogTitle>Delete Coffee</DialogTitle>
                 <DialogDescription>
-                  Are you sure you want to delete "{coffeeToDelete?.name}" by {coffeeToDelete?.roaster}? This action cannot be undone. Existing experiments will be preserved but this coffee will no longer appear in your library.
+                  Are you sure you want to delete "{coffeeToDelete?.name}" by {coffeeToDelete?.roaster}? This action cannot be undone. Existing brews will be preserved but this coffee will no longer appear in your library.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>

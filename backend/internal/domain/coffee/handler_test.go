@@ -140,25 +140,25 @@ func (m *mockRepository) GetSuggestions(ctx context.Context, userID uuid.UUID, f
 	return []string{"Test Roaster", "Test Country"}, nil
 }
 
-func (m *mockRepository) SetBestExperiment(ctx context.Context, userID, coffeeID uuid.UUID, experimentID *uuid.UUID) (*Coffee, error) {
+func (m *mockRepository) SetBestBrew(ctx context.Context, userID, coffeeID uuid.UUID, brewID *uuid.UUID) (*Coffee, error) {
 	coffee, ok := m.coffees[coffeeID]
 	if !ok || coffee.UserID != userID {
 		return nil, ErrCoffeeNotFound
 	}
-	// Simulate experiment validation
-	if experimentID != nil {
+	// Simulate brew validation
+	if brewID != nil {
 		// For testing, we'll use a special UUID to simulate "wrong coffee"
-		wrongCoffeeExperiment := uuid.MustParse("00000000-0000-0000-0000-000000000001")
-		if *experimentID == wrongCoffeeExperiment {
-			return nil, ErrExperimentWrongCoffee
+		wrongCoffeeBrew := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+		if *brewID == wrongCoffeeBrew {
+			return nil, ErrBrewWrongCoffee
 		}
 		// For testing, we'll use a special UUID to simulate "not found"
-		notFoundExperiment := uuid.MustParse("00000000-0000-0000-0000-000000000002")
-		if *experimentID == notFoundExperiment {
-			return nil, ErrExperimentNotFound
+		notFoundBrew := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+		if *brewID == notFoundBrew {
+			return nil, ErrBrewNotFound
 		}
 	}
-	coffee.BestExperimentID = experimentID
+	coffee.BestBrewID = brewID
 	coffee.UpdatedAt = time.Now()
 	return coffee, nil
 }
@@ -184,7 +184,7 @@ func (m *mockRepository) GetReference(ctx context.Context, userID, coffeeID uuid
 	}
 	// Return a basic reference
 	return &CoffeeReference{
-		Experiment: nil, // No experiment for basic mock
+		Brew: nil, // No brew for basic mock
 		Goals:      nil, // No goals for basic mock
 	}, nil
 }
@@ -541,15 +541,15 @@ func TestHandler_Create_RoastDateValidation(t *testing.T) {
 	}
 }
 
-func TestHandler_SetBestExperiment(t *testing.T) {
+func TestHandler_SetBestBrew(t *testing.T) {
 	repo := newMockRepository()
 	handler := NewHandler(repo)
 
 	userID := uuid.New()
 	coffeeID := uuid.New()
-	experimentID := uuid.New()
-	wrongCoffeeExperiment := uuid.MustParse("00000000-0000-0000-0000-000000000001")
-	notFoundExperiment := uuid.MustParse("00000000-0000-0000-0000-000000000002")
+	brewID := uuid.New()
+	wrongCoffeeBrew := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	notFoundBrew := uuid.MustParse("00000000-0000-0000-0000-000000000002")
 
 	// Add a coffee to the mock repo
 	repo.coffees[coffeeID] = &Coffee{
@@ -568,39 +568,39 @@ func TestHandler_SetBestExperiment(t *testing.T) {
 		expectedStatus int
 	}{
 		{
-			name:           "set best experiment successfully",
+			name:           "set best brew successfully",
 			coffeeID:       coffeeID.String(),
-			body:           SetBestExperimentInput{ExperimentID: &experimentID},
+			body:           SetBestBrewInput{BrewID: &brewID},
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name:           "clear best experiment (set to null)",
+			name:           "clear best brew (set to null)",
 			coffeeID:       coffeeID.String(),
-			body:           SetBestExperimentInput{ExperimentID: nil},
+			body:           SetBestBrewInput{BrewID: nil},
 			expectedStatus: http.StatusOK,
 		},
 		{
 			name:           "coffee not found",
 			coffeeID:       uuid.New().String(),
-			body:           SetBestExperimentInput{ExperimentID: &experimentID},
+			body:           SetBestBrewInput{BrewID: &brewID},
 			expectedStatus: http.StatusNotFound,
 		},
 		{
-			name:           "experiment belongs to different coffee",
+			name:           "brew belongs to different coffee",
 			coffeeID:       coffeeID.String(),
-			body:           SetBestExperimentInput{ExperimentID: &wrongCoffeeExperiment},
+			body:           SetBestBrewInput{BrewID: &wrongCoffeeBrew},
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name:           "experiment not found",
+			name:           "brew not found",
 			coffeeID:       coffeeID.String(),
-			body:           SetBestExperimentInput{ExperimentID: &notFoundExperiment},
+			body:           SetBestBrewInput{BrewID: &notFoundBrew},
 			expectedStatus: http.StatusNotFound,
 		},
 		{
 			name:           "invalid coffee id",
 			coffeeID:       "invalid",
-			body:           SetBestExperimentInput{ExperimentID: &experimentID},
+			body:           SetBestBrewInput{BrewID: &brewID},
 			expectedStatus: http.StatusBadRequest,
 		},
 	}
@@ -612,11 +612,11 @@ func TestHandler_SetBestExperiment(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			req := createRequestWithUser("POST", "/coffees/"+tt.coffeeID+"/best-experiment", body, userID)
+			req := createRequestWithUser("POST", "/coffees/"+tt.coffeeID+"/best-brew", body, userID)
 			rr := httptest.NewRecorder()
 
 			r := chi.NewRouter()
-			r.Post("/coffees/{id}/best-experiment", handler.SetBestExperiment)
+			r.Post("/coffees/{id}/best-brew", handler.SetBestBrew)
 			r.ServeHTTP(rr, req)
 
 			if rr.Code != tt.expectedStatus {
@@ -626,13 +626,13 @@ func TestHandler_SetBestExperiment(t *testing.T) {
 	}
 }
 
-func TestHandler_SetBestExperiment_VerifyUpdate(t *testing.T) {
+func TestHandler_SetBestBrew_VerifyUpdate(t *testing.T) {
 	repo := newMockRepository()
 	handler := NewHandler(repo)
 
 	userID := uuid.New()
 	coffeeID := uuid.New()
-	experimentID := uuid.New()
+	brewID := uuid.New()
 
 	// Add a coffee to the mock repo
 	repo.coffees[coffeeID] = &Coffee{
@@ -644,29 +644,29 @@ func TestHandler_SetBestExperiment_VerifyUpdate(t *testing.T) {
 		UpdatedAt: time.Now(),
 	}
 
-	// Set best experiment
-	body, _ := json.Marshal(SetBestExperimentInput{ExperimentID: &experimentID})
-	req := createRequestWithUser("POST", "/coffees/"+coffeeID.String()+"/best-experiment", body, userID)
+	// Set best brew
+	body, _ := json.Marshal(SetBestBrewInput{BrewID: &brewID})
+	req := createRequestWithUser("POST", "/coffees/"+coffeeID.String()+"/best-brew", body, userID)
 	rr := httptest.NewRecorder()
 
 	r := chi.NewRouter()
-	r.Post("/coffees/{id}/best-experiment", handler.SetBestExperiment)
+	r.Post("/coffees/{id}/best-brew", handler.SetBestBrew)
 	r.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Errorf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
 	}
 
-	// Verify the response contains the updated coffee with best_experiment_id
+	// Verify the response contains the updated coffee with best_brew_id
 	var resultCoffee Coffee
 	if err := json.NewDecoder(rr.Body).Decode(&resultCoffee); err != nil {
 		t.Fatal(err)
 	}
 
-	if resultCoffee.BestExperimentID == nil {
-		t.Error("expected best_experiment_id to be set in response")
-	} else if *resultCoffee.BestExperimentID != experimentID {
-		t.Errorf("expected best_experiment_id %s, got %s", experimentID, *resultCoffee.BestExperimentID)
+	if resultCoffee.BestBrewID == nil {
+		t.Error("expected best_brew_id to be set in response")
+	} else if *resultCoffee.BestBrewID != brewID {
+		t.Errorf("expected best_brew_id %s, got %s", brewID, *resultCoffee.BestBrewID)
 	}
 }
 
@@ -759,7 +759,7 @@ func TestHandler_GetReference_ResponseStructure(t *testing.T) {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	// The mock returns nil for both fields, which is valid for a coffee with no experiments/goals
+	// The mock returns nil for both fields, which is valid for a coffee with no brews/goals
 	// This test verifies the endpoint returns valid JSON with the expected structure
 }
 
@@ -895,13 +895,13 @@ func TestHandler_Update_FarmField(t *testing.T) {
 	}
 }
 
-func TestHandler_List_WithBestExperimentData(t *testing.T) {
+func TestHandler_List_WithBestBrewData(t *testing.T) {
 	repo := newMockRepository()
 	handler := NewHandler(repo)
 
 	userID := uuid.New()
 	coffeeID := uuid.New()
-	experimentID := uuid.New()
+	brewID := uuid.New()
 	brewDate := time.Date(2026, 1, 15, 10, 30, 0, 0, time.UTC)
 	score := 8
 	ratio := 15.0
@@ -921,8 +921,8 @@ func TestHandler_List_WithBestExperimentData(t *testing.T) {
 					Name:      "Kiamaina",
 					CreatedAt: time.Now(),
 					UpdatedAt: time.Now(),
-					BestExperiment: &BestExperimentSummary{
-						ID:                 experimentID,
+					BestBrew: &BestBrewSummary{
+						ID:                 brewID,
 						BrewDate:           brewDate,
 						OverallScore:       &score,
 						Ratio:              &ratio,
@@ -962,35 +962,35 @@ func TestHandler_List_WithBestExperimentData(t *testing.T) {
 
 	item := items[0].(map[string]interface{})
 
-	// Verify best_experiment is present
-	bestExp, ok := item["best_experiment"].(map[string]interface{})
+	// Verify best_brew is present
+	bestExp, ok := item["best_brew"].(map[string]interface{})
 	if !ok {
-		t.Fatal("expected best_experiment to be present in response")
+		t.Fatal("expected best_brew to be present in response")
 	}
 
-	if bestExp["id"] != experimentID.String() {
-		t.Errorf("expected best_experiment.id %s, got %v", experimentID, bestExp["id"])
+	if bestExp["id"] != brewID.String() {
+		t.Errorf("expected best_brew.id %s, got %v", brewID, bestExp["id"])
 	}
 	if bestExp["overall_score"] != float64(8) {
-		t.Errorf("expected best_experiment.overall_score 8, got %v", bestExp["overall_score"])
+		t.Errorf("expected best_brew.overall_score 8, got %v", bestExp["overall_score"])
 	}
 	if bestExp["ratio"] != float64(15) {
-		t.Errorf("expected best_experiment.ratio 15, got %v", bestExp["ratio"])
+		t.Errorf("expected best_brew.ratio 15, got %v", bestExp["ratio"])
 	}
 	if bestExp["water_temperature"] != float64(96) {
-		t.Errorf("expected best_experiment.water_temperature 96, got %v", bestExp["water_temperature"])
+		t.Errorf("expected best_brew.water_temperature 96, got %v", bestExp["water_temperature"])
 	}
 	if bestExp["filter_paper_name"] != "Abaca" {
-		t.Errorf("expected best_experiment.filter_paper_name Abaca, got %v", bestExp["filter_paper_name"])
+		t.Errorf("expected best_brew.filter_paper_name Abaca, got %v", bestExp["filter_paper_name"])
 	}
 	if bestExp["mineral_profile_name"] != "Catalyst" {
-		t.Errorf("expected best_experiment.mineral_profile_name Catalyst, got %v", bestExp["mineral_profile_name"])
+		t.Errorf("expected best_brew.mineral_profile_name Catalyst, got %v", bestExp["mineral_profile_name"])
 	}
 	if bestExp["bloom_time"] != float64(30) {
-		t.Errorf("expected best_experiment.bloom_time 30, got %v", bestExp["bloom_time"])
+		t.Errorf("expected best_brew.bloom_time 30, got %v", bestExp["bloom_time"])
 	}
 	if bestExp["pour_count"] != float64(2) {
-		t.Errorf("expected best_experiment.pour_count 2, got %v", bestExp["pour_count"])
+		t.Errorf("expected best_brew.pour_count 2, got %v", bestExp["pour_count"])
 	}
 
 	pourStyles, ok := bestExp["pour_styles"].([]interface{})
@@ -1004,7 +1004,7 @@ func TestHandler_List_WithBestExperimentData(t *testing.T) {
 	}
 }
 
-func TestHandler_List_WithoutBestExperiment(t *testing.T) {
+func TestHandler_List_WithoutBestBrew(t *testing.T) {
 	repo := newMockRepository()
 	handler := NewHandler(repo)
 
@@ -1021,7 +1021,7 @@ func TestHandler_List_WithoutBestExperiment(t *testing.T) {
 					Name:      "Test Coffee",
 					CreatedAt: time.Now(),
 					UpdatedAt: time.Now(),
-					// No BestExperiment or ImprovementNote
+					// No BestBrew or ImprovementNote
 				},
 			},
 			Pagination: Pagination{Page: 1, PerPage: 20, Total: 1, TotalPages: 1},
@@ -1045,9 +1045,9 @@ func TestHandler_List_WithoutBestExperiment(t *testing.T) {
 	items := raw["items"].([]interface{})
 	item := items[0].(map[string]interface{})
 
-	// best_experiment should be absent (omitempty)
-	if _, exists := item["best_experiment"]; exists {
-		t.Error("expected best_experiment to be absent when nil")
+	// best_brew should be absent (omitempty)
+	if _, exists := item["best_brew"]; exists {
+		t.Error("expected best_brew to be absent when nil")
 	}
 
 	// improvement_note should be absent (omitempty)
@@ -1269,7 +1269,7 @@ func TestHandler_List_ArchivedOnly(t *testing.T) {
 	}
 }
 
-func TestHandler_List_ExperimentCount(t *testing.T) {
+func TestHandler_List_BrewCount(t *testing.T) {
 	repo := newMockRepository()
 	handler := NewHandler(repo)
 
@@ -1287,7 +1287,7 @@ func TestHandler_List_ExperimentCount(t *testing.T) {
 					Name:            "Test Coffee",
 					CreatedAt:       time.Now(),
 					UpdatedAt:       time.Now(),
-					ExperimentCount: 8,
+					BrewCount: 8,
 					LastBrewed:      &lastBrewed,
 				},
 			},
@@ -1311,9 +1311,9 @@ func TestHandler_List_ExperimentCount(t *testing.T) {
 	items := raw["items"].([]interface{})
 	item := items[0].(map[string]interface{})
 
-	// Verify experiment_count is present and correct
-	if item["experiment_count"] != float64(8) {
-		t.Errorf("expected experiment_count 8, got %v", item["experiment_count"])
+	// Verify brew_count is present and correct
+	if item["brew_count"] != float64(8) {
+		t.Errorf("expected brew_count 8, got %v", item["brew_count"])
 	}
 
 	// Verify last_brewed is present
@@ -1613,7 +1613,7 @@ func TestHandler_List_WithGoalsAndTrend(t *testing.T) {
 			UserID:          uid,
 			Roaster:         "Cata Coffee",
 			Name:            "Kiamaina",
-			ExperimentCount: 8,
+			BrewCount: 8,
 			CreatedAt:       time.Now(),
 			UpdatedAt:       time.Now(),
 		}

@@ -18,16 +18,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { getSession, linkExperiments, unlinkExperiment, type Session } from '@/api/sessions';
-import type { Experiment } from '@/api/experiments';
-import ExperimentDetailModal from '@/components/experiment/ExperimentDetailModal';
+import { getSession, linkBrews, unlinkBrew, type Session } from '@/api/sessions';
+import type { Brew } from '@/api/brews';
+import BrewDetailModal from '@/components/brew/BrewDetailModal';
 
 interface SessionDetailModalProps {
   sessionId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRefresh: () => void;
-  experiments: Experiment[];
+  brews: Brew[];
 }
 
 export default function SessionDetailModal({
@@ -35,16 +35,16 @@ export default function SessionDetailModal({
   open,
   onOpenChange,
   onRefresh,
-  experiments,
+  brews,
 }: SessionDetailModalProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [addingExperiments, setAddingExperiments] = useState(false);
+  const [addingBrews, setAddingBrews] = useState(false);
   const [selectedToAdd, setSelectedToAdd] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [unlinking, setUnlinking] = useState<string | null>(null);
-  const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
-  const [experimentModalOpen, setExperimentModalOpen] = useState(false);
+  const [selectedBrewId, setSelectedBrewId] = useState<string | null>(null);
+  const [brewModalOpen, setBrewModalOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -71,52 +71,52 @@ export default function SessionDetailModal({
     });
   };
 
-  const sessionExperimentIds = useMemo(() => session?.experiments?.map((e) => e.id) ?? [], [session]);
+  const sessionBrewIds = useMemo(() => session?.brews?.map((e) => e.id) ?? [], [session]);
 
-  const handleOpenExperiment = (id: string) => {
-    setSelectedExperimentId(id);
-    setExperimentModalOpen(true);
+  const handleOpenBrew = (id: string) => {
+    setSelectedBrewId(id);
+    setBrewModalOpen(true);
   };
 
-  const linkedExperimentIds = new Set(session?.experiments?.map((e) => e.id) ?? []);
-  const availableExperiments = experiments.filter((e) => !linkedExperimentIds.has(e.id));
+  const linkedBrewIds = new Set(session?.brews?.map((e) => e.id) ?? []);
+  const availableBrews = brews.filter((e) => !linkedBrewIds.has(e.id));
 
-  const handleToggleAdd = (experimentId: string) => {
+  const handleToggleAdd = (brewId: string) => {
     setSelectedToAdd((prev) => {
       const next = new Set(prev);
-      if (next.has(experimentId)) {
-        next.delete(experimentId);
+      if (next.has(brewId)) {
+        next.delete(brewId);
       } else {
-        next.add(experimentId);
+        next.add(brewId);
       }
       return next;
     });
   };
 
-  const handleLinkExperiments = async () => {
+  const handleLinkBrews = async () => {
     if (selectedToAdd.size === 0) return;
     setSaving(true);
     try {
-      await linkExperiments(sessionId, Array.from(selectedToAdd));
+      await linkBrews(sessionId, Array.from(selectedToAdd));
       setSelectedToAdd(new Set());
-      setAddingExperiments(false);
+      setAddingBrews(false);
       await fetchSession();
       onRefresh();
     } catch (error) {
-      console.error('Failed to link experiments:', error);
+      console.error('Failed to link brews:', error);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleUnlink = async (experimentId: string) => {
-    setUnlinking(experimentId);
+  const handleUnlink = async (brewId: string) => {
+    setUnlinking(brewId);
     try {
-      await unlinkExperiment(sessionId, experimentId);
+      await unlinkBrew(sessionId, brewId);
       await fetchSession();
       onRefresh();
     } catch (error) {
-      console.error('Failed to unlink experiment:', error);
+      console.error('Failed to unlink brew:', error);
     } finally {
       setUnlinking(null);
     }
@@ -124,7 +124,7 @@ export default function SessionDetailModal({
 
   return (
     <>
-    <Dialog open={open && !experimentModalOpen} onOpenChange={onOpenChange}>
+    <Dialog open={open && !brewModalOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -135,7 +135,7 @@ export default function SessionDetailModal({
             <DialogHeader>
               <DialogTitle>{session.name}</DialogTitle>
               <DialogDescription>
-                Variable: {session.variable_tested} · {session.experiment_count} experiment{session.experiment_count !== 1 ? 's' : ''}
+                Variable: {session.variable_tested} · {session.brew_count} brew{session.brew_count !== 1 ? 's' : ''}
               </DialogDescription>
             </DialogHeader>
 
@@ -147,10 +147,10 @@ export default function SessionDetailModal({
                 </div>
               )}
 
-              {/* Experiments Table */}
+              {/* Brews Table */}
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-2">Experiments</h4>
-                {session.experiments && session.experiments.length > 0 ? (
+                <h4 className="text-sm font-medium text-muted-foreground mb-2">Brews</h4>
+                {session.brews && session.brews.length > 0 ? (
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -162,8 +162,8 @@ export default function SessionDetailModal({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {session.experiments.map((exp) => (
-                        <TableRow key={exp.id} className="cursor-pointer" onClick={() => handleOpenExperiment(exp.id)}>
+                      {session.brews.map((exp) => (
+                        <TableRow key={exp.id} className="cursor-pointer" onClick={() => handleOpenBrew(exp.id)}>
                           <TableCell className="text-sm">{formatDate(exp.brew_date)}</TableCell>
                           <TableCell className="text-sm tabular-nums">{exp.grind_size ?? '—'}</TableCell>
                           <TableCell className="text-sm tabular-nums">
@@ -192,22 +192,22 @@ export default function SessionDetailModal({
                     </TableBody>
                   </Table>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No experiments linked yet.</p>
+                  <p className="text-sm text-muted-foreground">No brews linked yet.</p>
                 )}
               </div>
 
-              {/* Add Experiments Section */}
-              {addingExperiments ? (
+              {/* Add Brews Section */}
+              {addingBrews ? (
                 <div className="space-y-2 border rounded-md p-3">
-                  <h4 className="text-sm font-medium">Add Experiments</h4>
-                  {availableExperiments.length === 0 ? (
+                  <h4 className="text-sm font-medium">Add Brews</h4>
+                  {availableBrews.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      All experiments for this coffee are already linked.
+                      All brews for this coffee are already linked.
                     </p>
                   ) : (
                     <>
                       <div className="max-h-[150px] overflow-y-auto">
-                        {availableExperiments.map((exp) => (
+                        {availableBrews.map((exp) => (
                           <label
                             key={exp.id}
                             className="flex items-center gap-3 p-2 hover:bg-accent/50 cursor-pointer"
@@ -225,10 +225,10 @@ export default function SessionDetailModal({
                         ))}
                       </div>
                       <div className="flex gap-2 justify-end">
-                        <Button variant="outline" size="sm" onClick={() => { setAddingExperiments(false); setSelectedToAdd(new Set()); }}>
+                        <Button variant="outline" size="sm" onClick={() => { setAddingBrews(false); setSelectedToAdd(new Set()); }}>
                           Cancel
                         </Button>
-                        <Button size="sm" onClick={handleLinkExperiments} disabled={saving || selectedToAdd.size === 0}>
+                        <Button size="sm" onClick={handleLinkBrews} disabled={saving || selectedToAdd.size === 0}>
                           {saving && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
                           Add Selected
                         </Button>
@@ -240,10 +240,10 @@ export default function SessionDetailModal({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setAddingExperiments(true)}
+                  onClick={() => setAddingBrews(true)}
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />
-                  Add Experiments
+                  Add Brews
                 </Button>
               )}
 
@@ -274,14 +274,14 @@ export default function SessionDetailModal({
       </DialogContent>
     </Dialog>
 
-    {/* Nested Experiment Detail Modal */}
-    <ExperimentDetailModal
-      experimentId={selectedExperimentId}
-      open={experimentModalOpen}
-      onOpenChange={setExperimentModalOpen}
+    {/* Nested Brew Detail Modal */}
+    <BrewDetailModal
+      brewId={selectedBrewId}
+      open={brewModalOpen}
+      onOpenChange={setBrewModalOpen}
       onRefresh={() => { fetchSession(); onRefresh(); }}
-      experimentIds={sessionExperimentIds}
-      onNavigate={(id) => setSelectedExperimentId(id)}
+      brewIds={sessionBrewIds}
+      onNavigate={(id) => setSelectedBrewId(id)}
     />
     </>
   );

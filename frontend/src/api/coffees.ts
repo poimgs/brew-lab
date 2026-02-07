@@ -1,6 +1,6 @@
 import client from './client';
 
-export interface BestExperimentSummary {
+export interface BestBrewSummary {
   id: string;
   brew_date: string;
   overall_score?: number;
@@ -24,18 +24,19 @@ export interface Coffee {
   tasting_notes?: string;
   roast_date?: string;
   notes?: string;
-  best_experiment_id?: string;
+  best_brew_id?: string;
   archived_at?: string;
   deleted_at?: string;
   created_at: string;
   updated_at: string;
   // Computed properties
   days_off_roast?: number;
-  experiment_count: number;
+  brew_count: number;
   last_brewed?: string;
   // Enrichment fields (from list endpoint)
-  best_experiment?: BestExperimentSummary;
+  best_brew?: BestBrewSummary;
   improvement_note?: string;
+  draft_brew_id?: string;
   // Dashboard enrichment fields (populated when include_goals/include_trend params are set)
   goals?: CoffeeGoalSummary;
   latest_values?: GoalValues;
@@ -47,7 +48,7 @@ export interface FilterPaperSummary {
   brand?: string;
 }
 
-export interface ReferenceExperiment {
+export interface ReferenceBrew {
   id: string;
   brew_date: string;
   coffee_weight?: number;
@@ -83,7 +84,7 @@ export interface CoffeeGoalSummary {
 }
 
 export interface CoffeeReference {
-  experiment: ReferenceExperiment | null;
+  brew: ReferenceBrew | null;
   goals: CoffeeGoalSummary | null;
 }
 
@@ -201,12 +202,12 @@ export async function getCoffeeSuggestions(field: string, query: string): Promis
   return response.data.items;
 }
 
-export async function setBestExperiment(
+export async function setBestBrew(
   coffeeId: string,
-  experimentId: string | null
+  brewId: string | null
 ): Promise<Coffee> {
-  const response = await client.post<Coffee>(`/coffees/${coffeeId}/best-experiment`, {
-    experiment_id: experimentId,
+  const response = await client.post<Coffee>(`/coffees/${coffeeId}/best-brew`, {
+    brew_id: brewId,
   });
   return response.data;
 }

@@ -2,7 +2,7 @@
 
 ## Context
 
-This specification defines the REST API conventions for the Coffee Experiment Tracker backend. The API serves a React SPA frontend and follows standard RESTful practices.
+This specification defines the REST API conventions for the Coffee Tracker backend. The API serves a React SPA frontend and follows standard RESTful practices.
 
 All feature-specific endpoints are documented in their respective feature specs.
 
@@ -81,7 +81,7 @@ Authorization: Bearer <token>
 List endpoints support pagination via query parameters:
 
 ```
-GET /api/v1/experiments?page=1&per_page=20
+GET /api/v1/brews?page=1&per_page=20
 ```
 
 Response includes pagination metadata:
@@ -104,7 +104,7 @@ Response includes pagination metadata:
 ## Filtering and Sorting
 
 ```
-GET /api/v1/experiments?coffee_id=uuid&sort=-brew_date&score_gte=7
+GET /api/v1/brews?coffee_id=uuid&sort=-brew_date&score_gte=7
 ```
 
 ### Sorting
@@ -156,7 +156,7 @@ Returns items array with pagination:
 
 Limited nesting for logical relationships:
 ```
-GET /api/v1/coffees/:id/experiments  # Experiments for a coffee
+GET /api/v1/coffees/:id/brews  # Brews for a coffee
 ```
 
 Primary resources are flat for most operations.
@@ -166,16 +166,16 @@ Primary resources are flat for most operations.
 Responses can include related data to reduce round trips:
 
 ```
-GET /api/v1/experiments?include=coffee
+GET /api/v1/brews?include=coffee
 ```
 
-Experiment responses include nested coffee data by default for common access patterns.
+Brew responses include nested coffee data by default for common access patterns.
 
 ## Computed Properties
 
 API returns computed properties in responses:
-- `days_off_roast`: Calculated from coffee roast_date and experiment brew_date
-- `experiment_count`: Count of experiments for a coffee
+- `days_off_roast`: Calculated from brew's roast_date (or coffee's roast_date) and brew_date
+- `brew_count`: Count of brews for a coffee
 
 These are read-only and not accepted in request bodies.
 
@@ -192,14 +192,14 @@ REST chosen because:
 
 ### Nested Resources Sparingly
 
-Limited nesting (e.g., `/coffees/:id/experiments`) for:
+Limited nesting (e.g., `/coffees/:id/brews`) for:
 - Logical relationships
 - Convenience queries
 - Flat primary resources for most operations
 
 ### Include Related Data
 
-Experiment responses include nested coffee data:
+Brew responses include nested coffee data:
 - Reduces round trips
 - Common access pattern
 - Optional expansion via `?include=` parameter
@@ -207,6 +207,6 @@ Experiment responses include nested coffee data:
 ### Bulk Operations Limited
 
 Bulk create/update not initially supported:
-- Single-experiment entry is primary use case
+- Single-brew entry is primary use case
 - Keeps API simple
 - Can add later if needed

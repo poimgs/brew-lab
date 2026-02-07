@@ -7,6 +7,7 @@ import {
   Coffee as CoffeeIcon,
   FlaskConical,
   Plus,
+  PlayCircle,
   Star,
   Loader2,
   Pencil,
@@ -35,20 +36,20 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Coffee, CoffeeReference, ReferenceExperiment } from '@/api/coffees';
-import { setBestExperiment } from '@/api/coffees';
+import type { Coffee, CoffeeReference, ReferenceBrew } from '@/api/coffees';
+import { setBestBrew } from '@/api/coffees';
 import { upsertCoffeeGoal, type CoffeeGoalInput } from '@/api/coffee-goals';
-import type { Experiment } from '@/api/experiments';
+import type { Brew } from '@/api/brews';
 import type { Session } from '@/api/sessions';
 import SessionList from '@/components/session/SessionList';
-import ExperimentDetailModal from '@/components/experiment/ExperimentDetailModal';
+import BrewDetailModal from '@/components/brew/BrewDetailModal';
 
 interface CoffeeDetailProps {
   coffee: Coffee;
   reference: CoffeeReference | null;
-  experiments: Experiment[];
+  brews: Brew[];
   sessions: Session[];
-  experimentsLoading: boolean;
+  brewsLoading: boolean;
   onBack: () => void;
   onEdit: () => void;
   onRefresh: () => void;
@@ -60,9 +61,9 @@ interface CoffeeDetailProps {
 export default function CoffeeDetail({
   coffee,
   reference,
-  experiments,
+  brews,
   sessions,
-  experimentsLoading,
+  brewsLoading,
   onBack,
   onEdit,
   onRefresh,
@@ -71,8 +72,8 @@ export default function CoffeeDetail({
   onDelete,
 }: CoffeeDetailProps) {
   const navigate = useNavigate();
-  const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
-  const [experimentModalOpen, setExperimentModalOpen] = useState(false);
+  const [selectedBrewId, setSelectedBrewId] = useState<string | null>(null);
+  const [brewModalOpen, setBrewModalOpen] = useState(false);
   const [goalsDialogOpen, setGoalsDialogOpen] = useState(false);
   const [changeBestDialogOpen, setChangeBestDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
@@ -83,11 +84,11 @@ export default function CoffeeDetail({
   const [settingBest, setSettingBest] = useState<string | null>(null);
   const [goalsForm, setGoalsForm] = useState<CoffeeGoalInput>({});
 
-  const experimentIds = useMemo(() => experiments.slice(0, 10).map((e) => e.id), [experiments]);
+  const brewIds = useMemo(() => brews.slice(0, 10).map((e) => e.id), [brews]);
 
-  const handleOpenExperiment = (id: string) => {
-    setSelectedExperimentId(id);
-    setExperimentModalOpen(true);
+  const handleOpenBrew = (id: string) => {
+    setSelectedBrewId(id);
+    setBrewModalOpen(true);
   };
 
   const formatDate = (dateStr?: string) => {
@@ -114,8 +115,8 @@ export default function CoffeeDetail({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleNewExperiment = () => {
-    navigate(`/experiments/new?coffee_id=${coffee.id}`);
+  const handleNewBrew = () => {
+    navigate(`/brews/new?coffee_id=${coffee.id}`);
   };
 
   const openGoalsDialog = () => {
@@ -150,14 +151,14 @@ export default function CoffeeDetail({
     }
   };
 
-  const handleSetBestExperiment = async (experimentId: string | null) => {
-    setSettingBest(experimentId);
+  const handleSetBestBrew = async (brewId: string | null) => {
+    setSettingBest(brewId);
     try {
-      await setBestExperiment(coffee.id, experimentId);
+      await setBestBrew(coffee.id, brewId);
       setChangeBestDialogOpen(false);
       onRefresh();
     } catch (error) {
-      console.error('Failed to set best experiment:', error);
+      console.error('Failed to set best brew:', error);
     } finally {
       setSettingBest(null);
     }
@@ -198,11 +199,11 @@ export default function CoffeeDetail({
     }
   };
 
-  const renderBestBrewSection = (exp: ReferenceExperiment | null) => {
+  const renderBestBrewSection = (exp: ReferenceBrew | null) => {
     if (!exp) {
       return (
         <div className="text-sm text-muted-foreground">
-          No experiments yet. Log your first brew to see it here.
+          No brews yet. Log your first brew to see it here.
         </div>
       );
     }
@@ -299,9 +300,9 @@ export default function CoffeeDetail({
     );
   };
 
-  const isBestExperiment = (exp: Experiment) => {
-    return coffee.best_experiment_id === exp.id ||
-           (!coffee.best_experiment_id && reference?.experiment?.id === exp.id);
+  const isBestBrew = (exp: Brew) => {
+    return coffee.best_brew_id === exp.id ||
+           (!coffee.best_brew_id && reference?.brew?.id === exp.id);
   };
 
   return (
@@ -328,9 +329,15 @@ export default function CoffeeDetail({
               )}
             </div>
             <div className="flex gap-1 sm:gap-2">
-              <Button size="sm" onClick={handleNewExperiment}>
+              {coffee.draft_brew_id && (
+                <Button size="sm" onClick={() => navigate(`/brews/${coffee.draft_brew_id}/edit`)}>
+                  <PlayCircle className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Continue Brew</span>
+                </Button>
+              )}
+              <Button size="sm" variant={coffee.draft_brew_id ? 'outline' : 'default'} onClick={handleNewBrew}>
                 <Plus className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">New Experiment</span>
+                <span className="hidden sm:inline">New Brew</span>
               </Button>
               <Button variant="outline" size="sm" onClick={onEdit}>
                 <Edit className="h-4 w-4 sm:mr-1" />
@@ -388,8 +395,8 @@ export default function CoffeeDetail({
             </div>
             <div className="rounded-lg border p-3 sm:p-4 text-center">
               <FlaskConical className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-xs sm:text-sm text-muted-foreground">Experiments</p>
-              <p className="font-medium tabular-nums text-sm sm:text-base">{coffee.experiment_count}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Brews</p>
+              <p className="font-medium tabular-nums text-sm sm:text-base">{coffee.brew_count}</p>
             </div>
           </div>
 
@@ -439,7 +446,7 @@ export default function CoffeeDetail({
           <div className="pt-4 border-t">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-semibold">Reference Brew</h3>
-              {experiments.length > 0 && (
+              {brews.length > 0 && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -449,7 +456,7 @@ export default function CoffeeDetail({
                 </Button>
               )}
             </div>
-            {renderBestBrewSection(reference?.experiment ?? null)}
+            {renderBestBrewSection(reference?.brew ?? null)}
           </div>
 
           {/* Target Goals Section */}
@@ -468,7 +475,7 @@ export default function CoffeeDetail({
           <SessionList
             coffeeId={coffee.id}
             sessions={sessions}
-            experiments={experiments}
+            brews={brews}
             onRefresh={onRefresh}
           />
 
@@ -476,24 +483,24 @@ export default function CoffeeDetail({
           <div className="pt-4 border-t">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Brew History</h3>
-              {experiments.length > 10 && (
+              {brews.length > 10 && (
                 <Button
                   variant="link"
                   size="sm"
                   onClick={() => navigate(`/dashboard?coffee=${coffee.id}`)}
                 >
-                  View All Experiments
+                  View All Brews
                 </Button>
               )}
             </div>
 
-            {experimentsLoading ? (
+            {brewsLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : experiments.length === 0 ? (
+            ) : brews.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No experiments yet. Click "New Experiment" to log your first brew.
+                No brews yet. Click "New Brew" to log your first brew.
               </p>
             ) : (
               <Table>
@@ -509,14 +516,14 @@ export default function CoffeeDetail({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {experiments.slice(0, 10).map((exp) => {
-                    const isBest = isBestExperiment(exp);
+                  {brews.slice(0, 10).map((exp) => {
+                    const isBest = isBestBrew(exp);
 
                     return (
                       <TableRow
                         key={exp.id}
                         className="cursor-pointer"
-                        onClick={() => handleOpenExperiment(exp.id)}
+                        onClick={() => handleOpenBrew(exp.id)}
                       >
                         <TableCell>
                           {isBest && (
@@ -545,7 +552,7 @@ export default function CoffeeDetail({
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleSetBestExperiment(exp.id);
+                                handleSetBestBrew(exp.id);
                               }}
                               disabled={settingBest === exp.id}
                             >
@@ -681,7 +688,7 @@ export default function CoffeeDetail({
           <DialogHeader>
             <DialogTitle>Archive Coffee</DialogTitle>
             <DialogDescription>
-              Are you sure you want to archive "{coffee.name}" by {coffee.roaster}? Archived coffees are hidden from the main list but can still be referenced in experiments.
+              Are you sure you want to archive "{coffee.name}" by {coffee.roaster}? Archived coffees are hidden from the main list but can still be referenced in brews.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -702,7 +709,7 @@ export default function CoffeeDetail({
           <DialogHeader>
             <DialogTitle>Delete Coffee</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{coffee.name}" by {coffee.roaster}? This action cannot be undone. Existing experiments will be preserved but this coffee will no longer appear in your library.
+              Are you sure you want to delete "{coffee.name}" by {coffee.roaster}? This action cannot be undone. Existing brews will be preserved but this coffee will no longer appear in your library.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -718,19 +725,19 @@ export default function CoffeeDetail({
         </DialogContent>
       </Dialog>
 
-      {/* Change Best Experiment Dialog */}
+      {/* Change Best Brew Dialog */}
       <Dialog open={changeBestDialogOpen} onOpenChange={setChangeBestDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Select Reference Brew</DialogTitle>
             <DialogDescription>
-              Choose which experiment to use as the reference brew for this coffee.
+              Choose which brew to use as the reference brew for this coffee.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[400px] overflow-y-auto">
             <div className="space-y-2 py-4">
-              {experiments.map((exp) => {
-                const isBest = isBestExperiment(exp);
+              {brews.map((exp) => {
+                const isBest = isBestBrew(exp);
                 const params: string[] = [];
                 if (exp.overall_score != null) params.push(`${exp.overall_score}/10`);
                 if (exp.grind_size != null) params.push(`Grind ${exp.grind_size}`);
@@ -743,7 +750,7 @@ export default function CoffeeDetail({
                     className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
                       isBest ? 'border-primary bg-primary/5' : 'hover:bg-accent/50'
                     }`}
-                    onClick={() => handleSetBestExperiment(exp.id)}
+                    onClick={() => handleSetBestBrew(exp.id)}
                   >
                     <div className="flex items-center gap-3">
                       {isBest ? (
@@ -767,10 +774,10 @@ export default function CoffeeDetail({
             </div>
           </div>
           <DialogFooter>
-            {coffee.best_experiment_id && (
+            {coffee.best_brew_id && (
               <Button
                 variant="outline"
-                onClick={() => handleSetBestExperiment(null)}
+                onClick={() => handleSetBestBrew(null)}
                 disabled={settingBest !== null}
               >
                 Clear Selection
@@ -783,14 +790,14 @@ export default function CoffeeDetail({
         </DialogContent>
       </Dialog>
 
-      {/* Experiment Detail Modal */}
-      <ExperimentDetailModal
-        experimentId={selectedExperimentId}
-        open={experimentModalOpen}
-        onOpenChange={setExperimentModalOpen}
+      {/* Brew Detail Modal */}
+      <BrewDetailModal
+        brewId={selectedBrewId}
+        open={brewModalOpen}
+        onOpenChange={setBrewModalOpen}
         onRefresh={onRefresh}
-        experimentIds={experimentIds}
-        onNavigate={(id) => setSelectedExperimentId(id)}
+        brewIds={brewIds}
+        onNavigate={(id) => setSelectedBrewId(id)}
       />
     </div>
   );

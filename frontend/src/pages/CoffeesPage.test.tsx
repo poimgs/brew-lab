@@ -35,7 +35,7 @@ const mockCoffee: coffeesApi.Coffee = {
   tasting_notes: 'Apricot Nectar, Lemon Sorbet',
   roast_date: '2025-11-19',
   days_off_roast: 61,
-  experiment_count: 8,
+  brew_count: 8,
   created_at: '2025-11-22T15:00:00Z',
   updated_at: '2025-11-22T15:00:00Z',
 };
@@ -222,10 +222,10 @@ describe('CoffeesPage', () => {
 
     // Card shows coffee name and roaster
     expect(screen.getByText('Cata Coffee')).toBeInTheDocument();
-    // Card shows "No experiments yet" when no best_experiment
-    expect(screen.getByText('No experiments yet')).toBeInTheDocument();
-    // Card shows "New Experiment" action button
-    expect(screen.getByRole('button', { name: /new experiment/i })).toBeInTheDocument();
+    // Card shows "No brews yet" when no best_brew
+    expect(screen.getByText('No brews yet')).toBeInTheDocument();
+    // Card shows "New Brew" action button
+    expect(screen.getByRole('button', { name: /new brew/i })).toBeInTheDocument();
   });
 
   it('displays error state when API fails', async () => {

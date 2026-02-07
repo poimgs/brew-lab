@@ -65,10 +65,13 @@ func (r *PostgresRepository) Create(ctx context.Context, userID uuid.UUID, input
 func (r *PostgresRepository) GetByID(ctx context.Context, userID, coffeeID uuid.UUID) (*Coffee, error) {
 	query := `
 		SELECT c.id, c.user_id, c.roaster, c.name, c.country, c.farm, c.process, c.roast_level,
-			c.tasting_notes, c.roast_date, c.notes, c.best_experiment_id,
+			c.tasting_notes, c.roast_date, c.notes, c.best_brew_id,
 			c.archived_at, c.deleted_at, c.created_at, c.updated_at,
-			(SELECT COUNT(*) FROM experiments WHERE coffee_id = c.id) AS experiment_count,
-			(SELECT MAX(brew_date) FROM experiments WHERE coffee_id = c.id) AS last_brewed
+			(SELECT COUNT(*) FROM brews WHERE coffee_id = c.id) AS brew_count,
+			(SELECT MAX(brew_date) FROM brews WHERE coffee_id = c.id) AS last_brewed,
+			(SELECT id FROM brews WHERE coffee_id = c.id AND user_id = $2
+			 AND is_draft = true AND deleted_at IS NULL
+			 ORDER BY updated_at DESC LIMIT 1) AS draft_brew_id
 		FROM coffees c
 		WHERE c.id = $1 AND c.user_id = $2 AND c.deleted_at IS NULL
 	`
@@ -78,9 +81,10 @@ func (r *PostgresRepository) GetByID(ctx context.Context, userID, coffeeID uuid.
 		&coffee.ID, &coffee.UserID, &coffee.Roaster, &coffee.Name,
 		&coffee.Country, &coffee.Farm, &coffee.Process, &coffee.RoastLevel,
 		&coffee.TastingNotes, &coffee.RoastDate, &coffee.Notes,
-		&coffee.BestExperimentID, &coffee.ArchivedAt, &coffee.DeletedAt,
+		&coffee.BestBrewID, &coffee.ArchivedAt, &coffee.DeletedAt,
 		&coffee.CreatedAt, &coffee.UpdatedAt,
-		&coffee.ExperimentCount, &coffee.LastBrewed,
+		&coffee.BrewCount, &coffee.LastBrewed,
+		&coffee.DraftBrewID,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -152,10 +156,13 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 	offset := (params.Page - 1) * params.PerPage
 	listQuery := fmt.Sprintf(`
 		SELECT c.id, c.user_id, c.roaster, c.name, c.country, c.farm, c.process, c.roast_level,
-			c.tasting_notes, c.roast_date, c.notes, c.best_experiment_id,
+			c.tasting_notes, c.roast_date, c.notes, c.best_brew_id,
 			c.archived_at, c.deleted_at, c.created_at, c.updated_at,
-			(SELECT COUNT(*) FROM experiments WHERE coffee_id = c.id) AS experiment_count,
-			(SELECT MAX(brew_date) FROM experiments WHERE coffee_id = c.id) AS last_brewed
+			(SELECT COUNT(*) FROM brews WHERE coffee_id = c.id) AS brew_count,
+			(SELECT MAX(brew_date) FROM brews WHERE coffee_id = c.id) AS last_brewed,
+			(SELECT id FROM brews WHERE coffee_id = c.id AND user_id = c.user_id
+			 AND is_draft = true AND deleted_at IS NULL
+			 ORDER BY updated_at DESC LIMIT 1) AS draft_brew_id
 		FROM coffees c
 		%s
 		ORDER BY %s
@@ -177,8 +184,9 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 			&c.ID, &c.UserID, &c.Roaster, &c.Name,
 			&c.Country, &c.Farm, &c.Process, &c.RoastLevel,
 			&c.TastingNotes, &c.RoastDate, &c.Notes,
-			&c.BestExperimentID, &c.ArchivedAt, &c.DeletedAt, &c.CreatedAt, &c.UpdatedAt,
-			&c.ExperimentCount, &c.LastBrewed,
+			&c.BestBrewID, &c.ArchivedAt, &c.DeletedAt, &c.CreatedAt, &c.UpdatedAt,
+			&c.BrewCount, &c.LastBrewed,
+			&c.DraftBrewID,
 		)
 		if err != nil {
 			return nil, err
@@ -191,14 +199,14 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, params 
 		coffees = []Coffee{}
 	}
 
-	// Enrich coffees with best experiment data and improvement notes
+	// Enrich coffees with best brew data and improvement notes
 	if len(coffees) > 0 {
 		coffeeMap := make(map[uuid.UUID]*Coffee, len(coffees))
 		for i := range coffees {
 			coffeeMap[coffees[i].ID] = &coffees[i]
 		}
 
-		if err := r.populateBestExperiments(ctx, userID, coffeeMap); err != nil {
+		if err := r.populateBestBrews(ctx, userID, coffeeMap); err != nil {
 			return nil, err
 		}
 		if err := r.populateImprovementNotes(ctx, userID, coffeeMap); err != nil {
@@ -401,49 +409,49 @@ func (r *PostgresRepository) GetSuggestions(ctx context.Context, userID uuid.UUI
 }
 
 var (
-	ErrExperimentNotFound     = errors.New("experiment not found")
-	ErrExperimentWrongCoffee  = errors.New("experiment does not belong to this coffee")
+	ErrBrewNotFound     = errors.New("brew not found")
+	ErrBrewWrongCoffee  = errors.New("brew does not belong to this coffee")
 )
 
-func (r *PostgresRepository) SetBestExperiment(ctx context.Context, userID, coffeeID uuid.UUID, experimentID *uuid.UUID) (*Coffee, error) {
+func (r *PostgresRepository) SetBestBrew(ctx context.Context, userID, coffeeID uuid.UUID, brewID *uuid.UUID) (*Coffee, error) {
 	// First verify the coffee exists and belongs to user
 	coffee, err := r.GetByID(ctx, userID, coffeeID)
 	if err != nil {
 		return nil, err
 	}
 
-	// If experimentID is provided, verify it belongs to this coffee
-	if experimentID != nil {
-		var expCoffeeID uuid.UUID
-		var expUserID uuid.UUID
+	// If brewID is provided, verify it belongs to this coffee
+	if brewID != nil {
+		var brewCoffeeID uuid.UUID
+		var brewUserID uuid.UUID
 		err := r.db.QueryRowContext(ctx, `
-			SELECT coffee_id, user_id FROM experiments WHERE id = $1
-		`, *experimentID).Scan(&expCoffeeID, &expUserID)
+			SELECT coffee_id, user_id FROM brews WHERE id = $1
+		`, *brewID).Scan(&brewCoffeeID, &brewUserID)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, ErrExperimentNotFound
+				return nil, ErrBrewNotFound
 			}
 			return nil, err
 		}
-		if expCoffeeID != coffeeID {
-			return nil, ErrExperimentWrongCoffee
+		if brewCoffeeID != coffeeID {
+			return nil, ErrBrewWrongCoffee
 		}
-		if expUserID != userID {
-			return nil, ErrExperimentNotFound
+		if brewUserID != userID {
+			return nil, ErrBrewNotFound
 		}
 	}
 
-	// Update the coffee's best_experiment_id
+	// Update the coffee's best_brew_id
 	query := `
-		UPDATE coffees SET best_experiment_id = $1, updated_at = NOW()
+		UPDATE coffees SET best_brew_id = $1, updated_at = NOW()
 		WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL
 	`
-	_, err = r.db.ExecContext(ctx, query, experimentID, coffeeID, userID)
+	_, err = r.db.ExecContext(ctx, query, brewID, coffeeID, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	coffee.BestExperimentID = experimentID
+	coffee.BestBrewID = brewID
 	coffee.UpdatedAt = time.Now()
 	return coffee, nil
 }
@@ -457,31 +465,31 @@ func (r *PostgresRepository) GetReference(ctx context.Context, userID, coffeeID 
 
 	ref := &CoffeeReference{}
 
-	// Get the best experiment (or latest if none marked)
-	var experimentQuery string
-	var experimentID uuid.UUID
+	// Get the best brew (or latest if none marked)
+	var brewQuery string
+	var bestBrewID uuid.UUID
 
-	if coffee.BestExperimentID != nil {
-		experimentID = *coffee.BestExperimentID
-		experimentQuery = `
+	if coffee.BestBrewID != nil {
+		bestBrewID = *coffee.BestBrewID
+		brewQuery = `
 			SELECT e.id, e.brew_date, e.coffee_weight, e.water_weight, e.ratio,
 				e.grind_size, e.water_temperature, e.filter_paper_id,
 				e.bloom_water, e.bloom_time, e.total_brew_time,
 				e.tds, e.extraction_yield, e.overall_score,
 				fp.id, fp.name, fp.brand
-			FROM experiments e
+			FROM brews e
 			LEFT JOIN filter_papers fp ON e.filter_paper_id = fp.id
 			WHERE e.id = $1 AND e.user_id = $2
 		`
 	} else {
-		// Get latest experiment by brew_date
-		experimentQuery = `
+		// Get latest brew by brew_date
+		brewQuery = `
 			SELECT e.id, e.brew_date, e.coffee_weight, e.water_weight, e.ratio,
 				e.grind_size, e.water_temperature, e.filter_paper_id,
 				e.bloom_water, e.bloom_time, e.total_brew_time,
 				e.tds, e.extraction_yield, e.overall_score,
 				fp.id, fp.name, fp.brand
-			FROM experiments e
+			FROM brews e
 			LEFT JOIN filter_papers fp ON e.filter_paper_id = fp.id
 			WHERE e.coffee_id = $1 AND e.user_id = $2
 			ORDER BY e.brew_date DESC
@@ -489,38 +497,38 @@ func (r *PostgresRepository) GetReference(ctx context.Context, userID, coffeeID 
 		`
 	}
 
-	var exp ReferenceExperiment
+	var refBrew ReferenceBrew
 	var fpID *uuid.UUID
 	var fpName *string
 	var fpBrand *string
 
 	var queryArgs []interface{}
-	if coffee.BestExperimentID != nil {
-		queryArgs = []interface{}{experimentID, userID}
+	if coffee.BestBrewID != nil {
+		queryArgs = []interface{}{bestBrewID, userID}
 	} else {
 		queryArgs = []interface{}{coffeeID, userID}
 	}
 
-	err = r.db.QueryRowContext(ctx, experimentQuery, queryArgs...).Scan(
-		&exp.ID, &exp.BrewDate, &exp.CoffeeWeight, &exp.WaterWeight, &exp.Ratio,
-		&exp.GrindSize, &exp.WaterTemperature, &fpID,
-		&exp.BloomWater, &exp.BloomTime, &exp.TotalBrewTime,
-		&exp.TDS, &exp.ExtractionYield, &exp.OverallScore,
+	err = r.db.QueryRowContext(ctx, brewQuery, queryArgs...).Scan(
+		&refBrew.ID, &refBrew.BrewDate, &refBrew.CoffeeWeight, &refBrew.WaterWeight, &refBrew.Ratio,
+		&refBrew.GrindSize, &refBrew.WaterTemperature, &fpID,
+		&refBrew.BloomWater, &refBrew.BloomTime, &refBrew.TotalBrewTime,
+		&refBrew.TDS, &refBrew.ExtractionYield, &refBrew.OverallScore,
 		&fpID, &fpName, &fpBrand,
 	)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 	if err == nil {
-		exp.IsBest = coffee.BestExperimentID != nil
+		refBrew.IsBest = coffee.BestBrewID != nil
 		if fpID != nil && fpName != nil {
-			exp.FilterPaper = &FilterPaperSummary{
+			refBrew.FilterPaper = &FilterPaperSummary{
 				ID:    *fpID,
 				Name:  *fpName,
 				Brand: fpBrand,
 			}
 		}
-		ref.Experiment = &exp
+		ref.Brew = &refBrew
 	}
 
 	// Get coffee goals
@@ -600,13 +608,13 @@ func (r *PostgresRepository) GetGoalTrends(ctx context.Context, userID, coffeeID
 		return nil, err
 	}
 
-	// Fetch experiments for this coffee, ordered chronologically
+	// Fetch brews for this coffee, ordered chronologically
 	expQuery := `
 		SELECT brew_date, coffee_ml, tds, extraction_yield,
 			aroma_intensity, sweetness_intensity, body_intensity, flavor_intensity,
 			brightness_intensity, cleanliness_intensity, complexity_intensity,
 			balance_intensity, aftertaste_intensity, overall_score
-		FROM experiments
+		FROM brews
 		WHERE coffee_id = $1 AND user_id = $2 AND is_draft = false
 		ORDER BY brew_date ASC
 	`
@@ -634,7 +642,7 @@ func (r *PostgresRepository) GetGoalTrends(ctx context.Context, userID, coffeeID
 		OverallScore         *int
 	}
 
-	var experiments []expRow
+	var brews []expRow
 	for rows.Next() {
 		var e expRow
 		if err := rows.Scan(
@@ -645,7 +653,7 @@ func (r *PostgresRepository) GetGoalTrends(ctx context.Context, userID, coffeeID
 		); err != nil {
 			return nil, err
 		}
-		experiments = append(experiments, e)
+		brews = append(brews, e)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -660,7 +668,7 @@ func (r *PostgresRepository) GetGoalTrends(ctx context.Context, userID, coffeeID
 		}
 		var values []GoalTrendValue
 		var lastVal *float64
-		for _, e := range experiments {
+		for _, e := range brews {
 			v := getter(e)
 			if v != nil {
 				values = append(values, GoalTrendValue{
@@ -686,7 +694,7 @@ func (r *PostgresRepository) GetGoalTrends(ctx context.Context, userID, coffeeID
 		}
 		var values []GoalTrendValue
 		var lastVal *int
-		for _, e := range experiments {
+		for _, e := range brews {
 			v := getter(e)
 			if v != nil {
 				values = append(values, GoalTrendValue{
@@ -788,7 +796,7 @@ func (r *PostgresRepository) populateLatestValues(ctx context.Context, userID uu
 			e.aroma_intensity, e.sweetness_intensity, e.body_intensity, e.flavor_intensity,
 			e.brightness_intensity, e.cleanliness_intensity, e.complexity_intensity,
 			e.balance_intensity, e.aftertaste_intensity, e.overall_score
-		FROM experiments e
+		FROM brews e
 		WHERE e.coffee_id = ANY($1) AND e.user_id = $2 AND e.is_draft = false
 		ORDER BY e.coffee_id, e.brew_date DESC
 	`
@@ -820,7 +828,7 @@ func (r *PostgresRepository) populateLatestValues(ctx context.Context, userID uu
 	return rows.Err()
 }
 
-func (r *PostgresRepository) populateBestExperiments(ctx context.Context, userID uuid.UUID, coffeeMap map[uuid.UUID]*Coffee) error {
+func (r *PostgresRepository) populateBestBrews(ctx context.Context, userID uuid.UUID, coffeeMap map[uuid.UUID]*Coffee) error {
 	if len(coffeeMap) == 0 {
 		return nil
 	}
@@ -834,7 +842,7 @@ func (r *PostgresRepository) populateBestExperiments(ctx context.Context, userID
 		WITH best_or_latest AS (
 			SELECT DISTINCT ON (c.id)
 				c.id as coffee_id,
-				COALESCE(best.id, latest.id) as experiment_id,
+				COALESCE(best.id, latest.id) as brew_id,
 				COALESCE(best.brew_date, latest.brew_date) as brew_date,
 				COALESCE(best.overall_score, latest.overall_score) as overall_score,
 				COALESCE(best.ratio, latest.ratio) as ratio,
@@ -843,23 +851,23 @@ func (r *PostgresRepository) populateBestExperiments(ctx context.Context, userID
 				COALESCE(best_mp.name, latest_mp.name) as mineral_profile_name,
 				COALESCE(best_fp.name, latest_fp.name) as filter_paper_name
 			FROM coffees c
-			LEFT JOIN experiments best ON best.id = c.best_experiment_id AND best.user_id = $1
+			LEFT JOIN brews best ON best.id = c.best_brew_id AND best.user_id = $1
 			LEFT JOIN filter_papers best_fp ON best_fp.id = best.filter_paper_id
 			LEFT JOIN mineral_profiles best_mp ON best_mp.id = best.mineral_profile_id
 			LEFT JOIN LATERAL (
 				SELECT e.*
-				FROM experiments e
+				FROM brews e
 				WHERE e.coffee_id = c.id AND e.user_id = $1
 				ORDER BY e.brew_date DESC
 				LIMIT 1
-			) latest ON c.best_experiment_id IS NULL
+			) latest ON c.best_brew_id IS NULL
 			LEFT JOIN filter_papers latest_fp ON latest_fp.id = latest.filter_paper_id
 			LEFT JOIN mineral_profiles latest_mp ON latest_mp.id = latest.mineral_profile_id
 			WHERE c.id = ANY($2) AND c.user_id = $1
 		)
-		SELECT coffee_id, experiment_id, brew_date, overall_score, ratio, water_temperature, bloom_time, mineral_profile_name, filter_paper_name
+		SELECT coffee_id, brew_id, brew_date, overall_score, ratio, water_temperature, bloom_time, mineral_profile_name, filter_paper_name
 		FROM best_or_latest
-		WHERE experiment_id IS NOT NULL
+		WHERE brew_id IS NOT NULL
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, userID, pq.Array(coffeeIDs))
@@ -868,12 +876,12 @@ func (r *PostgresRepository) populateBestExperiments(ctx context.Context, userID
 	}
 	defer rows.Close()
 
-	experimentIDs := make([]uuid.UUID, 0)
-	experimentToCoffee := make(map[uuid.UUID]uuid.UUID)
+	brewIDs := make([]uuid.UUID, 0)
+	brewToCoffee := make(map[uuid.UUID]uuid.UUID)
 
 	for rows.Next() {
 		var coffeeID uuid.UUID
-		var be BestExperimentSummary
+		var be BestBrewSummary
 
 		err := rows.Scan(
 			&coffeeID,
@@ -893,9 +901,9 @@ func (r *PostgresRepository) populateBestExperiments(ctx context.Context, userID
 		be.PourStyles = []string{}
 
 		if coffee, ok := coffeeMap[coffeeID]; ok {
-			coffee.BestExperiment = &be
-			experimentIDs = append(experimentIDs, be.ID)
-			experimentToCoffee[be.ID] = coffeeID
+			coffee.BestBrew = &be
+			brewIDs = append(brewIDs, be.ID)
+			brewToCoffee[be.ID] = coffeeID
 		}
 	}
 
@@ -903,34 +911,34 @@ func (r *PostgresRepository) populateBestExperiments(ctx context.Context, userID
 		return err
 	}
 
-	// Fetch pour information for experiments
-	if len(experimentIDs) > 0 {
+	// Fetch pour information for brews
+	if len(brewIDs) > 0 {
 		pourQuery := `
-			SELECT experiment_id, pour_style
-			FROM experiment_pours
-			WHERE experiment_id = ANY($1)
-			ORDER BY experiment_id, pour_number
+			SELECT brew_id, pour_style
+			FROM brew_pours
+			WHERE brew_id = ANY($1)
+			ORDER BY brew_id, pour_number
 		`
 
-		pourRows, err := r.db.QueryContext(ctx, pourQuery, pq.Array(experimentIDs))
+		pourRows, err := r.db.QueryContext(ctx, pourQuery, pq.Array(brewIDs))
 		if err != nil {
 			return err
 		}
 		defer pourRows.Close()
 
-		poursByExp := make(map[uuid.UUID][]string)
+		poursByBrew := make(map[uuid.UUID][]string)
 		for pourRows.Next() {
-			var expID uuid.UUID
+			var brewID uuid.UUID
 			var pourStyle *string
 
-			if err := pourRows.Scan(&expID, &pourStyle); err != nil {
+			if err := pourRows.Scan(&brewID, &pourStyle); err != nil {
 				return err
 			}
 
 			if pourStyle != nil && *pourStyle != "" {
-				poursByExp[expID] = append(poursByExp[expID], *pourStyle)
+				poursByBrew[brewID] = append(poursByBrew[brewID], *pourStyle)
 			} else {
-				poursByExp[expID] = append(poursByExp[expID], "")
+				poursByBrew[brewID] = append(poursByBrew[brewID], "")
 			}
 		}
 
@@ -938,17 +946,17 @@ func (r *PostgresRepository) populateBestExperiments(ctx context.Context, userID
 			return err
 		}
 
-		for expID, pours := range poursByExp {
-			if coffeeID, ok := experimentToCoffee[expID]; ok {
-				if coffee, ok := coffeeMap[coffeeID]; ok && coffee.BestExperiment != nil {
-					coffee.BestExperiment.PourCount = len(pours)
+		for brewID, pours := range poursByBrew {
+			if coffeeID, ok := brewToCoffee[brewID]; ok {
+				if coffee, ok := coffeeMap[coffeeID]; ok && coffee.BestBrew != nil {
+					coffee.BestBrew.PourCount = len(pours)
 					styles := make([]string, 0)
 					for _, s := range pours {
 						if s != "" {
 							styles = append(styles, s)
 						}
 					}
-					coffee.BestExperiment.PourStyles = styles
+					coffee.BestBrew.PourStyles = styles
 				}
 			}
 		}
@@ -967,20 +975,20 @@ func (r *PostgresRepository) populateImprovementNotes(ctx context.Context, userI
 		coffeeIDs = append(coffeeIDs, id)
 	}
 
-	// Get improvement_notes from the best or latest experiment for each coffee
+	// Get improvement_notes from the best or latest brew for each coffee
 	query := `
 		SELECT DISTINCT ON (c.id)
 			c.id AS coffee_id,
 			COALESCE(best.improvement_notes, latest.improvement_notes) AS improvement_notes
 		FROM coffees c
-		LEFT JOIN experiments best ON best.id = c.best_experiment_id AND best.user_id = $2
+		LEFT JOIN brews best ON best.id = c.best_brew_id AND best.user_id = $2
 		LEFT JOIN LATERAL (
 			SELECT e.improvement_notes
-			FROM experiments e
+			FROM brews e
 			WHERE e.coffee_id = c.id AND e.user_id = $2
 			ORDER BY e.brew_date DESC
 			LIMIT 1
-		) latest ON c.best_experiment_id IS NULL
+		) latest ON c.best_brew_id IS NULL
 		WHERE c.id = ANY($1) AND c.user_id = $2
 			AND COALESCE(best.improvement_notes, latest.improvement_notes) IS NOT NULL
 			AND COALESCE(best.improvement_notes, latest.improvement_notes) != ''

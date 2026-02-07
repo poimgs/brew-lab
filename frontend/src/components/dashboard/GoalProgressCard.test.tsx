@@ -9,7 +9,7 @@ function makeCoffee(overrides: Partial<Coffee> = {}): Coffee {
     id: 'coffee-1',
     roaster: 'Cata Coffee',
     name: 'Kiamaina',
-    experiment_count: 8,
+    brew_count: 8,
     last_brewed: '2026-01-20T10:30:00Z',
     created_at: '2025-11-22T15:00:00Z',
     updated_at: '2025-11-22T15:00:00Z',
@@ -33,18 +33,18 @@ describe('GoalProgressCard', () => {
     expect(screen.getByText(/Cata Coffee/)).toBeInTheDocument();
   });
 
-  it('renders experiment count and last brewed date', () => {
+  it('renders brew count and last brewed date', () => {
     renderCard(makeCoffee());
 
-    expect(screen.getByText(/8 experiments/)).toBeInTheDocument();
+    expect(screen.getByText(/8 brews/)).toBeInTheDocument();
     expect(screen.getByText(/Last brewed/)).toBeInTheDocument();
     expect(screen.getByText(/Jan 20/)).toBeInTheDocument();
   });
 
-  it('renders singular "experiment" when count is 1', () => {
-    renderCard(makeCoffee({ experiment_count: 1 }));
+  it('renders singular "brew" when count is 1', () => {
+    renderCard(makeCoffee({ brew_count: 1 }));
 
-    expect(screen.getByText(/1 experiment(?!s)/)).toBeInTheDocument();
+    expect(screen.getByText(/1 brew(?!s)/)).toBeInTheDocument();
   });
 
   it('renders "View" link pointing to per-coffee drill-down', () => {
@@ -117,7 +117,7 @@ describe('GoalProgressCard', () => {
     });
     renderCard(coffee);
 
-    expect(screen.getByText('No experiment data yet to compare against goals.')).toBeInTheDocument();
+    expect(screen.getByText('No brew data yet to compare against goals.')).toBeInTheDocument();
   });
 
   it('does not show last_brewed when not available', () => {

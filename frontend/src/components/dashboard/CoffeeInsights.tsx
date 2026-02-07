@@ -1,6 +1,6 @@
 import { Lightbulb, Check } from 'lucide-react';
 import type { GoalTrendResponse } from '@/api/coffees';
-import type { AnalyzeResponse } from '@/api/experiments';
+import type { AnalyzeResponse } from '@/api/brews';
 
 interface CoffeeInsightsProps {
   trends: GoalTrendResponse | null;

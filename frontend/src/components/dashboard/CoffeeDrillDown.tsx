@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, Plus, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -11,14 +12,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { getCoffee, getGoalTrends, type Coffee, type GoalTrendResponse } from '@/api/coffees';
-import { listExperiments, analyzeExperimentsWithFilters, type Experiment, type AnalyzeResponse } from '@/api/experiments';
+import { getCoffee, getGoalTrends, type Coffee, type GoalTrendResponse, type CoffeeGoalSummary } from '@/api/coffees';
+import { listBrews, analyzeBrewsWithFilters, type Brew, type AnalyzeResponse } from '@/api/brews';
 import { listSessions, type Session } from '@/api/sessions';
-import GoalTrends from './GoalTrends';
+import SensoryRadarChart from './SensoryRadarChart';
 import CoffeeInsights from './CoffeeInsights';
+import VariableComparisonChart from './VariableComparisonChart';
 import SessionList from '@/components/session/SessionList';
-import AnalyzeView from '@/components/experiment/AnalyzeView';
-import ExperimentDetailModal from '@/components/experiment/ExperimentDetailModal';
+import AnalyzeView from '@/components/brew/AnalyzeView';
+import BrewDetailModal from '@/components/brew/BrewDetailModal';
 
 interface CoffeeDrillDownProps {
   coffeeId: string;
@@ -29,12 +31,13 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
 
   const [coffee, setCoffee] = useState<Coffee | null>(null);
   const [trends, setTrends] = useState<GoalTrendResponse | null>(null);
-  const [experiments, setExperiments] = useState<Experiment[]>([]);
+  const [brews, setBrews] = useState<Brew[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResponse | null>(null);
 
-  const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
-  const [experimentModalOpen, setExperimentModalOpen] = useState(false);
+  const [selectedBrewId, setSelectedBrewId] = useState<string | null>(null);
+  const [brewModalOpen, setBrewModalOpen] = useState(false);
+  const [selectedBrewIds, setSelectedBrewIds] = useState<string[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,15 +47,15 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const [coffeeData, trendsData, experimentsData, sessionsData] = await Promise.all([
+      const [coffeeData, trendsData, brewsData, sessionsData] = await Promise.all([
         getCoffee(coffeeId),
         getGoalTrends(coffeeId).catch(() => null),
-        listExperiments({ coffee_id: coffeeId, sort: '-brew_date', per_page: 50 }),
+        listBrews({ coffee_id: coffeeId, sort: '-brew_date', per_page: 50 }),
         listSessions(coffeeId),
       ]);
       setCoffee(coffeeData);
       setTrends(trendsData);
-      setExperiments(experimentsData.items);
+      setBrews(brewsData.items);
       setSessions(sessionsData.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load coffee data');
@@ -64,7 +67,7 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
   const fetchCorrelations = useCallback(async () => {
     setAnalyzeLoading(true);
     try {
-      const result = await analyzeExperimentsWithFilters({ coffee_ids: [coffeeId] });
+      const result = await analyzeBrewsWithFilters({ coffee_ids: [coffeeId] });
       setAnalyzeResult(result);
     } catch (err: unknown) {
       const apiError = err as { response?: { data?: { message?: string; error?: string } } };
@@ -86,11 +89,38 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
     await Promise.all([fetchData(), fetchCorrelations()]);
   };
 
-  const experimentIds = useMemo(() => experiments.map((e) => e.id), [experiments]);
+  const brewIds = useMemo(() => brews.map((e) => e.id), [brews]);
 
-  const handleOpenExperiment = (id: string) => {
-    setSelectedExperimentId(id);
-    setExperimentModalOpen(true);
+  const referenceBrew = useMemo(() => {
+    if (brews.length === 0) return null;
+    if (coffee?.best_brew_id) {
+      const best = brews.find((e) => e.id === coffee.best_brew_id);
+      if (best) return best;
+    }
+    return brews[0];
+  }, [brews, coffee?.best_brew_id]);
+
+  const goalSummary = useMemo((): CoffeeGoalSummary | null => {
+    if (!trends || Object.keys(trends.metrics).length === 0) return null;
+    const sensoryKeys = [
+      'aroma_intensity', 'sweetness_intensity', 'body_intensity', 'flavor_intensity',
+      'brightness_intensity', 'cleanliness_intensity', 'complexity_intensity',
+      'balance_intensity', 'aftertaste_intensity',
+    ];
+    const hasSensoryGoals = sensoryKeys.some((key) => trends.metrics[key]?.target != null);
+    if (!hasSensoryGoals) return null;
+    const summary: Record<string, unknown> = { id: '' };
+    for (const key of sensoryKeys) {
+      if (trends.metrics[key]) {
+        summary[key] = trends.metrics[key].target;
+      }
+    }
+    return summary as unknown as CoffeeGoalSummary;
+  }, [trends]);
+
+  const handleOpenBrew = (id: string) => {
+    setSelectedBrewId(id);
+    setBrewModalOpen(true);
   };
 
   const formatShortDate = (dateStr?: string) => {
@@ -121,8 +151,8 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
     );
   }
 
-  const isBestExperiment = (exp: Experiment) => {
-    return coffee.best_experiment_id === exp.id;
+  const isBestBrew = (exp: Brew) => {
+    return coffee.best_brew_id === exp.id;
   };
 
   return (
@@ -140,7 +170,7 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
               <span className="font-normal text-muted-foreground"> · {coffee.roaster}</span>
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {coffee.experiment_count} experiment{coffee.experiment_count !== 1 ? 's' : ''}
+              {coffee.brew_count} brew{coffee.brew_count !== 1 ? 's' : ''}
               {coffee.last_brewed && (
                 <> · Last brewed: {formatShortDate(coffee.last_brewed)}</>
               )}
@@ -149,25 +179,17 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
               )}
             </p>
           </div>
-          <Button size="sm" onClick={() => navigate(`/experiments/new?coffee_id=${coffeeId}`)}>
+          <Button size="sm" onClick={() => navigate(`/brews/new?coffee_id=${coffeeId}`)}>
             <Plus className="h-4 w-4 sm:mr-1" />
-            <span className="hidden sm:inline">New Experiment</span>
+            <span className="hidden sm:inline">New Brew</span>
           </Button>
         </div>
       </div>
 
-      {/* Goal Trends */}
+      {/* Sensory Profile */}
       <section>
-        <h2 className="text-xl font-semibold mb-4">Goal Trends</h2>
-        {trends ? (
-          <GoalTrends trends={trends} />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            No goals set. Set targets on the{' '}
-            <Link to={`/coffees/${coffeeId}`} className="underline">coffee detail page</Link>{' '}
-            to track trends.
-          </p>
-        )}
+        <h2 className="text-xl font-semibold mb-4">Sensory Profile</h2>
+        <SensoryRadarChart referenceBrew={referenceBrew} goals={goalSummary} />
       </section>
 
       {/* Correlations */}
@@ -180,12 +202,12 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
         ) : analyzeResult ? (
           <AnalyzeView
             result={analyzeResult}
-            experimentIds={analyzeResult.experiment_ids}
+            brewIds={analyzeResult.brew_ids}
             onClose={() => setAnalyzeResult(null)}
           />
         ) : (
           <p className="text-sm text-muted-foreground">
-            Need at least 5 experiments for this coffee to show correlations.
+            Need at least 5 brews for this coffee to show correlations.
           </p>
         )}
       </section>
@@ -201,7 +223,7 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
         <SessionList
           coffeeId={coffeeId}
           sessions={sessions}
-          experiments={experiments}
+          brews={brews}
           onRefresh={handleRefresh}
         />
       </section>
@@ -209,9 +231,9 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
       {/* Brew History */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Brew History</h2>
-        {experiments.length === 0 ? (
+        {brews.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No experiments yet. Start brewing to see history here.
+            No brews yet. Start brewing to see history here.
           </p>
         ) : (
           <Card>
@@ -219,6 +241,7 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8"></TableHead>
                     <TableHead className="w-8"></TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Score</TableHead>
@@ -228,15 +251,29 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {experiments.map((exp) => {
-                    const isBest = isBestExperiment(exp);
+                  {brews.map((exp) => {
+                    const isBest = isBestBrew(exp);
+                    const isSelected = selectedBrewIds.includes(exp.id);
 
                     return (
                       <TableRow
                         key={exp.id}
                         className="cursor-pointer"
-                        onClick={() => handleOpenExperiment(exp.id)}
+                        onClick={() => handleOpenBrew(exp.id)}
                       >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={isSelected}
+                            disabled={selectedBrewIds.length >= 6 && !isSelected}
+                            onCheckedChange={(checked) => {
+                              setSelectedBrewIds((prev) =>
+                                checked
+                                  ? [...prev, exp.id]
+                                  : prev.filter((id) => id !== exp.id)
+                              );
+                            }}
+                          />
+                        </TableCell>
                         <TableCell>
                           {isBest && (
                             <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
@@ -267,14 +304,28 @@ export default function CoffeeDrillDown({ coffeeId }: CoffeeDrillDownProps) {
         )}
       </section>
 
-      {/* Experiment Detail Modal */}
-      <ExperimentDetailModal
-        experimentId={selectedExperimentId}
-        open={experimentModalOpen}
-        onOpenChange={setExperimentModalOpen}
+      {/* Compare Brews */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Compare Brews</h2>
+        {selectedBrewIds.length < 2 ? (
+          <p className="text-sm text-muted-foreground">
+            Select 2 or more brews from brew history to compare.
+          </p>
+        ) : (
+          <VariableComparisonChart
+            brews={brews.filter((e) => selectedBrewIds.includes(e.id))}
+          />
+        )}
+      </section>
+
+      {/* Brew Detail Modal */}
+      <BrewDetailModal
+        brewId={selectedBrewId}
+        open={brewModalOpen}
+        onOpenChange={setBrewModalOpen}
         onRefresh={handleRefresh}
-        experimentIds={experimentIds}
-        onNavigate={(id) => setSelectedExperimentId(id)}
+        brewIds={brewIds}
+        onNavigate={(id) => setSelectedBrewId(id)}
       />
     </div>
   );

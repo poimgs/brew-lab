@@ -2,9 +2,9 @@
 
 ## Overview
 
-The Coffees feature manages coffee bean metadata as a first-class entity, independent from experiments. It provides:
+The Coffees feature manages coffee bean metadata as a first-class entity, independent from brews. It provides:
 - Coffee inventory management (CRUD)
-- **Reference Brew** tracking - mark an experiment as your reference brew for each coffee
+- **Reference Brew** tracking - mark a brew as your reference brew for each coffee
 - **Target Goals** - set desired outcome targets to track what you're aiming for
 
 **Route:** `/` (landing page)
@@ -27,21 +27,22 @@ The Coffees feature manages coffee bean metadata as a first-class entity, indepe
 | process | string | No | Processing method (Washed, Natural, Honey, etc.) |
 | roast_level | enum | No | Light, Medium, Medium-Dark, Dark |
 | tasting_notes | string | No | Roaster's described flavor notes |
-| roast_date | date | No | Date the coffee was roasted |
+| roast_date | date | No | Date the coffee was roasted (shown as "Latest Roast Date" in UI) |
 | notes | text | No | Personal notes about this coffee |
-| best_experiment_id | UUID | No | FK to experiment marked as "reference" (API field name unchanged) |
+| best_brew_id | UUID | No | FK to brew marked as "reference" |
+| draft_brew_id | UUID | Computed | ID of the most recent draft brew for this coffee (computed via subquery, not stored) |
 | archived_at | timestamp | No | When coffee was archived (hidden but still usable) |
-| deleted_at | timestamp | No | Soft delete timestamp (preserved for experiment history) |
+| deleted_at | timestamp | No | Soft delete timestamp (preserved for brew history) |
 | created_at | timestamp | Auto | Record creation time |
 | updated_at | timestamp | Auto | Last modification time |
 
-Note: The API field `best_experiment_id` is displayed as "Reference Brew" in the UI. The field name is unchanged for backwards compatibility.
+Note: The UI displays "Reference Brew" terminology. The `roast_date` field on Coffee is shown as "Latest Roast Date" — individual brews can have their own `roast_date` for multi-bag tracking.
 
 ### Validation Rules
 
 1. `roaster` and `name` together should be treated as a logical identifier (not enforced unique, but used for display)
 2. `roast_date` cannot be in the future
-3. `best_experiment_id` must reference an experiment belonging to this coffee
+3. `best_brew_id` must reference a brew belonging to this coffee
 4. `process` is free-text but UI may suggest common values:
    - Washed
    - Natural
@@ -52,18 +53,19 @@ Note: The API field `best_experiment_id` is displayed as "Reference Brew" in the
 
 ### Relationships
 
-- **One-to-Many with Experiment**: A coffee can have many experiments; each experiment references exactly one coffee
+- **One-to-Many with Brew**: A coffee can have many brews; each brew references exactly one coffee
 - **One-to-One with Coffee Goals**: A coffee can have one set of target goals
-- **Reference Experiment**: Optional FK to the experiment marked as the user's reference brew
-- Deleting a coffee uses soft delete (`deleted_at` timestamp) to preserve experiment history
-- Archived coffees are hidden from lists but can still be referenced in new experiments
+- **Reference Brew**: Optional FK to the brew marked as the user's reference brew
+- Deleting a coffee uses soft delete (`deleted_at` timestamp) to preserve brew history
+- Archived coffees are hidden from lists but can still be referenced in new brews
 
 ### Computed Properties
 
 - **Days Off Roast**: `current_date - roast_date` (if roast_date provided)
-- **Experiment Count**: Number of experiments using this coffee (computed via subquery: `SELECT COUNT(*) FROM experiments WHERE coffee_id = c.id`)
-- **Last Brewed**: Most recent experiment date for this coffee
-- **Effective Reference Experiment**: `best_experiment_id` if set, otherwise latest experiment by brew_date
+- **Brew Count**: Number of brews using this coffee (computed via subquery: `SELECT COUNT(*) FROM brews WHERE coffee_id = c.id`)
+- **Last Brewed**: Most recent brew date for this coffee
+- **Effective Reference Brew**: `best_brew_id` if set, otherwise latest brew by brew_date
+- **Draft Brew ID**: ID of the most recent draft brew (computed via subquery: `SELECT id FROM brews WHERE coffee_id = c.id AND is_draft = true AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT 1`)
 
 ### Database Schema
 
@@ -80,7 +82,7 @@ CREATE TABLE coffees (
     tasting_notes TEXT,
     roast_date DATE,
     notes TEXT,
-    best_experiment_id UUID REFERENCES experiments(id) ON DELETE SET NULL,
+    best_brew_id UUID REFERENCES brews(id) ON DELETE SET NULL,
     archived_at TIMESTAMP WITH TIME ZONE,
     deleted_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -98,7 +100,7 @@ CREATE INDEX idx_coffees_archived_at ON coffees(archived_at) WHERE archived_at I
 
 ## Entity: Coffee Goals
 
-Target outcomes for a coffee. One set of goals per coffee. Fields align with experiment quantitative and sensory outcomes.
+Target outcomes for a coffee. One set of goals per coffee. Fields align with brew quantitative and sensory outcomes.
 
 ### Fields
 
@@ -189,9 +191,10 @@ GET /api/v1/coffees
       "tasting_notes": "Apricot Nectar, Lemon Sorbet, Raw Honey",
       "roast_date": "2025-11-19",
       "notes": "Best around 3-4 weeks off roast",
-      "best_experiment_id": "uuid",
+      "best_brew_id": "uuid",
+      "draft_brew_id": "uuid",
       "days_off_roast": 61,
-      "experiment_count": 8,
+      "brew_count": 8,
       "last_brewed": "2026-01-19T10:30:00Z",
       "created_at": "2025-11-22T15:00:00Z",
       "updated_at": "2025-11-22T15:00:00Z"
@@ -206,7 +209,7 @@ GET /api/v1/coffees
 }
 ```
 
-**Note:** `experiment_count` is computed via a subquery: `(SELECT COUNT(*) FROM experiments WHERE coffee_id = c.id)`. This must be present in both `List` and `GetByID` repository queries.
+**Note:** `brew_count` is computed via a subquery: `(SELECT COUNT(*) FROM brews WHERE coffee_id = c.id)`. `draft_brew_id` is computed via a subquery: `(SELECT id FROM brews WHERE coffee_id = c.id AND user_id = $1 AND is_draft = true AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT 1)`. Both must be present in both `List` and `GetByID` repository queries.
 
 #### Create Coffee
 ```
@@ -235,7 +238,7 @@ POST /api/v1/coffees
 GET /api/v1/coffees/:id
 ```
 
-**Response:** Coffee object with computed properties (including `experiment_count` via subquery)
+**Response:** Coffee object with computed properties (including `brew_count` and `draft_brew_id` via subqueries)
 
 #### Update Coffee
 ```
@@ -253,7 +256,7 @@ POST /api/v1/coffees/:id/archive
 
 **Behavior:**
 - Sets `archived_at` timestamp
-- Coffee hidden from default list but still usable in experiments
+- Coffee hidden from default list but still usable in brews
 - Returns `200 OK` with updated coffee object
 
 #### Unarchive Coffee
@@ -273,16 +276,16 @@ DELETE /api/v1/coffees/:id
 
 **Behavior:**
 - Soft delete: sets `deleted_at` timestamp
-- Experiments retain their FK reference to the deleted coffee
+- Brews retain their FK reference to the deleted coffee
 - Deleted coffees excluded from lists and dropdowns by default
 - Returns `204 No Content`
 
-#### Get Coffee Experiments
+#### Get Coffee Brews
 ```
-GET /api/v1/coffees/:id/experiments
+GET /api/v1/coffees/:id/brews
 ```
 
-Returns paginated experiments for this coffee. Supports same filters as `/api/v1/experiments`.
+Returns paginated brews for this coffee. Supports same filters as `/api/v1/brews`.
 
 #### Autocomplete Suggestions
 ```
@@ -375,32 +378,30 @@ DELETE /api/v1/coffees/:id/goals
 - Deletes goals for this coffee
 - Returns `204 No Content`
 
-### Reference Experiment API
+### Reference Brew API
 
-#### Set Reference Experiment
+#### Set Reference Brew
 ```
-POST /api/v1/coffees/:id/best-experiment
+POST /api/v1/coffees/:id/best-brew
 ```
-
-Note: API endpoint name unchanged for backwards compatibility. UI displays as "Reference Brew".
 
 **Request:**
 ```json
 {
-  "experiment_id": "uuid"
+  "brew_id": "uuid"
 }
 ```
 
 **Validation:**
-- `experiment_id` must reference an experiment belonging to this coffee
-- Returns `400 Bad Request` if experiment doesn't belong to coffee
+- `brew_id` must reference a brew belonging to this coffee
+- Returns `400 Bad Request` if brew doesn't belong to coffee
 
 **Response:** `200 OK` with updated coffee object
 
-To clear the reference experiment, send `null`:
+To clear the reference brew, send `null`:
 ```json
 {
-  "experiment_id": null
+  "brew_id": null
 }
 ```
 
@@ -409,12 +410,12 @@ To clear the reference experiment, send `null`:
 GET /api/v1/coffees/:id/reference
 ```
 
-Returns the reference experiment (or latest if none marked) along with target goals. Used by the experiment form reference sidebar.
+Returns the reference brew (or latest if none marked) along with target goals. Used by the brew form reference sidebar.
 
 **Response:**
 ```json
 {
-  "experiment": {
+  "brew": {
     "id": "uuid",
     "brew_date": "2026-01-15T10:30:00Z",
     "coffee_weight": 15.0,
@@ -447,9 +448,9 @@ Returns the reference experiment (or latest if none marked) along with target go
 }
 ```
 
-- `experiment` is `null` if no experiments exist for this coffee
+- `brew` is `null` if no brews exist for this coffee
 - `goals` is `null` if no goals have been set
-- `experiment.is_best` is `true` if this is the explicitly marked reference, `false` if it's just the latest
+- `brew.is_best` is `true` if this is the explicitly marked reference, `false` if it's just the latest
 
 ---
 
@@ -474,9 +475,10 @@ Returns the reference experiment (or latest if none marked) along with target go
   - "Reference Brew (date)" + score badge
   - Params: ratio, temperature, filter, minerals
   - Pour info: bloom time, pour count, pour style(s)
-  - Improvement note snippet (from coffee goals)
+  - Improvement note snippet (from latest brew)
 - Action buttons (always visible, not hidden behind menus):
-  - **[+ New Experiment]** — Navigates to experiment form with coffee pre-selected
+  - **[Continue Brew]** (primary, shown when `draft_brew_id` exists) — Navigates to brew form with draft pre-loaded
+  - **[+ New Brew]** — Navigates to brew form with coffee pre-selected
   - **[Edit]** — Opens edit form for this coffee
   - **[Archive]** — Archives the coffee (with confirmation)
   - **[Delete]** — Soft-deletes the coffee (with confirmation dialog)
@@ -501,28 +503,28 @@ Note: No sort dropdown. Default sort is `-created_at` (newest first).
 
 **Layout:**
 ```
-┌─────────────────────────────────────────┐
-│ Add Coffee                              │
-├─────────────────────────────────────────┤
-│ Roaster*         [________________]     │
-│ Name*            [________________]     │
-│                                         │
-│ ─── Origin ───                          │
-│ Country          [________________]     │
-│ Farm             [________________]     │
-│                                         │
-│ ─── Details ───                         │
-│ Process          [________________]     │
-│ Roast Level      [Light ▼        ]     │
-│ Tasting Notes    [________________]     │
-│ Roast Date       [____/____/____]       │
-│                                         │
-│ ─── Notes ───                           │
-│ Personal Notes   [                ]     │
-│                  [                ]     │
-│                                         │
-│         [Cancel]  [Save Coffee]         │
-└─────────────────────────────────────────┘
++---------------------------------------+
+| Add Coffee                            |
++---------------------------------------+
+| Roaster*         [________________]   |
+| Name*            [________________]   |
+|                                       |
+| --- Origin ---                        |
+| Country          [________________]   |
+| Farm             [________________]   |
+|                                       |
+| --- Details ---                       |
+| Process          [________________]   |
+| Roast Level      [Light v        ]   |
+| Tasting Notes    [________________]   |
+| Latest Roast Date [____/____/____]    |
+|                                       |
+| --- Notes ---                         |
+| Personal Notes   [                ]   |
+|                  [                ]   |
+|                                       |
+|         [Cancel]  [Save Coffee]       |
++---------------------------------------+
 ```
 
 **Field Behavior:**
@@ -531,7 +533,7 @@ Note: No sort dropdown. Default sort is `-created_at` (newest first).
 - Farm: Free text for farm/estate name
 - Process: Autocomplete from existing + common list
 - Roast Level: Dropdown (Light, Medium, Medium-Dark, Dark)
-- Roast Date: Date picker, defaults empty
+- Latest Roast Date: Date picker, defaults empty
 - Tasting Notes: Multi-line text (roaster's notes)
 - Personal Notes: Multi-line text (user's notes)
 
@@ -540,82 +542,83 @@ Note: No sort dropdown. Default sort is `-created_at` (newest first).
 **Route:** `/coffees/:id`
 
 **Header Actions:**
-- **[+ New Experiment]** - Navigates to `/experiments/new?coffee_id=:id` with coffee pre-selected
+- **[Continue Brew]** (shown when `draft_brew_id` exists) - Navigates to `/brews/:draft_brew_id/edit`
+- **[+ New Brew]** - Navigates to `/brews/new?coffee_id=:id` with coffee pre-selected
 - **[Edit]** - Opens edit form for coffee metadata
 - **[Archive]** / **[Unarchive]** - Archives or unarchives the coffee
 - **[Delete]** - Soft-deletes the coffee with confirmation dialog. Navigates back to coffee list after deletion.
 
-Delete uses a confirmation dialog: "Are you sure you want to delete {name} by {roaster}? This action cannot be undone. Existing experiments will be preserved but this coffee will no longer appear in your library." with Cancel (outline) and Delete (destructive) buttons.
+Delete uses a confirmation dialog: "Are you sure you want to delete {name} by {roaster}? This action cannot be undone. Existing brews will be preserved but this coffee will no longer appear in your library." with Cancel (outline) and Delete (destructive) buttons.
 
 **Layout:**
 ```
-┌─────────────────────────────────────────────────────┐
-│ ← Back to Coffees                                   │
-│                                                     │
-│ Kiamaina                    [+ New Experiment] [Edit] │
-│ Cata Coffee · Kenya · Kiamaina Estate · Washed      │
-│                                                     │
-│ ┌──────────┬──────────┬──────────────────┐          │
-│ │ Roasted  │ Days Off │ Experiments      │          │
-│ │ Nov 19   │ 61       │ 8                │          │
-│ └──────────┴──────────┴──────────────────┘          │
-│                                                     │
-│ Tasting Notes                                       │
-│ Apricot Nectar, Lemon Sorbet, Raw Honey             │
-│                                                     │
-│ My Notes                                            │
-│ Best around 3-4 weeks off roast                     │
-│                                                     │
-│ ═══════════════════════════════════════════════════ │
-│                                                     │
-│ ─── Reference Brew ─── (Jan 15, 2026)      [Change] │
-│ Grind: 3.5 · Ratio: 1:15 · Temp: 96°C               │
-│ Bloom: 40g/30s · Total: 2:45                        │
-│ TDS: 1.38 · Extraction: 20.1%                       │
-│ Overall: 8/10                                       │
-│                                                     │
-│ ─── Target Goals ───                         [Edit] │
-│                                                     │
-│ Quantitative                                        │
-│ Coffee: 180ml · TDS: 1.38 · Extraction: 20.5%      │
-│                                                     │
-│ Sensory                                             │
-│ Aroma: 7 · Sweetness: 8 · Body: 7 · Flavor: 8     │
-│ Brightness: 7 · Cleanliness: 7 · Complexity: 6     │
-│ Balance: 8 · Aftertaste: 7 · Overall: 9            │
-│                                                     │
-│ ═══════════════════════════════════════════════════ │
-│                                                     │
-│ ─── Brew History ───                                │
-│ ┌──────────┬──────┬───────┬───────┬───────┬────────┐│
-│ │ Date     │ DOR  │ Score │ Grind │ Ratio │ Temp   ││
-│ ├──────────┼──────┼───────┼───────┼───────┼────────┤│
-│ │⭐Jan 15  │ 57   │ 8/10  │ 3.5   │ 1:15  │ 96°C   ││
-│ │  Jan 12  │ 54   │ 7/10  │ 4.0   │ 1:15  │ 94°C   ││
-│ │  Jan 10  │ 52   │ 6/10  │ 4.5   │ 1:16  │ 93°C   ││
-│ │  Jan 08  │ 50   │ 7/10  │ 3.8   │ 1:15  │ 95°C   ││
-│ │  Jan 05  │ 47   │ 5/10  │ 5.0   │ 1:15  │ 92°C   ││
-│ └──────────┴──────┴───────┴───────┴───────┴────────┘│
-│                                                     │
-│ Actions per row:                                    │
-│ [Mark as Reference] [View]                          │
-│                                                     │
-│                               [View All Experiments]│
-└─────────────────────────────────────────────────────┘
++-----------------------------------------------------+
+| <- Back to Coffees                                   |
+|                                                     |
+| Kiamaina                    [+ New Brew] [Edit]      |
+| Cata Coffee - Kenya - Kiamaina Estate - Washed       |
+|                                                     |
+| +----------+----------+------------------+          |
+| | Roasted  | Days Off | Brews           |          |
+| | Nov 19   | 61       | 8               |          |
+| +----------+----------+------------------+          |
+|                                                     |
+| Tasting Notes                                       |
+| Apricot Nectar, Lemon Sorbet, Raw Honey             |
+|                                                     |
+| My Notes                                            |
+| Best around 3-4 weeks off roast                     |
+|                                                     |
+| =================================================== |
+|                                                     |
+| --- Reference Brew --- (Jan 15, 2026)      [Change]  |
+| Grind: 3.5 - Ratio: 1:15 - Temp: 96C                |
+| Bloom: 40g/30s - Total: 2:45                        |
+| TDS: 1.38 - Extraction: 20.1%                       |
+| Overall: 8/10                                       |
+|                                                     |
+| --- Target Goals ---                         [Edit]  |
+|                                                     |
+| Quantitative                                        |
+| Coffee: 180ml - TDS: 1.38 - Extraction: 20.5%      |
+|                                                     |
+| Sensory                                             |
+| Aroma: 7 - Sweetness: 8 - Body: 7 - Flavor: 8     |
+| Brightness: 7 - Cleanliness: 7 - Complexity: 6     |
+| Balance: 8 - Aftertaste: 7 - Overall: 9            |
+|                                                     |
+| =================================================== |
+|                                                     |
+| --- Brew History ---                                |
+| +----------+------+-------+-------+-------+--------+|
+| | Date     | DOR  | Score | Grind | Ratio | Temp   ||
+| +----------+------+-------+-------+-------+--------+|
+| |*Jan 15   | 57   | 8/10  | 3.5   | 1:15  | 96C    ||
+| |  Jan 12  | 54   | 7/10  | 4.0   | 1:15  | 94C    ||
+| |  Jan 10  | 52   | 6/10  | 4.5   | 1:16  | 93C    ||
+| |  Jan 08  | 50   | 7/10  | 3.8   | 1:15  | 95C    ||
+| |  Jan 05  | 47   | 5/10  | 5.0   | 1:15  | 92C    ||
+| +----------+------+-------+-------+-------+--------+|
+|                                                     |
+| Actions per row:                                    |
+| [Mark as Reference] [View]                          |
+|                                                     |
+|                               [View All Brews]      |
++-----------------------------------------------------+
 ```
 
 ### Reference Brew Section
 
 **Display:**
-- Shows input parameters from the reference experiment (or latest if none marked)
+- Shows input parameters from the reference brew (or latest if none marked)
 - Date of the brew
 - Key parameters: grind, ratio, temperature, bloom, total time
 - Key outcomes: TDS, extraction yield, overall score
 - Indicator showing if this is explicitly marked reference or just latest
 
 **[Change] Button:**
-- Opens modal to select a different experiment as reference
-- Shows list of experiments for this coffee
+- Opens modal to select a different brew as reference
+- Shows list of brews for this coffee
 - Current reference has checkmark
 - Can also clear selection (revert to latest)
 
@@ -634,50 +637,50 @@ Delete uses a confirmation dialog: "Are you sure you want to delete {name} by {r
 
 ### Sessions Section
 
-Sessions appear between Target Goals and Brew History, showing grouped experiments for this coffee.
+Sessions appear between Target Goals and Brew History, showing grouped brews for this coffee.
 
 **Display:**
 - List of session cards (most recent first)
-- Each card shows: name, variable tested, experiment count, hypothesis snippet, conclusion snippet
+- Each card shows: name, variable tested, brew count, hypothesis snippet, conclusion snippet
 - Actions per card: View (opens session detail modal), Edit, Delete
 - [+ New Session] button opens create session dialog
 
 **[+ New Session] Dialog:**
 - Name, variable tested, hypothesis fields
-- Checkbox list of this coffee's experiments for linking
+- Checkbox list of this coffee's brews for linking
 - See [sessions.md](sessions.md) for full session UI spec
 
 **Empty State:**
-- "No sessions yet. Create a session to group experiments and track what you learn."
+- "No sessions yet. Create a session to group brews and track what you learn."
 
 ### Brew History Section
 
 **Display:**
-- Table of experiments for this coffee (most recent first)
+- Table of brews for this coffee (most recent first)
 - Columns: Date, Days Off Roast, Score, Grind, Ratio, Temp
 - Star icon indicates reference brew
-- Shows most recent experiments (paginated or limited to ~10 with "View All" link)
-- Row actions: "Mark as Reference", click row to open experiment detail modal
+- Shows most recent brews (paginated or limited to ~10 with "View All" link)
+- Row actions: "Mark as Reference", click row to open brew detail modal
 
-**Experiment Detail Modal:**
-- Clicking a brew history row opens the experiment in a modal dialog (not a page navigation)
-- Modal shows all experiment details with actions: Edit, Copy as Template, Mark as Reference, Delete
+**Brew Detail Modal:**
+- Clicking a brew history row opens the brew in a modal dialog (not a page navigation)
+- Modal shows all brew details with actions: Edit, Copy as Template, Mark as Reference, Delete
 - Previous/Next navigation within the brew history context
-- See [dashboard.md](dashboard.md) for full experiment detail modal spec
+- See [dashboard.md](dashboard.md) for full brew detail modal spec
 
-**[View All Experiments] Link:**
+**[View All Brews] Link:**
 - Navigates to `/dashboard?coffee=:id` (per-coffee drill-down on dashboard)
 
 ### Mark as Reference Action
 
 Available in:
 1. Coffee detail brew history table rows
-2. Experiment list when filtered to single coffee
-3. Experiment detail view
+2. Brew list when filtered to single coffee
+3. Brew detail view
 
 **Behavior:**
-- Sets this experiment as reference for its coffee
-- Updates coffee's `best_experiment_id`
+- Sets this brew as reference for its coffee
+- Updates coffee's `best_brew_id`
 - Visual feedback: star icon, toast confirmation
 
 ---
@@ -687,8 +690,8 @@ Available in:
 ### Reference Brew vs Latest
 
 The "effective reference" is:
-1. The explicitly marked `best_experiment_id` if set
-2. Otherwise, the latest experiment by `brew_date`
+1. The explicitly marked `best_brew_id` if set
+2. Otherwise, the latest brew by `brew_date`
 
 This ensures:
 - Users always have a reference even before marking anything
@@ -697,7 +700,7 @@ This ensures:
 
 ### "Reference" Label vs "Best" API Field
 
-The UI uses "Reference Brew" / "Reference" terminology while the API retains `best_experiment_id`:
+The UI uses "Reference Brew" / "Reference" terminology while the API retains `best_brew_id`:
 - "Reference" is more accurate — it's what you compare against, not necessarily the "best"
 - API field names are kept for backwards compatibility
 - Only UI labels change, not data or API contracts
@@ -714,13 +717,13 @@ Goals stored separately (not inline on Coffee) because:
 
 Goals contain only numerical target fields (no `notes` field) because:
 - Goals are purely about target numbers to compare against
-- Improvement notes live on the experiment's `improvement_notes` field
+- Improvement notes live on the brew's `improvement_notes` field
 - Cleaner separation: goals = what to achieve, improvement notes = how to get there
 
 ### Reference Data Endpoint
 
-The `/reference` endpoint combines reference experiment + goals because:
-- Single request for experiment form sidebar
+The `/reference` endpoint combines reference brew + goals because:
+- Single request for brew form sidebar
 - Common access pattern
 - Reduces client-side coordination
 
@@ -734,10 +737,17 @@ The "Show Archived" toggle in the coffee list switches to showing **only** archi
 ### Brew History as Table
 
 Brew history uses a table format (not a simple list) because:
-- Columns enable quick visual comparison across experiments
+- Columns enable quick visual comparison across brews
 - Sortable columns help find patterns
-- Consistent with the experiments list page
+- Consistent with the brew list page
 - More information visible at a glance
+
+### "Latest Roast Date" Label
+
+The coffee-level `roast_date` field is labeled "Latest Roast Date" in the UI because:
+- Individual brews can have their own roast_date for multi-bag support
+- The coffee-level date represents the most recent bag's roast date
+- Avoids confusion between coffee roast date and brew roast date
 
 ---
 
@@ -745,6 +755,6 @@ Brew history uses a table format (not a simple list) because:
 
 1. **Goal Ranges**: Should targets support ranges (e.g., TDS 1.35-1.40) or just single values?
 2. **Goal History**: Track when goals were changed?
-3. **Reference Per Parameter**: Mark different experiments as reference for different attributes?
+3. **Reference Per Parameter**: Mark different brews as reference for different attributes?
 4. **Goal Templates**: Suggest goals based on coffee characteristics?
 5. **Comparison View**: Side-by-side reference brew vs goals with gap analysis?

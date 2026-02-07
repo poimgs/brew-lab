@@ -74,7 +74,7 @@ type Coffee struct {
 	TastingNotes     *string    `json:"tasting_notes,omitempty"`
 	RoastDate        *DateOnly  `json:"roast_date,omitempty"`
 	Notes            *string    `json:"notes,omitempty"`
-	BestExperimentID *uuid.UUID `json:"best_experiment_id,omitempty"`
+	BestBrewID *uuid.UUID `json:"best_brew_id,omitempty"`
 	ArchivedAt       *time.Time `json:"archived_at,omitempty"`
 	DeletedAt        *time.Time `json:"-"`
 	CreatedAt        time.Time  `json:"created_at"`
@@ -82,20 +82,21 @@ type Coffee struct {
 
 	// Computed properties (read-only, not stored in DB)
 	DaysOffRoast    *int       `json:"days_off_roast,omitempty"`
-	ExperimentCount int        `json:"experiment_count"`
+	BrewCount int        `json:"brew_count"`
 	LastBrewed      *time.Time `json:"last_brewed,omitempty"`
 
 	// Enrichment fields for list responses
-	BestExperiment  *BestExperimentSummary `json:"best_experiment,omitempty"`
-	ImprovementNote *string                `json:"improvement_note,omitempty"`
+	BestBrew        *BestBrewSummary `json:"best_brew,omitempty"`
+	ImprovementNote *string          `json:"improvement_note,omitempty"`
+	DraftBrewID     *uuid.UUID       `json:"draft_brew_id,omitempty"`
 
 	// Dashboard enrichment fields (populated when include_goals/include_trend params are set)
 	Goals        *CoffeeGoal `json:"goals,omitempty"`
 	LatestValues *GoalValues `json:"latest_values,omitempty"`
 }
 
-// BestExperimentSummary is a compact summary of the best/latest experiment for coffee cards
-type BestExperimentSummary struct {
+// BestBrewSummary is a compact summary of the best/latest brew for coffee cards
+type BestBrewSummary struct {
 	ID                 uuid.UUID `json:"id"`
 	BrewDate           time.Time `json:"brew_date"`
 	OverallScore       *int      `json:"overall_score,omitempty"`
@@ -108,13 +109,13 @@ type BestExperimentSummary struct {
 	PourStyles         []string  `json:"pour_styles"`
 }
 
-// SetBestExperimentInput is the input for setting the best experiment
-type SetBestExperimentInput struct {
-	ExperimentID *uuid.UUID `json:"experiment_id"`
+// SetBestBrewInput is the input for setting the best brew
+type SetBestBrewInput struct {
+	BrewID *uuid.UUID `json:"brew_id"`
 }
 
-// ReferenceExperiment is a summary of the best/latest experiment for reference
-type ReferenceExperiment struct {
+// ReferenceBrew is a summary of the best/latest brew for reference
+type ReferenceBrew struct {
 	ID               uuid.UUID  `json:"id"`
 	BrewDate         time.Time  `json:"brew_date"`
 	CoffeeWeight     *float64   `json:"coffee_weight,omitempty"`
@@ -139,10 +140,10 @@ type FilterPaperSummary struct {
 	Brand *string   `json:"brand,omitempty"`
 }
 
-// CoffeeReference contains the reference data for the experiment form sidebar
+// CoffeeReference contains the reference data for the brew form sidebar
 type CoffeeReference struct {
-	Experiment *ReferenceExperiment `json:"experiment,omitempty"`
-	Goals      *CoffeeGoal          `json:"goals,omitempty"`
+	Brew  *ReferenceBrew  `json:"brew,omitempty"`
+	Goals *CoffeeGoal     `json:"goals,omitempty"`
 }
 
 // CoffeeGoal represents target outcomes for a coffee
@@ -167,7 +168,7 @@ type CoffeeGoal struct {
 	UpdatedAt            time.Time `json:"updated_at"`
 }
 
-// GoalValues contains the latest experiment values for goal-relevant metrics
+// GoalValues contains the latest brew values for goal-relevant metrics
 type GoalValues struct {
 	CoffeeMl             *float64 `json:"coffee_ml,omitempty"`
 	TDS                  *float64 `json:"tds,omitempty"`

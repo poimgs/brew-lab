@@ -11,7 +11,7 @@ import (
 	"coffee-tracker/internal/domain/coffee"
 	"coffee-tracker/internal/domain/coffee_goal"
 	"coffee-tracker/internal/domain/defaults"
-	"coffee-tracker/internal/domain/experiment"
+	"coffee-tracker/internal/domain/brew"
 	"coffee-tracker/internal/domain/filter_paper"
 	"coffee-tracker/internal/domain/mineral_profile"
 	"coffee-tracker/internal/domain/session"
@@ -64,8 +64,8 @@ func main() {
 	defaultsRepo := defaults.NewRepository(db)
 	defaultsHandler := defaults.NewHandler(defaultsRepo)
 
-	experimentRepo := experiment.NewRepository(db)
-	experimentHandler := experiment.NewHandler(experimentRepo)
+	brewRepo := brew.NewRepository(db)
+	brewHandler := brew.NewHandler(brewRepo)
 
 	sessionRepo := session.NewRepository(db)
 	sessionHandler := session.NewHandler(sessionRepo)
@@ -109,7 +109,7 @@ func main() {
 				r.Delete("/{id}", coffeeHandler.Delete)
 				r.Post("/{id}/archive", coffeeHandler.Archive)
 				r.Post("/{id}/unarchive", coffeeHandler.Unarchive)
-				r.Post("/{id}/best-experiment", coffeeHandler.SetBestExperiment)
+				r.Post("/{id}/best-brew", coffeeHandler.SetBestBrew)
 				r.Get("/{id}/reference", coffeeHandler.GetReference)
 				r.Get("/{id}/goal-trends", coffeeHandler.GetGoalTrends)
 				r.Get("/{id}/goals", coffeeGoalHandler.Get)
@@ -136,17 +136,17 @@ func main() {
 				r.Delete("/{field}", defaultsHandler.DeleteField)
 			})
 
-			r.Route("/experiments", func(r chi.Router) {
-				r.Get("/", experimentHandler.List)
-				r.Post("/", experimentHandler.Create)
-				r.Get("/export", experimentHandler.Export)
-				r.Post("/compare", experimentHandler.Compare)
-				r.Post("/analyze", experimentHandler.Analyze)
-				r.Post("/analyze/detail", experimentHandler.AnalyzeDetail)
-				r.Get("/{id}", experimentHandler.Get)
-				r.Put("/{id}", experimentHandler.Update)
-				r.Delete("/{id}", experimentHandler.Delete)
-				r.Post("/{id}/copy", experimentHandler.Copy)
+			r.Route("/brews", func(r chi.Router) {
+				r.Get("/", brewHandler.List)
+				r.Post("/", brewHandler.Create)
+				r.Get("/export", brewHandler.Export)
+				r.Post("/compare", brewHandler.Compare)
+				r.Post("/analyze", brewHandler.Analyze)
+				r.Post("/analyze/detail", brewHandler.AnalyzeDetail)
+				r.Get("/{id}", brewHandler.Get)
+				r.Put("/{id}", brewHandler.Update)
+				r.Delete("/{id}", brewHandler.Delete)
+				r.Post("/{id}/copy", brewHandler.Copy)
 			})
 
 			r.Route("/sessions", func(r chi.Router) {
@@ -155,8 +155,8 @@ func main() {
 				r.Get("/{id}", sessionHandler.Get)
 				r.Put("/{id}", sessionHandler.Update)
 				r.Delete("/{id}", sessionHandler.Delete)
-				r.Post("/{id}/experiments", sessionHandler.LinkExperiments)
-				r.Delete("/{id}/experiments/{expId}", sessionHandler.UnlinkExperiment)
+				r.Post("/{id}/brews", sessionHandler.LinkBrews)
+				r.Delete("/{id}/brews/{brewId}", sessionHandler.UnlinkBrew)
 			})
 
 		})

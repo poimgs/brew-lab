@@ -15,7 +15,7 @@ type Repository interface {
 	Archive(ctx context.Context, userID, coffeeID uuid.UUID) (*Coffee, error)
 	Unarchive(ctx context.Context, userID, coffeeID uuid.UUID) (*Coffee, error)
 	GetSuggestions(ctx context.Context, userID uuid.UUID, field, query string) ([]string, error)
-	SetBestExperiment(ctx context.Context, userID, coffeeID uuid.UUID, experimentID *uuid.UUID) (*Coffee, error)
+	SetBestBrew(ctx context.Context, userID, coffeeID uuid.UUID, brewID *uuid.UUID) (*Coffee, error)
 	GetReference(ctx context.Context, userID, coffeeID uuid.UUID) (*CoffeeReference, error)
 	GetGoalTrends(ctx context.Context, userID, coffeeID uuid.UUID) (*GoalTrendResponse, error)
 }

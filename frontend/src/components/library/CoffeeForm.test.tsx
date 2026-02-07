@@ -38,7 +38,7 @@ describe('CoffeeForm', () => {
         roaster: 'Test Roaster',
         name: 'Test Coffee',
         country: 'Ethiopia',
-        experiment_count: 0,
+        brew_count: 0,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
       };
@@ -136,7 +136,7 @@ describe('CoffeeForm', () => {
         id: 'new-id',
         roaster: 'Test Roaster',
         name: 'Test Coffee',
-        experiment_count: 0,
+        brew_count: 0,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
       });
@@ -174,7 +174,7 @@ describe('CoffeeForm', () => {
         roaster: 'Old Roaster',
         name: 'Old Coffee',
         country: 'Kenya',
-        experiment_count: 5,
+        brew_count: 5,
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
       };

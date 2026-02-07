@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Plus, ArchiveRestore, Pencil, Archive, Trash2 } from 'lucide-react';
+import { Plus, ArchiveRestore, Pencil, Archive, Trash2, PlayCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +7,7 @@ import type { Coffee } from '@/api/coffees';
 
 interface CoffeeCardProps {
   coffee: Coffee;
-  onNewExperiment: (coffeeId: string) => void;
+  onNewBrew: (coffeeId: string) => void;
   onEdit: (coffee: Coffee) => void;
   onArchive: (coffeeId: string) => void;
   onReactivate?: (coffeeId: string) => void;
@@ -41,18 +41,25 @@ function formatPourInfo(bloomTime?: number, pourCount?: number, pourStyles?: str
   return parts.join(' \u2192 ');
 }
 
-export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive, onReactivate, onDelete }: CoffeeCardProps) {
+export default function CoffeeCard({ coffee, onNewBrew, onEdit, onArchive, onReactivate, onDelete }: CoffeeCardProps) {
   const navigate = useNavigate();
-  const { best_experiment, improvement_note } = coffee;
+  const { best_brew, improvement_note } = coffee;
   const isArchived = !!coffee.archived_at;
 
   const handleCardClick = () => {
     navigate(`/coffees/${coffee.id}`);
   };
 
-  const handleNewExperiment = (e: React.MouseEvent) => {
+  const handleNewBrew = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onNewExperiment(coffee.id);
+    onNewBrew(coffee.id);
+  };
+
+  const handleContinueBrew = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (coffee.draft_brew_id) {
+      navigate(`/brews/${coffee.draft_brew_id}/edit`);
+    }
   };
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -77,22 +84,22 @@ export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive,
 
   // Build params string: ratio, temp, filter, minerals
   const paramParts: string[] = [];
-  if (best_experiment?.ratio) {
-    paramParts.push(`1:${best_experiment.ratio}`);
+  if (best_brew?.ratio) {
+    paramParts.push(`1:${best_brew.ratio}`);
   }
-  if (best_experiment?.water_temperature) {
-    paramParts.push(`${best_experiment.water_temperature}\u00B0C`);
+  if (best_brew?.water_temperature) {
+    paramParts.push(`${best_brew.water_temperature}\u00B0C`);
   }
-  if (best_experiment?.filter_paper_name) {
-    paramParts.push(best_experiment.filter_paper_name);
+  if (best_brew?.filter_paper_name) {
+    paramParts.push(best_brew.filter_paper_name);
   }
-  if (best_experiment?.mineral_profile_name) {
-    paramParts.push(best_experiment.mineral_profile_name);
+  if (best_brew?.mineral_profile_name) {
+    paramParts.push(best_brew.mineral_profile_name);
   }
   const paramsLine = paramParts.join(' \u00B7 ');
 
-  const pourInfo = best_experiment
-    ? formatPourInfo(best_experiment.bloom_time, best_experiment.pour_count, best_experiment.pour_styles)
+  const pourInfo = best_brew
+    ? formatPourInfo(best_brew.bloom_time, best_brew.pour_count, best_brew.pour_styles)
     : '';
 
   return (
@@ -115,15 +122,15 @@ export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive,
         </div>
 
         {/* Best Brew info */}
-        {best_experiment ? (
+        {best_brew ? (
           <div className="flex-1 space-y-1 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">
-                Reference Brew ({formatDate(best_experiment.brew_date)})
+                Reference Brew ({formatDate(best_brew.brew_date)})
               </span>
-              {best_experiment.overall_score != null && (
+              {best_brew.overall_score != null && (
                 <Badge variant="outline" className="font-bold">
-                  {best_experiment.overall_score}/10
+                  {best_brew.overall_score}/10
                 </Badge>
               )}
             </div>
@@ -144,7 +151,7 @@ export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive,
           </div>
         ) : (
           <div className="flex-1 text-sm text-muted-foreground">
-            No experiments yet
+            No brews yet
           </div>
         )}
 
@@ -171,13 +178,23 @@ export default function CoffeeCard({ coffee, onNewExperiment, onEdit, onArchive,
             </>
           ) : (
             <>
+              {coffee.draft_brew_id && (
+                <Button
+                  size="sm"
+                  variant="default"
+                  onClick={handleContinueBrew}
+                >
+                  <PlayCircle className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Continue Brew</span>
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"
-                onClick={handleNewExperiment}
+                onClick={handleNewBrew}
               >
                 <Plus className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">New Experiment</span>
+                <span className="hidden sm:inline">New Brew</span>
               </Button>
               <Button
                 size="sm"
