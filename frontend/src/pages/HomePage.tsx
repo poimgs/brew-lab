@@ -43,7 +43,13 @@ export function HomePage() {
       <div className="p-8" data-testid="home-skeleton">
         <div className="flex items-center justify-between">
           <Skeleton className="h-9 w-24" />
-          <Skeleton className="h-10 w-32" />
+          <button
+            onClick={() => navigate("/brews/new")}
+            className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          >
+            <Plus className="h-4 w-4" />
+            Log a Brew
+          </button>
         </div>
         <div className="mt-6">
           <div className="flex items-center justify-between">
@@ -73,7 +79,16 @@ export function HomePage() {
   if (loadError) {
     return (
       <div className="p-8">
-        <h1 className="text-3xl font-semibold">Home</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-semibold">Home</h1>
+          <button
+            onClick={() => navigate("/brews/new")}
+            className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          >
+            <Plus className="h-4 w-4" />
+            Log a Brew
+          </button>
+        </div>
         <div className="mt-6 text-center">
           <p className="text-muted-foreground">{loadError}</p>
           <button
@@ -94,7 +109,16 @@ export function HomePage() {
   if (brews.length === 0) {
     return (
       <div className="p-8">
-        <h1 className="text-3xl font-semibold">Home</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-semibold">Home</h1>
+          <button
+            onClick={() => navigate("/brews/new")}
+            className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          >
+            <Plus className="h-4 w-4" />
+            Log a Brew
+          </button>
+        </div>
         <div className="mt-12 rounded-lg border border-dashed border-border py-16 text-center">
           <p className="text-lg text-muted-foreground">
             Add your first coffee to get started

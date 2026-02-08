@@ -345,6 +345,32 @@ describe("PreferencesPage", () => {
     })
   })
 
+  it("uses stacked layout for setup fields on mobile (no fixed-width labels)", async () => {
+    mockedGetDefaults.mockResolvedValueOnce(populatedDefaults)
+    mockedListFilterPapers.mockResolvedValueOnce(mockFilterPapers)
+
+    render(<PreferencesPage />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Coffee Weight")).toBeInTheDocument()
+    })
+
+    // Each setup field row should use flex-col (stacked) by default, sm:flex-row for desktop
+    const labels = ["Coffee Weight", "Ratio", "Grind Size", "Temperature", "Filter Paper"]
+    for (const labelText of labels) {
+      const label = screen.getByText(labelText, { selector: "label" })
+      const row = label.parentElement!
+
+      // Row should stack vertically on mobile (flex-col) and go horizontal on sm+
+      expect(row.className).toContain("flex-col")
+      expect(row.className).toContain("sm:flex-row")
+
+      // Label should NOT have a fixed w-32 at base — only at sm:
+      expect(label.className).not.toMatch(/(?<!\S)w-32/)
+      expect(label.className).toContain("sm:w-32")
+    }
+  })
+
   it("clears filter paper default", async () => {
     mockedGetDefaults.mockResolvedValueOnce(populatedDefaults)
     mockedListFilterPapers.mockResolvedValueOnce(mockFilterPapers)

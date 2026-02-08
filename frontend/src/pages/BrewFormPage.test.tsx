@@ -19,15 +19,21 @@ vi.mock("@/api/brews", () => ({
   getReference: vi.fn(),
 }))
 
+vi.mock("@/api/defaults", () => ({
+  getDefaults: vi.fn(),
+}))
+
 import { listCoffees } from "@/api/coffees"
 import { listFilterPapers } from "@/api/filterPapers"
 import { createBrew, getBrew, getReference } from "@/api/brews"
+import { getDefaults } from "@/api/defaults"
 
 const mockedListCoffees = vi.mocked(listCoffees)
 const mockedListFilterPapers = vi.mocked(listFilterPapers)
 const mockedCreateBrew = vi.mocked(createBrew)
 const mockedGetBrew = vi.mocked(getBrew)
 const mockedGetReference = vi.mocked(getReference)
+const mockedGetDefaults = vi.mocked(getDefaults)
 
 const mockCoffees = [
   {
@@ -149,6 +155,7 @@ function setupMocks() {
   mockedListFilterPapers.mockResolvedValue(
     mockPaginatedResponse(mockFilterPapers)
   )
+  mockedGetDefaults.mockRejectedValue(new Error("No defaults"))
   mockedGetReference.mockResolvedValue({ brew: null, source: "latest" })
 }
 
@@ -184,6 +191,7 @@ describe("BrewFormPage", () => {
   it("shows skeleton while data loads", () => {
     mockedListCoffees.mockReturnValue(new Promise(() => {}))
     mockedListFilterPapers.mockReturnValue(new Promise(() => {}))
+    mockedGetDefaults.mockReturnValue(new Promise(() => {}))
     renderNewBrew()
     expect(screen.getByTestId("brew-form-skeleton")).toBeInTheDocument()
   })
@@ -527,5 +535,77 @@ describe("BrewFormPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Coffee Detail")).toBeInTheDocument()
     })
+  })
+
+  it("renders only one reference sidebar button on desktop when coffee is selected", async () => {
+    setupMocks()
+
+    // Simulate desktop width (>= 1024)
+    Object.defineProperty(window, "innerWidth", { value: 1280, writable: true })
+    window.dispatchEvent(new Event("resize"))
+
+    const user = userEvent.setup()
+    renderNewBrew()
+
+    await waitFor(() => {
+      expect(screen.getByText("New Brew")).toBeInTheDocument()
+    })
+
+    // No sidebar before coffee selection
+    expect(screen.queryByLabelText("Open reference sidebar")).not.toBeInTheDocument()
+
+    // Select a coffee
+    await user.click(screen.getByText("Select coffee..."))
+    await user.click(screen.getByText("Kiamaina"))
+
+    // Wait for reference fetch and sidebar to appear
+    await waitFor(() => {
+      expect(screen.queryAllByLabelText("Open reference sidebar")).toHaveLength(1)
+    })
+  })
+
+  it("does not pre-fill defaults before a coffee is selected", async () => {
+    const mockDefaults = {
+      coffee_weight: 15,
+      ratio: 15,
+      grind_size: 3.5,
+      water_temperature: 93,
+      filter_paper_id: "fp-1",
+      pour_defaults: [
+        { pour_number: 1, water_amount: 45, pour_style: "center", wait_time: 30 },
+      ],
+    }
+
+    mockedListCoffees.mockResolvedValue(mockPaginatedResponse(mockCoffees))
+    mockedListFilterPapers.mockResolvedValue(
+      mockPaginatedResponse(mockFilterPapers)
+    )
+    mockedGetDefaults.mockResolvedValue(mockDefaults)
+    mockedGetReference.mockResolvedValue({ brew: null, source: "latest" })
+
+    const user = userEvent.setup()
+    renderNewBrew()
+
+    await waitFor(() => {
+      expect(screen.getByText("New Brew")).toBeInTheDocument()
+    })
+
+    // Expand Setup section to check fields
+    await user.click(screen.getByText("Setup"))
+
+    // Fields should be blank — defaults must NOT be applied before coffee selection
+    const coffeeWeightInput = screen.getByLabelText("Coffee Weight (g)") as HTMLInputElement
+    const ratioInput = screen.getByLabelText("Ratio") as HTMLInputElement
+    const grindSizeInput = screen.getByLabelText("Grind Size") as HTMLInputElement
+    const tempInput = screen.getByLabelText("Temperature (C)") as HTMLInputElement
+
+    expect(coffeeWeightInput.value).toBe("")
+    expect(ratioInput.value).toBe("")
+    expect(grindSizeInput.value).toBe("")
+    expect(tempInput.value).toBe("")
+
+    // Expand Brewing section — no pours should exist
+    await user.click(screen.getByText("Brewing"))
+    expect(screen.queryByText("#1 (Bloom)")).not.toBeInTheDocument()
   })
 })

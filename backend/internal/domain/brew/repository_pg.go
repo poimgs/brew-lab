@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,11 +32,13 @@ const brewColumns = `b.id, b.user_id, b.coffee_id, b.brew_date, b.days_off_roast
 
 func scanBrew(row pgx.Row) (*Brew, error) {
 	var b Brew
+	var brewDate time.Time
 	var filterPaperID *string
+	var fpID *string
 	var fpName *string
 	var fpBrand *string
 	err := row.Scan(
-		&b.ID, &b.UserID, &b.CoffeeID, &b.BrewDate, &b.DaysOffRoast,
+		&b.ID, &b.UserID, &b.CoffeeID, &brewDate, &b.DaysOffRoast,
 		&b.CoffeeWeight, &b.Ratio, &b.GrindSize, &b.WaterTemperature, &filterPaperID,
 		&b.TotalBrewTime, &b.TechniqueNotes,
 		&b.CoffeeMl, &b.TDS,
@@ -44,15 +47,17 @@ func scanBrew(row pgx.Row) (*Brew, error) {
 		&b.OverallScore, &b.OverallNotes, &b.ImprovementNotes,
 		&b.CreatedAt, &b.UpdatedAt,
 		&b.CoffeeName, &b.CoffeeRoaster,
-		&filterPaperID, &fpName, &fpBrand,
+		&fpID, &fpName, &fpBrand,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	if filterPaperID != nil && *filterPaperID != "" {
+	b.BrewDate = brewDate.Format("2006-01-02")
+
+	if fpID != nil && *fpID != "" {
 		b.FilterPaper = &FilterPaper{
-			ID:    *filterPaperID,
+			ID:    *fpID,
 			Name:  derefStr(fpName),
 			Brand: fpBrand,
 		}
@@ -278,12 +283,13 @@ func (r *PgRepository) List(ctx context.Context, userID string, params ListParam
 
 func scanBrewFromRows(rows pgx.Rows) (*Brew, error) {
 	var b Brew
+	var brewDate time.Time
 	var filterPaperID *string
 	var fpID *string
 	var fpName *string
 	var fpBrand *string
 	err := rows.Scan(
-		&b.ID, &b.UserID, &b.CoffeeID, &b.BrewDate, &b.DaysOffRoast,
+		&b.ID, &b.UserID, &b.CoffeeID, &brewDate, &b.DaysOffRoast,
 		&b.CoffeeWeight, &b.Ratio, &b.GrindSize, &b.WaterTemperature, &filterPaperID,
 		&b.TotalBrewTime, &b.TechniqueNotes,
 		&b.CoffeeMl, &b.TDS,
@@ -297,6 +303,8 @@ func scanBrewFromRows(rows pgx.Rows) (*Brew, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	b.BrewDate = brewDate.Format("2006-01-02")
 
 	if fpID != nil && *fpID != "" {
 		b.FilterPaper = &FilterPaper{

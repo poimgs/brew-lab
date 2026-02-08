@@ -87,7 +87,7 @@ export function BrewDetailModal({
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 px-4 py-8"
+        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 sm:px-4 sm:py-8"
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose()
         }}
@@ -95,7 +95,7 @@ export function BrewDetailModal({
         aria-modal="true"
         aria-label="Brew detail"
       >
-        <div className="w-full max-w-lg rounded-lg bg-card shadow-lg">
+        <div className="flex min-h-screen w-full flex-col bg-card sm:min-h-0 sm:max-w-lg sm:rounded-lg sm:shadow-lg">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-6 py-4">
             <h2 className="text-lg font-semibold text-card-foreground">
@@ -112,7 +112,7 @@ export function BrewDetailModal({
           </div>
 
           {/* Content */}
-          <div className="px-6 py-4">
+          <div className="flex-1 overflow-y-auto px-6 py-4">
             {isLoading && (
               <div className="flex h-32 items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

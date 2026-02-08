@@ -1211,3 +1211,99 @@ func TestList_Pagination(t *testing.T) {
 		t.Errorf("expected 3 total pages, got %d", resp.Pagination.TotalPages)
 	}
 }
+
+// --- Roast Date Tests (Issue #1: roast_date DATE scan) ---
+
+func TestCreate_WithRoastDate(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{"roaster":"Cata Coffee","name":"Kiamaina","roast_date":"2026-01-15"}`
+	req := authRequest(http.MethodPost, "/api/v1/coffees", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Coffee
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.RoastDate == nil {
+		t.Fatal("expected roast_date to be present in response")
+	}
+	if *resp.RoastDate != "2026-01-15" {
+		t.Errorf("expected roast_date 2026-01-15, got %s", *resp.RoastDate)
+	}
+}
+
+func TestGetByID_WithRoastDate(t *testing.T) {
+	repo := newMockRepo()
+	c := seedCoffee(repo, "c-1", "user-123", "Cata Coffee", "Kiamaina")
+	c.RoastDate = strPtr("2026-01-10")
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/coffees/c-1", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Coffee
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.RoastDate == nil {
+		t.Fatal("expected roast_date to be present in response")
+	}
+	if *resp.RoastDate != "2026-01-10" {
+		t.Errorf("expected roast_date 2026-01-10, got %s", *resp.RoastDate)
+	}
+}
+
+func TestList_WithRoastDate(t *testing.T) {
+	repo := newMockRepo()
+	c := seedCoffee(repo, "c-1", "user-123", "Cata Coffee", "Kiamaina")
+	c.RoastDate = strPtr("2026-01-10")
+	seedCoffee(repo, "c-2", "user-123", "SEY", "Worka Sakaro") // no roast date
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/coffees", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp api.PaginatedResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	items := resp.Items.([]interface{})
+	if len(items) != 2 {
+		t.Errorf("expected 2 items (mix of with/without roast_date), got %d", len(items))
+	}
+}
+
+func TestGetByID_WithoutRoastDate(t *testing.T) {
+	repo := newMockRepo()
+	seedCoffee(repo, "c-1", "user-123", "Cata Coffee", "Kiamaina") // no roast date
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/coffees/c-1", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Coffee
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.RoastDate != nil {
+		t.Errorf("expected nil roast_date, got %s", *resp.RoastDate)
+	}
+}

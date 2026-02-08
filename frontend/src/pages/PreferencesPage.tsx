@@ -129,7 +129,7 @@ export function PreferencesPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8" data-testid="preferences-skeleton">
+      <div className="p-4 sm:p-8" data-testid="preferences-skeleton">
         <Skeleton className="h-8 w-36" />
         <div className="mt-6 max-w-2xl rounded-md border border-border">
           <div className="flex items-center justify-between border-b border-border px-6 py-4">
@@ -161,7 +161,7 @@ export function PreferencesPage() {
 
   if (error && !coffeeWeight && !ratio && !grindSize && !waterTemperature && !filterPaperId && pours.length === 0) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <h1 className="text-2xl font-semibold">Preferences</h1>
         <div className="mt-6 text-center">
           <p className="text-sm text-error">{error}</p>
@@ -177,12 +177,12 @@ export function PreferencesPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <h1 className="text-2xl font-semibold">Preferences</h1>
 
       <div className="mt-6 max-w-2xl rounded-md border border-border">
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <div>
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
+          <div className="min-w-0">
             <h2 className="text-lg font-medium">Brew Defaults</h2>
             <p className="text-sm text-muted-foreground">
               These values are used when no reference brew exists for a coffee.
@@ -191,7 +191,7 @@ export function PreferencesPage() {
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
+            className="flex h-10 shrink-0 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
           >
             {isSaving ? (
               <>
@@ -204,7 +204,7 @@ export function PreferencesPage() {
           </button>
         </div>
 
-        <div className="space-y-6 px-6 py-6">
+        <div className="space-y-6 px-4 py-6 sm:px-6">
           {/* Setup Defaults */}
           <div>
             <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
@@ -212,8 +212,8 @@ export function PreferencesPage() {
             </h3>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <label htmlFor="default-coffee-weight" className="w-32 shrink-0 text-sm font-medium text-foreground">
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <label htmlFor="default-coffee-weight" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
                   Coffee Weight
                 </label>
                 <div className="flex flex-1 items-center gap-2">
@@ -240,8 +240,8 @@ export function PreferencesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <label htmlFor="default-ratio" className="w-32 shrink-0 text-sm font-medium text-foreground">
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <label htmlFor="default-ratio" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
                   Ratio
                 </label>
                 <div className="flex flex-1 items-center gap-2">
@@ -267,8 +267,8 @@ export function PreferencesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <label htmlFor="default-grind-size" className="w-32 shrink-0 text-sm font-medium text-foreground">
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <label htmlFor="default-grind-size" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
                   Grind Size
                 </label>
                 <div className="flex flex-1 items-center gap-2">
@@ -294,8 +294,8 @@ export function PreferencesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <label htmlFor="default-temperature" className="w-32 shrink-0 text-sm font-medium text-foreground">
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <label htmlFor="default-temperature" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
                   Temperature
                 </label>
                 <div className="flex flex-1 items-center gap-2">
@@ -324,8 +324,8 @@ export function PreferencesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <label htmlFor="default-filter-paper" className="w-32 shrink-0 text-sm font-medium text-foreground">
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <label htmlFor="default-filter-paper" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
                   Filter Paper
                 </label>
                 <div className="flex flex-1 items-center gap-2">

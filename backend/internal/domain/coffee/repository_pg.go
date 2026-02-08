@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -24,14 +25,19 @@ const coffeeColumns = `c.id, c.user_id, c.roaster, c.name, c.country, c.farm, c.
 
 func scanCoffee(row pgx.Row) (*Coffee, error) {
 	var c Coffee
+	var roastDate *time.Time
 	err := row.Scan(
 		&c.ID, &c.UserID, &c.Roaster, &c.Name, &c.Country, &c.Farm, &c.Process,
-		&c.RoastLevel, &c.TastingNotes, &c.RoastDate, &c.Notes, &c.ReferenceBrewID,
+		&c.RoastLevel, &c.TastingNotes, &roastDate, &c.Notes, &c.ReferenceBrewID,
 		&c.ArchivedAt, &c.CreatedAt, &c.UpdatedAt,
 		&c.BrewCount, &c.LastBrewed,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if roastDate != nil {
+		s := roastDate.Format("2006-01-02")
+		c.RoastDate = &s
 	}
 	return &c, nil
 }
@@ -104,13 +110,18 @@ func (r *PgRepository) List(ctx context.Context, userID string, params ListParam
 	var coffees []Coffee
 	for rows.Next() {
 		var c Coffee
+		var roastDate *time.Time
 		if err := rows.Scan(
 			&c.ID, &c.UserID, &c.Roaster, &c.Name, &c.Country, &c.Farm, &c.Process,
-			&c.RoastLevel, &c.TastingNotes, &c.RoastDate, &c.Notes, &c.ReferenceBrewID,
+			&c.RoastLevel, &c.TastingNotes, &roastDate, &c.Notes, &c.ReferenceBrewID,
 			&c.ArchivedAt, &c.CreatedAt, &c.UpdatedAt,
 			&c.BrewCount, &c.LastBrewed,
 		); err != nil {
 			return nil, 0, err
+		}
+		if roastDate != nil {
+			s := roastDate.Format("2006-01-02")
+			c.RoastDate = &s
 		}
 		coffees = append(coffees, c)
 	}

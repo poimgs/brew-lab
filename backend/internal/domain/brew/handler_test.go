@@ -1401,3 +1401,159 @@ func TestComputeExtractionYield(t *testing.T) {
 		t.Errorf("expected nil when coffee_weight is 0, got %v", *ey)
 	}
 }
+
+// --- Brew Date Tests (Issue #2: brew_date DATE scan) ---
+
+func TestCreate_BrewDateInResponse(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Kiamaina", "Cata", nil)
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{"coffee_id": "c-1", "brew_date": "2026-02-01"}`
+	req := authRequest(http.MethodPost, "/api/v1/brews", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Brew
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.BrewDate != "2026-02-01" {
+		t.Errorf("expected brew_date 2026-02-01, got %s", resp.BrewDate)
+	}
+}
+
+func TestCreate_DefaultBrewDateInResponse(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Kiamaina", "Cata", nil)
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{"coffee_id": "c-1"}`
+	req := authRequest(http.MethodPost, "/api/v1/brews", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Brew
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.BrewDate == "" {
+		t.Error("expected brew_date to have a default value, got empty string")
+	}
+	// Should be a valid date format YYYY-MM-DD
+	if len(resp.BrewDate) != 10 || resp.BrewDate[4] != '-' || resp.BrewDate[7] != '-' {
+		t.Errorf("expected brew_date in YYYY-MM-DD format, got %s", resp.BrewDate)
+	}
+}
+
+func TestRecent_BrewDateFormat(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Coffee", "Roaster", nil)
+	seedBrew(repo, "b-1", "user-123", "c-1", "2026-01-15", intPtr(8))
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/brews/recent", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	// Verify the brew_date is in the response as a properly formatted string
+	if !strings.Contains(w.Body.String(), "2026-01-15") {
+		t.Error("expected brew_date 2026-01-15 in recent brews response")
+	}
+}
+
+// --- Filter Paper ID Tests (Issue #3: scanBrew filterPaperID reuse) ---
+
+func TestCreate_FilterPaperInResponse(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Kiamaina", "Cata", nil)
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{"coffee_id": "c-1", "filter_paper_id": "fp-1"}`
+	req := authRequest(http.MethodPost, "/api/v1/brews", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Brew
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.FilterPaper == nil {
+		t.Fatal("expected filter_paper to be present in response")
+	}
+	if resp.FilterPaper.ID != "fp-1" {
+		t.Errorf("expected filter_paper.id fp-1, got %s", resp.FilterPaper.ID)
+	}
+}
+
+func TestGetByID_FilterPaperCorrectID(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Kiamaina", "Cata", nil)
+	b := seedBrew(repo, "b-1", "user-123", "c-1", "2026-01-15", nil)
+	b.FilterPaper = &FilterPaper{
+		ID:    "fp-42",
+		Name:  "Abaca",
+		Brand: strPtr("Cafec"),
+	}
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/brews/b-1", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Brew
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.FilterPaper == nil {
+		t.Fatal("expected filter_paper to be present")
+	}
+	if resp.FilterPaper.ID != "fp-42" {
+		t.Errorf("expected filter_paper.id fp-42, got %s", resp.FilterPaper.ID)
+	}
+	if resp.FilterPaper.Name != "Abaca" {
+		t.Errorf("expected filter_paper.name Abaca, got %s", resp.FilterPaper.Name)
+	}
+	if resp.FilterPaper.Brand == nil || *resp.FilterPaper.Brand != "Cafec" {
+		t.Errorf("expected filter_paper.brand Cafec, got %v", resp.FilterPaper.Brand)
+	}
+}
+
+func TestGetByID_NoFilterPaper(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Kiamaina", "Cata", nil)
+	seedBrew(repo, "b-1", "user-123", "c-1", "2026-01-15", nil) // no filter paper
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/brews/b-1", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Brew
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.FilterPaper != nil {
+		t.Errorf("expected nil filter_paper, got %+v", resp.FilterPaper)
+	}
+}

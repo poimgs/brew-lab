@@ -213,7 +213,7 @@ export function CoffeeForm({
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 sm:px-4"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose()
       }}
@@ -221,7 +221,7 @@ export function CoffeeForm({
       aria-modal="true"
       aria-label={isEditing ? "Edit Coffee" : "Add Coffee"}
     >
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-card p-6 shadow-lg">
+      <div className="flex h-screen w-full flex-col overflow-y-auto bg-card p-6 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg sm:shadow-lg">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-card-foreground">
             {isEditing ? "Edit Coffee" : "Add Coffee"}

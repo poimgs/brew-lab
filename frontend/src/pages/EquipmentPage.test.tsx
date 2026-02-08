@@ -73,6 +73,27 @@ describe("EquipmentPage", () => {
     expect(screen.getByText("Hario")).toBeInTheDocument()
   })
 
+  it("renders header with responsive stacking layout to prevent overlap on mobile", async () => {
+    mockedList.mockResolvedValueOnce(mockPaginatedResponse(mockPapers))
+
+    render(<EquipmentPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Equipment")).toBeInTheDocument()
+    })
+
+    const heading = screen.getByRole("heading", { name: "Equipment" })
+    const addButton = screen.getByRole("button", { name: /Add Filter Paper/ })
+
+    // Both should share the same parent container
+    const headerContainer = heading.parentElement!
+    expect(headerContainer).toContainElement(addButton)
+
+    // Container should use flex-col (stacked on mobile) with sm:flex-row (side-by-side on sm+)
+    expect(headerContainer.className).toContain("flex-col")
+    expect(headerContainer.className).toContain("sm:flex-row")
+  })
+
   it("shows empty state when no filter papers exist", async () => {
     mockedList.mockResolvedValueOnce(mockPaginatedResponse([]))
 

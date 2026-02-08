@@ -122,7 +122,7 @@ export function EquipmentPage() {
   if (isLoading) {
     return (
       <div className="p-8" data-testid="equipment-skeleton">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Skeleton className="h-9 w-32" />
           <Skeleton className="h-10 w-40" />
         </div>
@@ -167,7 +167,7 @@ export function EquipmentPage() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-semibold">Equipment</h1>
         <button
           onClick={openAddForm}

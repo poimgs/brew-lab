@@ -69,7 +69,7 @@ export function FilterPaperForm({
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 sm:px-4"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose()
       }}
@@ -77,7 +77,7 @@ export function FilterPaperForm({
       aria-modal="true"
       aria-label={isEditing ? "Edit Filter Paper" : "Add Filter Paper"}
     >
-      <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
+      <div className="flex h-screen w-full flex-col bg-card p-6 sm:h-auto sm:max-w-md sm:rounded-lg sm:shadow-lg">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-card-foreground">
             {isEditing ? "Edit Filter Paper" : "Add Filter Paper"}

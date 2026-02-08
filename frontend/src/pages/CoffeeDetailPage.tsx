@@ -315,13 +315,15 @@ export function CoffeeDetailPage() {
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <button
             onClick={() => navigate(`/brews/new?coffee_id=${coffee.id}`)}
             className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+            aria-label="New brew"
           >
             <Plus className="h-4 w-4" />
-            New Brew
+            <span className="hidden sm:inline">New Brew</span>
+            <span className="sm:hidden">Brew</span>
           </button>
           <button
             onClick={() => {
@@ -332,7 +334,7 @@ export function CoffeeDetailPage() {
             aria-label="Edit coffee"
           >
             <Pencil className="h-4 w-4" />
-            Edit
+            <span className="hidden sm:inline">Edit</span>
           </button>
           <button
             onClick={handleArchiveToggle}
@@ -342,12 +344,12 @@ export function CoffeeDetailPage() {
             {coffee.archived_at ? (
               <>
                 <ArchiveRestore className="h-4 w-4" />
-                Unarchive
+                <span className="hidden sm:inline">Unarchive</span>
               </>
             ) : (
               <>
                 <Archive className="h-4 w-4" />
-                Archive
+                <span className="hidden sm:inline">Archive</span>
               </>
             )}
           </button>
@@ -357,7 +359,7 @@ export function CoffeeDetailPage() {
             aria-label="Delete coffee"
           >
             <Trash2 className="h-4 w-4" />
-            Delete
+            <span className="hidden sm:inline">Delete</span>
           </button>
         </div>
       </div>

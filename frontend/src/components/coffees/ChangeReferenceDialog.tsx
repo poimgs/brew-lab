@@ -18,7 +18,7 @@ export function ChangeReferenceDialog({
 }: ChangeReferenceDialogProps) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 sm:px-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -26,7 +26,7 @@ export function ChangeReferenceDialog({
       aria-modal="true"
       aria-label="Change reference brew"
     >
-      <div className="w-full max-w-md rounded-lg bg-card shadow-lg">
+      <div className="flex h-screen w-full flex-col bg-card sm:h-auto sm:max-w-md sm:rounded-lg sm:shadow-lg">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="text-lg font-semibold text-card-foreground">
             Change Reference Brew
@@ -40,7 +40,7 @@ export function ChangeReferenceDialog({
           </button>
         </div>
 
-        <div className="max-h-80 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 sm:max-h-80">
           {isLoading && (
             <div className="flex h-20 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

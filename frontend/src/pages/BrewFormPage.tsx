@@ -616,10 +616,8 @@ export function BrewFormPage() {
             if (defaultsRes) populateFromDefaults(defaultsRes)
           }
         }
-        // New brew with no coffee: apply defaults if any
-        else if (defaultsRes) {
-          populateFromDefaults(defaultsRes)
-        }
+        // New brew with no coffee: leave fields blank until coffee is selected.
+        // Defaults will be applied via fetchReference() when the user picks a coffee.
       } catch {
         setServerError("Failed to load data. Please try again.")
       } finally {
@@ -1520,15 +1518,6 @@ export function BrewFormPage() {
             onClose={() => setSidebarOpen(false)}
             isMobile={isMobile}
           />
-          {!isMobile && !sidebarOpen && (
-            <ReferenceSidebar
-              reference={reference}
-              isOpen={false}
-              onToggle={() => setSidebarOpen(true)}
-              onClose={() => setSidebarOpen(false)}
-              isMobile={false}
-            />
-          )}
         </>
       )}
     </div>

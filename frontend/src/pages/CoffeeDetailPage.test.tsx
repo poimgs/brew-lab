@@ -423,6 +423,43 @@ describe("CoffeeDetailPage", () => {
     expect(screen.getByText("Unarchive")).toBeInTheDocument()
   })
 
+  it("action buttons are accessible via aria-labels when text is hidden on mobile", async () => {
+    mockedGet.mockResolvedValueOnce(mockCoffee)
+
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
+
+    // All 4 action buttons must be accessible by aria-label (used on mobile when text labels are hidden)
+    expect(screen.getByLabelText("New brew")).toBeInTheDocument()
+    expect(screen.getByLabelText("Edit coffee")).toBeInTheDocument()
+    expect(screen.getByLabelText("Archive coffee")).toBeInTheDocument()
+    expect(screen.getByLabelText("Delete coffee")).toBeInTheDocument()
+
+    // Each button still contains an icon (svg element)
+    expect(screen.getByLabelText("New brew").querySelector("svg")).toBeTruthy()
+    expect(screen.getByLabelText("Edit coffee").querySelector("svg")).toBeTruthy()
+    expect(screen.getByLabelText("Archive coffee").querySelector("svg")).toBeTruthy()
+    expect(screen.getByLabelText("Delete coffee").querySelector("svg")).toBeTruthy()
+  })
+
+  it("action buttons container allows wrapping to prevent overflow", async () => {
+    mockedGet.mockResolvedValueOnce(mockCoffee)
+
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
+
+    // The button container should have flex-wrap class to prevent overflow on narrow viewports
+    const newBrewBtn = screen.getByLabelText("New brew")
+    const buttonContainer = newBrewBtn.parentElement!
+    expect(buttonContainer.className).toContain("flex-wrap")
+  })
+
   // --- Reference Brew Section Tests ---
 
   it("shows reference brew empty state when no brews exist", async () => {

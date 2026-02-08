@@ -138,7 +138,7 @@ describe("HomePage", () => {
     })
 
     expect(screen.getByText("Go to Coffees")).toBeInTheDocument()
-    expect(screen.queryByText("Log a Brew")).not.toBeInTheDocument()
+    expect(screen.getByText("Log a Brew")).toBeInTheDocument()
   })
 
   it("shows error state with retry", async () => {
@@ -290,6 +290,45 @@ describe("HomePage", () => {
     // Modal should NOT open — action button stops propagation
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(mockNavigate).toHaveBeenCalledWith("/brews/b-1/edit")
+  })
+
+  it("shows Log a Brew button in empty state that navigates to /brews/new", async () => {
+    mockedGetRecentBrews.mockResolvedValueOnce({ items: [] })
+
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Add your first coffee to get started")
+      ).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText("Log a Brew"))
+    expect(mockNavigate).toHaveBeenCalledWith("/brews/new")
+  })
+
+  it("shows Log a Brew button in error state that navigates to /brews/new", async () => {
+    mockedGetRecentBrews.mockRejectedValueOnce(new Error("Network error"))
+
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Failed to load recent brews.")
+      ).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText("Log a Brew"))
+    expect(mockNavigate).toHaveBeenCalledWith("/brews/new")
+  })
+
+  it("shows Log a Brew button during loading state", () => {
+    mockedGetRecentBrews.mockReturnValue(new Promise(() => {})) // never resolves
+    renderPage()
+
+    expect(screen.getByText("Log a Brew")).toBeInTheDocument()
   })
 
   it("calls getRecentBrews with limit 5", async () => {
