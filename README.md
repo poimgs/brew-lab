@@ -63,7 +63,7 @@ For production:
 SSH into the VPS and deploy:
 ```bash
 ssh user@brew-lab.steven-chia.com
-cd ~/coffee-tracker
+cd ~/brew-lab
 git pull origin main
 docker compose -f docker-compose.prod.yml up -d --build
 ```
