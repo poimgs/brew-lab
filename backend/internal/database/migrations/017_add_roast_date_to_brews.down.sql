@@ -1,1 +1,0 @@
-ALTER TABLE brews DROP COLUMN IF EXISTS roast_date;

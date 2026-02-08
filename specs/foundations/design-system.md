@@ -2,7 +2,7 @@
 
 ## Context
 
-This design system establishes the visual language and component patterns for the Coffee Experiment Tracker. It uses a **friendly data** aesthetic—clean, modern, and data-forward—that balances information density with comfortable whitespace.
+This design system establishes the visual language and component patterns for the Coffee Tracker. It uses a **friendly data** aesthetic—clean, modern, and data-forward—that balances information density with comfortable whitespace.
 
 ## Technology Stack
 
@@ -11,7 +11,6 @@ This design system establishes the visual language and component patterns for th
 | Styling | Tailwind CSS | Utility-first, excellent dark mode support, consistent spacing |
 | Components | shadcn/ui (Radix-based) | Accessible primitives, customizable, TypeScript-native |
 | Forms | React Hook Form | Performant validation, minimal re-renders, good DX |
-| Charts | Recharts | React-native, composable, good for correlation data |
 | Icons | Lucide React | Consistent style, tree-shakeable, comprehensive |
 | Fonts | Inter (shadcn default) | Modern, readable, excellent tabular figures |
 
@@ -58,28 +57,6 @@ A zinc/teal palette provides true neutral grays with a vibrant teal accent. The 
 | `info-muted` | `sky-50` | `sky-950` | Info backgrounds |
 
 ### Data Visualization Colors
-
-**Correlation Heatmap Gradient:**
-
-| Correlation | Light Mode | Dark Mode |
-|-------------|------------|-----------|
-| Strong positive (0.7+) | `emerald-600` | `emerald-500` |
-| Moderate positive (0.4-0.7) | `emerald-400` | `emerald-400` |
-| Weak positive (0.1-0.4) | `emerald-200` | `emerald-700` |
-| Neutral (-0.1 to 0.1) | `zinc-200` | `zinc-600` |
-| Weak negative (-0.4 to -0.1) | `red-200` | `red-700` |
-| Moderate negative (-0.7 to -0.4) | `red-400` | `red-400` |
-| Strong negative (-0.7 or less) | `red-600` | `red-500` |
-
-**Chart Colors (for multi-series):**
-
-| Series | Light Mode | Dark Mode | Usage |
-|--------|------------|-----------|-------|
-| Series 1 | `teal-600` | `teal-500` | Primary data series |
-| Series 2 | `violet-600` | `violet-500` | Secondary series |
-| Series 3 | `amber-600` | `amber-500` | Tertiary series |
-| Series 4 | `rose-600` | `rose-500` | Quaternary series |
-| Series 5 | `cyan-600` | `cyan-500` | Additional series |
 
 **Score/Rating Gradient:**
 
@@ -171,7 +148,7 @@ Keep shadcn component defaults where possible. Override only for specific use ca
 | Table row | `h-12` | Comfortable for data scanning |
 | Card padding | `p-6` | Standard content padding |
 
-**Touch Target Minimum:** 44px × 44px for all interactive elements.
+**Touch Target Minimum:** 40px × 40px for all interactive elements (aligned with `h-10` button height).
 
 ---
 
@@ -396,3 +373,87 @@ Use for async operation feedback (success, error, info).
 │                                         │
 └─────────────────────────────────────────┘
 ```
+
+---
+
+## 9. Collapsible Sections
+
+Used for progressive disclosure in forms (e.g., the brew form's Setup, Brewing, Tasting sections).
+
+### Pattern
+
+```
+┌─────────────────────────────────────────┐
+│ [>] Section Name                        │  <- Collapsed (default)
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│ [-] Section Name                        │  <- Expanded
+├─────────────────────────────────────────┤
+│                                         │
+│   Field 1    [________________]         │
+│   Field 2    [________________]         │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+### Behavior
+
+- All sections collapsed by default for minimal visual weight
+- Click header to toggle open/close
+- Chevron icon rotates: right (collapsed) -> down (expanded)
+- Expansion state persists during the form lifecycle (not across page navigations)
+- Keyboard: `Enter` or `Space` toggles section
+
+### Implementation
+
+Use Radix UI Collapsible (via shadcn/ui) or a simple controlled state with CSS transitions:
+
+```tsx
+<Collapsible>
+  <CollapsibleTrigger className="flex w-full items-center justify-between p-4">
+    <span className="text-sm font-medium">Section Name</span>
+    <ChevronRight className="h-4 w-4 transition-transform data-[state=open]:rotate-90" />
+  </CollapsibleTrigger>
+  <CollapsibleContent className="px-4 pb-4">
+    {/* Section fields */}
+  </CollapsibleContent>
+</Collapsible>
+```
+
+### Visual Style
+
+- Section header: `text-sm font-medium`, full-width clickable area
+- Border: subtle `border-b` separator between sections
+- Background: same as card (no distinct background for collapsed headers)
+- Transition: smooth height animation on expand/collapse
+
+### Section Fill-Status Indicator
+
+A 3-state dot indicator on collapsible section headers communicates whether fields inside have been filled, without requiring the user to expand the section.
+
+**States:**
+
+| State | Visual | Description |
+|-------|--------|-------------|
+| Empty | Gray dot (`bg-zinc-300 dark:bg-zinc-600`) | No fields in the section have values |
+| Partial | Half-teal dot (`bg-gradient` or half-fill) | Some fields have values, others are empty |
+| Complete | Full teal dot (`bg-teal-600 dark:bg-teal-500`) | All fields in the section have values |
+
+**Implementation:**
+
+```tsx
+<CollapsibleTrigger className="flex w-full items-center justify-between p-4">
+  <span className="text-sm font-medium">Section Name</span>
+  <div className="flex items-center gap-2">
+    <SectionFillDot status={sectionStatus} /> {/* "empty" | "partial" | "complete" */}
+    <ChevronRight className="h-4 w-4 transition-transform data-[state=open]:rotate-90" />
+  </div>
+</CollapsibleTrigger>
+```
+
+**Dot sizing:** 8px diameter (`h-2 w-2 rounded-full`)
+
+**Logic:** Each section defines which fields count toward fill status. The indicator updates in real-time as the user fills or clears fields. The half-fill state uses either a CSS gradient (left half teal, right half gray) or an SVG half-circle.
+
+**Usage:** Applied to the brew form's 3 collapsible sections (Setup, Brewing, Tasting). Both new and edit forms show indicators.

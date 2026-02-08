@@ -2,7 +2,7 @@
 
 ## Context
 
-This specification defines the authentication system for the Coffee Experiment Tracker. The app is designed for single-user use, but implements proper authentication for:
+This specification defines the authentication system for the Coffee Tracker. The app is designed for single-user use, but implements proper authentication for:
 - Data security
 - Future multi-user potential
 - Standard security practices
@@ -154,7 +154,7 @@ Login failures return generic messages:
 ```
 Access-Control-Allow-Origin: <frontend-domain>
 Access-Control-Allow-Credentials: true
-Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE
 Access-Control-Allow-Headers: Content-Type, Authorization
 ```
 

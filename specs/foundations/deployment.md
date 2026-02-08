@@ -35,7 +35,7 @@ This specification defines the deployment architecture for Coffee Tracker. A VPS
 │  │  - index.html       │       │  - /health                  │  │
 │  │  - JS/CSS bundles   │       │  - /api/v1/auth/*           │  │
 │  │  - Assets           │       │  - /api/v1/coffees/*        │  │
-│  └─────────────────────┘       │  - /api/v1/experiments/*    │  │
+│  └─────────────────────┘       │  - /api/v1/brews/*          │  │
 │                                └──────────────┬──────────────┘  │
 │                                               │                  │
 │                                               ▼                  │
@@ -134,7 +134,7 @@ This specification defines the deployment architecture for Coffee Tracker. A VPS
 |-------|----------------|
 | Health check | `curl https://brew-lab.steven-chia.com/health` → `OK` |
 | Frontend loads | Visit domain in browser, login page appears |
-| Login works | Use seeded credentials, should redirect to dashboard |
+| Login works | Use seeded credentials, should redirect to coffees landing page |
 | CRUD operations | Create/edit/delete a coffee entry |
 
 ## Troubleshooting

@@ -140,7 +140,7 @@ The `no-cache` directive means "revalidate on every request" (not "don't cache")
 **Chose to skip API caching because:**
 - API calls use JWT auth — cached responses may have stale tokens
 - The app is for active use (brewing coffee), not passive reading
-- Stale experiment data could lead to duplicate entries or overwritten results
+- Stale brew data could lead to duplicate entries or overwritten results
 - Offline mode would require IndexedDB + sync logic — disproportionate complexity for the benefit
 
 ### No Custom Install Prompt
