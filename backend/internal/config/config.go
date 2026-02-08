@@ -1,45 +1,65 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
-	"time"
 )
 
 type Config struct {
-	Port            string
-	DatabaseURL     string
-	JWTSecret       string
-	AccessTokenTTL  time.Duration
-	RefreshTokenTTL time.Duration
-	AllowedOrigin   string
-	Environment     string
+	DatabaseURL    string
+	JWTSecret      string
+	Port           string
+	AccessTokenTTL int
+	RefreshTokenTTL int
+	Environment    string
 }
 
-func Load() *Config {
-	return &Config{
-		Port:            getEnv("PORT", "8080"),
-		DatabaseURL:     getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/coffee_tracker?sslmode=disable"),
-		JWTSecret:       getEnv("JWT_SECRET", "change-me-in-production"),
-		AccessTokenTTL:  getDuration("ACCESS_TOKEN_TTL", time.Hour),
-		RefreshTokenTTL: getDuration("REFRESH_TOKEN_TTL", 7*24*time.Hour),
-		AllowedOrigin:   getEnv("ALLOWED_ORIGIN", "http://localhost:5173"),
-		Environment:     getEnv("ENVIRONMENT", "development"),
+func Load() (*Config, error) {
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		return nil, fmt.Errorf("DATABASE_URL is required")
 	}
-}
 
-func getEnv(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return nil, fmt.Errorf("JWT_SECRET is required")
 	}
-	return fallback
-}
 
-func getDuration(key string, fallback time.Duration) time.Duration {
-	if value := os.Getenv(key); value != "" {
-		if seconds, err := strconv.Atoi(value); err == nil {
-			return time.Duration(seconds) * time.Second
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	accessTTL := 3600
+	if v := os.Getenv("ACCESS_TOKEN_TTL"); v != "" {
+		parsed, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid ACCESS_TOKEN_TTL: %w", err)
 		}
+		accessTTL = parsed
 	}
-	return fallback
+
+	refreshTTL := 604800
+	if v := os.Getenv("REFRESH_TOKEN_TTL"); v != "" {
+		parsed, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid REFRESH_TOKEN_TTL: %w", err)
+		}
+		refreshTTL = parsed
+	}
+
+	env := os.Getenv("ENVIRONMENT")
+	if env == "" {
+		env = "development"
+	}
+
+	return &Config{
+		DatabaseURL:     dbURL,
+		JWTSecret:       jwtSecret,
+		Port:            port,
+		AccessTokenTTL:  accessTTL,
+		RefreshTokenTTL: refreshTTL,
+		Environment:     env,
+	}, nil
 }

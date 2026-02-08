@@ -1,161 +1,74 @@
-import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { jwtDecode } from 'jwt-decode';
-
-interface JwtPayload {
-  exp: number;
-  sub: string;
-  email: string;
-}
-
-// Token refresh threshold (refresh when less than 5 minutes remaining)
-const REFRESH_THRESHOLD_MS = 5 * 60 * 1000;
+import axios, { type AxiosError } from "axios"
 
 const client = axios.create({
-  baseURL: '/api/v1',
+  baseURL: "/api/v1",
+  headers: {
+    "Content-Type": "application/json",
+  },
   withCredentials: true,
-});
+})
 
-let accessToken: string | null = null;
-let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
-let refreshTimer: ReturnType<typeof setTimeout> | null = null;
-
-function scheduleTokenRefresh(token: string) {
-  // Clear any existing timer
-  if (refreshTimer) {
-    clearTimeout(refreshTimer);
-    refreshTimer = null;
-  }
-
-  try {
-    const decoded = jwtDecode<JwtPayload>(token);
-    const expiresAt = decoded.exp * 1000; // Convert to ms
-    const now = Date.now();
-    const timeUntilRefresh = expiresAt - now - REFRESH_THRESHOLD_MS;
-
-    if (timeUntilRefresh > 0) {
-      refreshTimer = setTimeout(async () => {
-        try {
-          await refresh();
-        } catch {
-          // Refresh failed, user will be logged out on next 401
-        }
-      }, timeUntilRefresh);
-    }
-  } catch {
-    // Invalid token, don't schedule refresh
-  }
-}
+let accessToken: string | null = null
 
 export function setAccessToken(token: string | null) {
-  accessToken = token;
-  if (token) {
-    scheduleTokenRefresh(token);
-  } else if (refreshTimer) {
-    clearTimeout(refreshTimer);
-    refreshTimer = null;
+  accessToken = token
+}
+
+export function getAccessToken(): string | null {
+  return accessToken
+}
+
+// Request interceptor: attach access token
+client.interceptors.request.use((config) => {
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
   }
-}
+  return config
+})
 
-export function getAccessToken() {
-  return accessToken;
-}
+// Response interceptor: handle 401 + refresh
+let refreshPromise: Promise<string> | null = null
 
-function subscribeTokenRefresh(callback: (token: string) => void) {
-  refreshSubscribers.push(callback);
-}
-
-function onTokenRefreshed(token: string) {
-  refreshSubscribers.forEach((callback) => callback(token));
-  refreshSubscribers = [];
-}
-
-// Request interceptor - add Authorization header
-client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  if (accessToken && config.headers) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
-  }
-  return config;
-});
-
-// Response interceptor - handle 401 with token refresh
 client.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
-    const isRefreshRequest = originalRequest.url?.includes('/auth/refresh');
-
-    // Only attempt refresh on 401, if not already retrying, and not on refresh endpoint
-    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest) {
-      // If already refreshing, queue this request
-      if (isRefreshing) {
-        return new Promise((resolve) => {
-          subscribeTokenRefresh((token: string) => {
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            resolve(client(originalRequest));
-          });
-        });
+    const originalRequest = error.config
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest.url?.includes("/auth/refresh") &&
+      !originalRequest.url?.includes("/auth/login")
+    ) {
+      // Deduplicate concurrent refresh calls
+      if (!refreshPromise) {
+        refreshPromise = client
+          .post<{ access_token: string }>("/auth/refresh")
+          .then((res) => {
+            accessToken = res.data.access_token
+            return res.data.access_token
+          })
+          .catch((refreshError) => {
+            accessToken = null
+            // Notify auth context about session expiry
+            window.dispatchEvent(new Event("auth:session-expired"))
+            return Promise.reject(refreshError)
+          })
+          .finally(() => {
+            refreshPromise = null
+          })
       }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
-
       try {
-        const response = await client.post('/auth/refresh');
-        const newToken = response.data.access_token;
-        setAccessToken(newToken);
-        onTokenRefreshed(newToken);
-
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        }
-        return client(originalRequest);
-      } catch (refreshError) {
-        // Refresh failed - clear token and reject
-        setAccessToken(null);
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+        const newToken = await refreshPromise
+        originalRequest.headers.Authorization = `Bearer ${newToken}`
+        return client(originalRequest)
+      } catch {
+        return Promise.reject(error)
       }
     }
 
-    return Promise.reject(error);
+    return Promise.reject(error)
   }
-);
+)
 
-// Auth API functions
-export interface User {
-  id: string;
-  email: string;
-}
-
-export interface AuthResponse {
-  user: User;
-  access_token: string;
-}
-
-export async function login(email: string, password: string): Promise<{ user: User }> {
-  const response = await client.post<AuthResponse>('/auth/login', { email, password });
-  const { user, access_token } = response.data;
-  setAccessToken(access_token);
-  return { user };
-}
-
-export async function logout(): Promise<void> {
-  try {
-    await client.post('/auth/logout');
-  } finally {
-    setAccessToken(null);
-  }
-}
-
-export async function refresh(): Promise<{ user: User }> {
-  const response = await client.post<AuthResponse>('/auth/refresh');
-  const { user, access_token } = response.data;
-  setAccessToken(access_token);
-  return { user };
-}
-
-export default client;
+export default client

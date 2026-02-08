@@ -1,9 +1,8 @@
-.PHONY: build run tidy migrate migrate-down migrate-version seed-user
+.PHONY: build run tidy migrate migrate-down migrate-version seed-user test
 
 build:
 	go build -o bin/server ./cmd/server
-	go build -o bin/cli ./cmd/cli
-	go build -o bin/migrate ./cmd/migrate
+	go build -o bin/seed ./cmd/seed
 
 run:
 	go run ./cmd/server
@@ -12,17 +11,16 @@ tidy:
 	go mod tidy
 
 migrate:
-	go run ./cmd/migrate -cmd=up
+	go run ./cmd/server migrate-up
 
 migrate-down:
-	go run ./cmd/migrate -cmd=down
+	go run ./cmd/server migrate-down
 
 migrate-version:
-	go run ./cmd/migrate -cmd=version
+	go run ./cmd/server migrate-version
 
 seed-user:
-	@if [ -z "$(EMAIL)" ] || [ -z "$(PASSWORD)" ]; then \
-		echo "Usage: make seed-user EMAIL=user@example.com PASSWORD=SecurePass123!"; \
-		exit 1; \
-	fi
-	go run ./cmd/cli -email="$(EMAIL)" -password="$(PASSWORD)"
+	EMAIL=$(EMAIL) PASSWORD=$(PASSWORD) go run ./cmd/seed
+
+test:
+	go test ./...

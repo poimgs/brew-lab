@@ -1,498 +1,670 @@
 package defaults
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
-
-	"coffee-tracker/internal/auth"
+	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5"
+
+	"github.com/poimgs/coffee-tracker/backend/internal/middleware"
 )
 
-// mockRepository implements Repository interface for testing
-type mockRepository struct {
-	defaults    map[uuid.UUID]Defaults
-	getAllFunc  func(ctx context.Context, userID uuid.UUID) (Defaults, error)
-	upsertFunc  func(ctx context.Context, userID uuid.UUID, input UpdateDefaultsInput) (Defaults, error)
-	deleteFunc  func(ctx context.Context, userID uuid.UUID, fieldName string) error
+const testSecret = "test-jwt-secret-key"
+
+// --- Mock Repository ---
+
+type mockRepo struct {
+	defaults     map[string]string   // field_name -> value
+	pourDefaults []PourDefault
+	userID       string
 }
 
-func newMockRepository() *mockRepository {
-	return &mockRepository{
-		defaults: make(map[uuid.UUID]Defaults),
+func newMockRepo() *mockRepo {
+	return &mockRepo{
+		defaults:     make(map[string]string),
+		pourDefaults: []PourDefault{},
+		userID:       "user-123",
 	}
 }
 
-func (m *mockRepository) GetAll(ctx context.Context, userID uuid.UUID) (Defaults, error) {
-	if m.getAllFunc != nil {
-		return m.getAllFunc(ctx, userID)
+func (m *mockRepo) Get(_ context.Context, userID string) (*DefaultsResponse, error) {
+	if userID != m.userID {
+		return &DefaultsResponse{PourDefaults: []PourDefault{}}, nil
 	}
-	if d, ok := m.defaults[userID]; ok {
-		return d, nil
+
+	resp := &DefaultsResponse{PourDefaults: []PourDefault{}}
+	for fieldName, value := range m.defaults {
+		applyFieldToResponse(resp, fieldName, value)
 	}
-	return Defaults{}, nil
+	resp.PourDefaults = append(resp.PourDefaults, m.pourDefaults...)
+	return resp, nil
 }
 
-func (m *mockRepository) Upsert(ctx context.Context, userID uuid.UUID, input UpdateDefaultsInput) (Defaults, error) {
-	if m.upsertFunc != nil {
-		return m.upsertFunc(ctx, userID, input)
+func (m *mockRepo) Put(_ context.Context, userID string, req UpdateRequest) (*DefaultsResponse, error) {
+	if userID != m.userID {
+		return &DefaultsResponse{PourDefaults: []PourDefault{}}, nil
 	}
-	if m.defaults[userID] == nil {
-		m.defaults[userID] = make(Defaults)
+
+	// Clear and replace
+	m.defaults = make(map[string]string)
+	fields := buildFieldMap(req)
+	for k, v := range fields {
+		m.defaults[k] = v
 	}
-	for k, v := range input {
-		if IsValidField(k) {
-			m.defaults[userID][k] = v
-		}
+
+	m.pourDefaults = nil
+	for _, pd := range req.PourDefaults {
+		m.pourDefaults = append(m.pourDefaults, PourDefault{
+			PourNumber:  pd.PourNumber,
+			WaterAmount: pd.WaterAmount,
+			PourStyle:   pd.PourStyle,
+			WaitTime:    pd.WaitTime,
+		})
 	}
-	return m.defaults[userID], nil
+
+	return m.Get(context.Background(), userID)
 }
 
-func (m *mockRepository) DeleteField(ctx context.Context, userID uuid.UUID, fieldName string) error {
-	if m.deleteFunc != nil {
-		return m.deleteFunc(ctx, userID, fieldName)
+func (m *mockRepo) DeleteField(_ context.Context, userID, fieldName string) error {
+	if userID != m.userID {
+		return pgx.ErrNoRows
 	}
-	if d, ok := m.defaults[userID]; ok {
-		if _, exists := d[fieldName]; exists {
-			delete(d, fieldName)
-			return nil
-		}
+	if _, ok := m.defaults[fieldName]; !ok {
+		return pgx.ErrNoRows
 	}
-	return ErrDefaultNotFound
+	delete(m.defaults, fieldName)
+	return nil
 }
 
-// Helper to create request with user context
-func createRequestWithUser(method, path string, body []byte, userID uuid.UUID) *http.Request {
+// Error-returning mock
+
+type errorRepo struct{}
+
+func (e *errorRepo) Get(_ context.Context, _ string) (*DefaultsResponse, error) {
+	return nil, errors.New("database error")
+}
+func (e *errorRepo) Put(_ context.Context, _ string, _ UpdateRequest) (*DefaultsResponse, error) {
+	return nil, errors.New("database error")
+}
+func (e *errorRepo) DeleteField(_ context.Context, _, _ string) error {
+	return errors.New("database error")
+}
+
+// --- Helpers ---
+
+func generateTestAccessToken(userID string) string {
+	claims := jwt.MapClaims{
+		"sub":   userID,
+		"email": "test@example.com",
+		"iat":   time.Now().Unix(),
+		"exp":   time.Now().Add(time.Hour).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	s, _ := token.SignedString([]byte(testSecret))
+	return s
+}
+
+func setupRouter(h *Handler) *chi.Mux {
+	r := chi.NewRouter()
+	r.Route("/api/v1/defaults", func(r chi.Router) {
+		r.Use(middleware.RequireAuth(testSecret))
+		r.Get("/", h.Get)
+		r.Put("/", h.Put)
+		r.Delete("/{field}", h.DeleteField)
+	})
+	return r
+}
+
+func authRequest(method, url string, body string) *http.Request {
 	var req *http.Request
-	if body != nil {
-		req = httptest.NewRequest(method, path, bytes.NewReader(body))
+	if body != "" {
+		req = httptest.NewRequest(method, url, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
 	} else {
-		req = httptest.NewRequest(method, path, nil)
+		req = httptest.NewRequest(method, url, nil)
 	}
+	req.Header.Set("Authorization", "Bearer "+generateTestAccessToken("user-123"))
+	return req
+}
+
+func float64Ptr(v float64) *float64 { return &v }
+func strPtr(s string) *string       { return &s }
+func intPtr(v int) *int             { return &v }
+
+// --- Get Tests ---
+
+func TestGet_EmptyDefaults(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/defaults", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp DefaultsResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if resp.CoffeeWeight != nil {
+		t.Error("expected coffee_weight to be nil")
+	}
+	if resp.Ratio != nil {
+		t.Error("expected ratio to be nil")
+	}
+	if resp.PourDefaults == nil || len(resp.PourDefaults) != 0 {
+		t.Errorf("expected empty pour_defaults array, got %v", resp.PourDefaults)
+	}
+}
+
+func TestGet_WithDefaults(t *testing.T) {
+	repo := newMockRepo()
+	repo.defaults["coffee_weight"] = "15"
+	repo.defaults["ratio"] = "15.5"
+	repo.defaults["grind_size"] = "3.5"
+	repo.defaults["water_temperature"] = "93"
+	repo.defaults["filter_paper_id"] = "fp-uuid-123"
+	repo.pourDefaults = []PourDefault{
+		{PourNumber: 1, WaterAmount: float64Ptr(45), PourStyle: strPtr("center"), WaitTime: intPtr(30)},
+		{PourNumber: 2, WaterAmount: float64Ptr(90), PourStyle: strPtr("circular")},
+	}
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/defaults", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp DefaultsResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if resp.CoffeeWeight == nil || *resp.CoffeeWeight != 15 {
+		t.Errorf("expected coffee_weight 15, got %v", resp.CoffeeWeight)
+	}
+	if resp.Ratio == nil || *resp.Ratio != 15.5 {
+		t.Errorf("expected ratio 15.5, got %v", resp.Ratio)
+	}
+	if resp.GrindSize == nil || *resp.GrindSize != 3.5 {
+		t.Errorf("expected grind_size 3.5, got %v", resp.GrindSize)
+	}
+	if resp.WaterTemperature == nil || *resp.WaterTemperature != 93 {
+		t.Errorf("expected water_temperature 93, got %v", resp.WaterTemperature)
+	}
+	if resp.FilterPaperID == nil || *resp.FilterPaperID != "fp-uuid-123" {
+		t.Errorf("expected filter_paper_id fp-uuid-123, got %v", resp.FilterPaperID)
+	}
+	if len(resp.PourDefaults) != 2 {
+		t.Fatalf("expected 2 pour defaults, got %d", len(resp.PourDefaults))
+	}
+	if resp.PourDefaults[0].PourNumber != 1 {
+		t.Errorf("expected pour #1, got %d", resp.PourDefaults[0].PourNumber)
+	}
+	if resp.PourDefaults[0].WaterAmount == nil || *resp.PourDefaults[0].WaterAmount != 45 {
+		t.Errorf("expected pour #1 water_amount 45, got %v", resp.PourDefaults[0].WaterAmount)
+	}
+	if resp.PourDefaults[0].PourStyle == nil || *resp.PourDefaults[0].PourStyle != "center" {
+		t.Errorf("expected pour #1 style center, got %v", resp.PourDefaults[0].PourStyle)
+	}
+	if resp.PourDefaults[0].WaitTime == nil || *resp.PourDefaults[0].WaitTime != 30 {
+		t.Errorf("expected pour #1 wait_time 30, got %v", resp.PourDefaults[0].WaitTime)
+	}
+}
+
+func TestGet_Unauthenticated(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/defaults", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestGet_DatabaseError(t *testing.T) {
+	h := NewHandler(&errorRepo{})
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/defaults", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
+// --- Put Tests ---
+
+func TestPut_SetAllDefaults(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{
+		"coffee_weight": 15,
+		"ratio": 15.5,
+		"grind_size": 3.5,
+		"water_temperature": 93,
+		"filter_paper_id": "fp-uuid-123",
+		"pour_defaults": [
+			{"pour_number": 1, "water_amount": 45, "pour_style": "center", "wait_time": 30},
+			{"pour_number": 2, "water_amount": 90, "pour_style": "circular"}
+		]
+	}`
+	req := authRequest(http.MethodPut, "/api/v1/defaults", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp DefaultsResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if resp.CoffeeWeight == nil || *resp.CoffeeWeight != 15 {
+		t.Errorf("expected coffee_weight 15, got %v", resp.CoffeeWeight)
+	}
+	if resp.Ratio == nil || *resp.Ratio != 15.5 {
+		t.Errorf("expected ratio 15.5, got %v", resp.Ratio)
+	}
+	if len(resp.PourDefaults) != 2 {
+		t.Errorf("expected 2 pour defaults, got %d", len(resp.PourDefaults))
+	}
+}
+
+func TestPut_PartialDefaults(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{"coffee_weight": 18, "ratio": 16}`
+	req := authRequest(http.MethodPut, "/api/v1/defaults", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp DefaultsResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if resp.CoffeeWeight == nil || *resp.CoffeeWeight != 18 {
+		t.Errorf("expected coffee_weight 18, got %v", resp.CoffeeWeight)
+	}
+	if resp.Ratio == nil || *resp.Ratio != 16 {
+		t.Errorf("expected ratio 16, got %v", resp.Ratio)
+	}
+	if resp.GrindSize != nil {
+		t.Errorf("expected grind_size nil, got %v", *resp.GrindSize)
+	}
+	if resp.WaterTemperature != nil {
+		t.Errorf("expected water_temperature nil, got %v", *resp.WaterTemperature)
+	}
+	if resp.FilterPaperID != nil {
+		t.Errorf("expected filter_paper_id nil, got %v", *resp.FilterPaperID)
+	}
+}
+
+func TestPut_EmptyBodyClearsAll(t *testing.T) {
+	repo := newMockRepo()
+	repo.defaults["coffee_weight"] = "15"
+	repo.defaults["ratio"] = "15"
+	repo.pourDefaults = []PourDefault{{PourNumber: 1, WaterAmount: float64Ptr(45)}}
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{}`
+	req := authRequest(http.MethodPut, "/api/v1/defaults", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp DefaultsResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if resp.CoffeeWeight != nil {
+		t.Errorf("expected coffee_weight nil after clear, got %v", *resp.CoffeeWeight)
+	}
+	if resp.Ratio != nil {
+		t.Errorf("expected ratio nil after clear, got %v", *resp.Ratio)
+	}
+	if len(resp.PourDefaults) != 0 {
+		t.Errorf("expected 0 pour defaults after clear, got %d", len(resp.PourDefaults))
+	}
+}
+
+func TestPut_ReplacesExistingDefaults(t *testing.T) {
+	repo := newMockRepo()
+	repo.defaults["coffee_weight"] = "15"
+	repo.defaults["ratio"] = "15"
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	// PUT with only coffee_weight — ratio should be removed
+	body := `{"coffee_weight": 20}`
+	req := authRequest(http.MethodPut, "/api/v1/defaults", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp DefaultsResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if resp.CoffeeWeight == nil || *resp.CoffeeWeight != 20 {
+		t.Errorf("expected coffee_weight 20, got %v", resp.CoffeeWeight)
+	}
+	if resp.Ratio != nil {
+		t.Errorf("expected ratio nil (removed), got %v", *resp.Ratio)
+	}
+}
+
+func TestPut_InvalidJSON(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodPut, "/api/v1/defaults", "not json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestPut_InvalidPourNumber_Zero(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{"pour_defaults": [{"pour_number": 0, "water_amount": 45}]}`
+	req := authRequest(http.MethodPut, "/api/v1/defaults", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for pour_number 0, got %d", w.Code)
+	}
+}
+
+func TestPut_InvalidPourStyle(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{"pour_defaults": [{"pour_number": 1, "pour_style": "pulse"}]}`
+	req := authRequest(http.MethodPut, "/api/v1/defaults", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for invalid pour_style, got %d", w.Code)
+	}
+}
+
+func TestPut_NonSequentialPourNumbers(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{"pour_defaults": [{"pour_number": 1}, {"pour_number": 3}]}`
+	req := authRequest(http.MethodPut, "/api/v1/defaults", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for non-sequential pour numbers, got %d", w.Code)
+	}
+}
+
+func TestPut_NoPourDefaults(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{"coffee_weight": 15}`
+	req := authRequest(http.MethodPut, "/api/v1/defaults", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp DefaultsResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if len(resp.PourDefaults) != 0 {
+		t.Errorf("expected 0 pour defaults, got %d", len(resp.PourDefaults))
+	}
+}
+
+func TestPut_DatabaseError(t *testing.T) {
+	h := NewHandler(&errorRepo{})
+	router := setupRouter(h)
+
+	body := `{"coffee_weight": 15}`
+	req := authRequest(http.MethodPut, "/api/v1/defaults", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
+func TestPut_Unauthenticated(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/defaults", strings.NewReader(`{"coffee_weight": 15}`))
 	req.Header.Set("Content-Type", "application/json")
-	ctx := auth.SetUserID(req.Context(), userID)
-	return req.WithContext(ctx)
-}
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
 
-func TestHandler_GetAll(t *testing.T) {
-	repo := newMockRepository()
-	handler := NewHandler(repo)
-
-	userID := uuid.New()
-
-	// Add some defaults
-	repo.defaults[userID] = Defaults{
-		"coffee_weight": "15",
-		"ratio":         "1:15",
-	}
-
-	req := createRequestWithUser("GET", "/defaults", nil, userID)
-	rr := httptest.NewRecorder()
-
-	handler.GetAll(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
-	}
-
-	var result Defaults
-	if err := json.NewDecoder(rr.Body).Decode(&result); err != nil {
-		t.Fatal(err)
-	}
-
-	if result["coffee_weight"] != "15" {
-		t.Errorf("expected coffee_weight to be '15', got '%s'", result["coffee_weight"])
-	}
-	if result["ratio"] != "1:15" {
-		t.Errorf("expected ratio to be '1:15', got '%s'", result["ratio"])
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
 	}
 }
 
-func TestHandler_GetAll_Empty(t *testing.T) {
-	repo := newMockRepository()
-	handler := NewHandler(repo)
+// --- DeleteField Tests ---
 
-	userID := uuid.New()
+func TestDeleteField_Success(t *testing.T) {
+	repo := newMockRepo()
+	repo.defaults["coffee_weight"] = "15"
+	repo.defaults["ratio"] = "15"
+	h := NewHandler(repo)
+	router := setupRouter(h)
 
-	req := createRequestWithUser("GET", "/defaults", nil, userID)
-	rr := httptest.NewRecorder()
+	req := authRequest(http.MethodDelete, "/api/v1/defaults/coffee_weight", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
 
-	handler.GetAll(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", w.Code, w.Body.String())
 	}
 
-	var result Defaults
-	if err := json.NewDecoder(rr.Body).Decode(&result); err != nil {
-		t.Fatal(err)
+	// Verify it was removed
+	if _, ok := repo.defaults["coffee_weight"]; ok {
+		t.Error("expected coffee_weight to be deleted")
 	}
-
-	if len(result) != 0 {
-		t.Errorf("expected empty defaults, got %d items", len(result))
-	}
-}
-
-func TestHandler_GetAll_Unauthorized(t *testing.T) {
-	repo := newMockRepository()
-	handler := NewHandler(repo)
-
-	// Request without user context
-	req := httptest.NewRequest("GET", "/defaults", nil)
-	rr := httptest.NewRecorder()
-
-	handler.GetAll(rr, req)
-
-	if rr.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)
+	// Verify other defaults remain
+	if _, ok := repo.defaults["ratio"]; !ok {
+		t.Error("expected ratio to remain")
 	}
 }
 
-func TestHandler_Update(t *testing.T) {
-	repo := newMockRepository()
-	handler := NewHandler(repo)
-
-	userID := uuid.New()
-
-	tests := []struct {
-		name           string
-		body           interface{}
-		expectedStatus int
-	}{
-		{
-			name: "valid update single field",
-			body: UpdateDefaultsInput{
-				"coffee_weight": "15",
-			},
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name: "valid update multiple fields",
-			body: UpdateDefaultsInput{
-				"coffee_weight":     "15",
-				"ratio":             "1:16",
-				"water_temperature": "93",
-			},
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name: "invalid field name",
-			body: UpdateDefaultsInput{
-				"invalid_field": "value",
-			},
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "empty body",
-			body:           UpdateDefaultsInput{},
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "invalid JSON",
-			body:           "not json",
-			expectedStatus: http.StatusBadRequest,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var body []byte
-			var err error
-			if s, ok := tt.body.(string); ok {
-				body = []byte(s)
-			} else {
-				body, err = json.Marshal(tt.body)
-				if err != nil {
-					t.Fatal(err)
-				}
-			}
-
-			req := createRequestWithUser("PUT", "/defaults", body, userID)
-			rr := httptest.NewRecorder()
-
-			handler.Update(rr, req)
-
-			if rr.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
-			}
-		})
-	}
-}
-
-func TestHandler_Update_Unauthorized(t *testing.T) {
-	repo := newMockRepository()
-	handler := NewHandler(repo)
-
-	body, _ := json.Marshal(UpdateDefaultsInput{"coffee_weight": "15"})
-	req := httptest.NewRequest("PUT", "/defaults", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	rr := httptest.NewRecorder()
-
-	handler.Update(rr, req)
-
-	if rr.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)
-	}
-}
-
-func TestHandler_DeleteField(t *testing.T) {
-	repo := newMockRepository()
-	handler := NewHandler(repo)
-
-	userID := uuid.New()
-
-	// Add a default first
-	repo.defaults[userID] = Defaults{
-		"coffee_weight": "15",
-		"ratio":         "1:15",
-	}
-
-	tests := []struct {
-		name           string
-		field          string
-		expectedStatus int
-	}{
-		{
-			name:           "delete existing field",
-			field:          "coffee_weight",
-			expectedStatus: http.StatusNoContent,
-		},
-		{
-			name:           "delete non-existent field",
-			field:          "bloom_time",
-			expectedStatus: http.StatusNotFound,
-		},
-		{
-			name:           "delete invalid field name",
-			field:          "invalid_field",
-			expectedStatus: http.StatusBadRequest,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := createRequestWithUser("DELETE", "/defaults/"+tt.field, nil, userID)
-			rr := httptest.NewRecorder()
-
-			r := chi.NewRouter()
-			r.Delete("/defaults/{field}", handler.DeleteField)
-			r.ServeHTTP(rr, req)
-
-			if rr.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
-			}
-		})
-	}
-}
-
-func TestHandler_DeleteField_Unauthorized(t *testing.T) {
-	repo := newMockRepository()
-	handler := NewHandler(repo)
-
-	req := httptest.NewRequest("DELETE", "/defaults/coffee_weight", nil)
-	rr := httptest.NewRecorder()
-
-	r := chi.NewRouter()
-	r.Delete("/defaults/{field}", handler.DeleteField)
-	r.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusUnauthorized {
-		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)
-	}
-}
-
-func TestHandler_Update_MergesWithExisting(t *testing.T) {
-	repo := newMockRepository()
-	handler := NewHandler(repo)
-
-	userID := uuid.New()
-
-	// Add initial defaults
-	repo.defaults[userID] = Defaults{
-		"coffee_weight": "15",
-	}
-
-	// Update with new field
-	body, _ := json.Marshal(UpdateDefaultsInput{
-		"ratio": "1:16",
-	})
-	req := createRequestWithUser("PUT", "/defaults", body, userID)
-	rr := httptest.NewRecorder()
-
-	handler.Update(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
-	}
-
-	var result Defaults
-	if err := json.NewDecoder(rr.Body).Decode(&result); err != nil {
-		t.Fatal(err)
-	}
-
-	// Both original and new values should be present
-	if result["coffee_weight"] != "15" {
-		t.Errorf("expected coffee_weight to be '15', got '%s'", result["coffee_weight"])
-	}
-	if result["ratio"] != "1:16" {
-		t.Errorf("expected ratio to be '1:16', got '%s'", result["ratio"])
-	}
-}
-
-func TestHandler_Update_PourDefaults(t *testing.T) {
-	tests := []struct {
-		name           string
-		pourJSON       string
-		expectedStatus int
-	}{
-		{
-			name:           "valid pour defaults with two pours",
-			pourJSON:       `[{"water_amount":90,"pour_style":"circular","notes":""},{"water_amount":90,"pour_style":"center"}]`,
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name:           "valid pour defaults minimal",
-			pourJSON:       `[{"water_amount":90}]`,
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name:           "valid pour defaults with null fields",
-			pourJSON:       `[{}]`,
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name:           "invalid JSON",
-			pourJSON:       `not json`,
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "empty array",
-			pourJSON:       `[]`,
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "negative water amount",
-			pourJSON:       `[{"water_amount":-5}]`,
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "invalid pour style",
-			pourJSON:       `[{"pour_style":"swirl"}]`,
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name:           "too many pours",
-			pourJSON:       `[{},{},{},{},{},{},{},{},{},{},{}]`,
-			expectedStatus: http.StatusBadRequest,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			repo := newMockRepository()
-			handler := NewHandler(repo)
-			userID := uuid.New()
-
-			body, _ := json.Marshal(UpdateDefaultsInput{
-				"pour_defaults": tt.pourJSON,
-			})
-
-			req := createRequestWithUser("PUT", "/defaults", body, userID)
-			rr := httptest.NewRecorder()
-
-			handler.Update(rr, req)
-
-			if rr.Code != tt.expectedStatus {
-				t.Errorf("expected status %d, got %d: %s", tt.expectedStatus, rr.Code, rr.Body.String())
-			}
-		})
-	}
-}
-
-func TestHandler_Update_PourDefaultsStored(t *testing.T) {
-	repo := newMockRepository()
-	handler := NewHandler(repo)
-	userID := uuid.New()
-
-	pourJSON := `[{"water_amount":90,"pour_style":"circular"},{"water_amount":90,"pour_style":"center"}]`
-	body, _ := json.Marshal(UpdateDefaultsInput{
-		"pour_defaults": pourJSON,
-	})
-
-	req := createRequestWithUser("PUT", "/defaults", body, userID)
-	rr := httptest.NewRecorder()
-
-	handler.Update(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rr.Code, rr.Body.String())
-	}
-
-	var result Defaults
-	if err := json.NewDecoder(rr.Body).Decode(&result); err != nil {
-		t.Fatal(err)
-	}
-
-	if result["pour_defaults"] != pourJSON {
-		t.Errorf("expected pour_defaults to be stored, got '%s'", result["pour_defaults"])
-	}
-}
-
-func TestHandler_DeleteField_PourDefaults(t *testing.T) {
-	repo := newMockRepository()
-	handler := NewHandler(repo)
-	userID := uuid.New()
-
-	repo.defaults[userID] = Defaults{
-		"pour_defaults": `[{"water_amount":90}]`,
-	}
-
-	req := createRequestWithUser("DELETE", "/defaults/pour_defaults", nil, userID)
-	rr := httptest.NewRecorder()
-
-	r := chi.NewRouter()
-	r.Delete("/defaults/{field}", handler.DeleteField)
-	r.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusNoContent {
-		t.Errorf("expected status %d, got %d: %s", http.StatusNoContent, rr.Code, rr.Body.String())
-	}
-}
-
-func TestIsValidField(t *testing.T) {
-	validFields := []string{
-		"coffee_weight",
-		"water_weight",
-		"ratio",
-		"grind_size",
-		"water_temperature",
-		"filter_paper_id",
-		"bloom_water",
-		"bloom_time",
-		"pour_defaults",
-	}
-
-	invalidFields := []string{
-		"invalid_field",
-		"coffee_id",
-		"user_id",
-		"",
-	}
-
+func TestDeleteField_AllValidFields(t *testing.T) {
+	validFields := []string{"coffee_weight", "ratio", "grind_size", "water_temperature", "filter_paper_id"}
 	for _, field := range validFields {
-		if !IsValidField(field) {
-			t.Errorf("expected '%s' to be valid", field)
+		repo := newMockRepo()
+		repo.defaults[field] = "test"
+		h := NewHandler(repo)
+		router := setupRouter(h)
+
+		req := authRequest(http.MethodDelete, "/api/v1/defaults/"+field, "")
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusNoContent {
+			t.Errorf("expected 204 for field %s, got %d", field, w.Code)
 		}
 	}
+}
 
-	for _, field := range invalidFields {
-		if IsValidField(field) {
-			t.Errorf("expected '%s' to be invalid", field)
-		}
+func TestDeleteField_UnknownField(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodDelete, "/api/v1/defaults/nonexistent_field", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for unknown field, got %d", w.Code)
+	}
+}
+
+func TestDeleteField_NotSet(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodDelete, "/api/v1/defaults/coffee_weight", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for unset default, got %d", w.Code)
+	}
+}
+
+func TestDeleteField_Unauthenticated(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/defaults/coffee_weight", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestDeleteField_DatabaseError(t *testing.T) {
+	h := NewHandler(&errorRepo{})
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodDelete, "/api/v1/defaults/coffee_weight", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
+// --- Response Format Tests ---
+
+func TestGet_ResponseIncludesPourDefaultsArray(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/defaults", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Even with no data, pour_defaults should be an empty array (not null)
+	body := w.Body.String()
+	if !strings.Contains(body, `"pour_defaults":[]`) && !strings.Contains(body, `"pour_defaults": []`) {
+		t.Errorf("expected pour_defaults to be empty array, got: %s", body)
+	}
+}
+
+func TestGet_ResponseNullFieldsForUnsetDefaults(t *testing.T) {
+	repo := newMockRepo()
+	repo.defaults["coffee_weight"] = "15"
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/defaults", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	var raw map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &raw)
+
+	if raw["coffee_weight"] == nil {
+		t.Error("expected coffee_weight to be set")
+	}
+	if raw["ratio"] != nil {
+		t.Errorf("expected ratio to be null, got %v", raw["ratio"])
+	}
+	if raw["grind_size"] != nil {
+		t.Errorf("expected grind_size to be null, got %v", raw["grind_size"])
+	}
+}
+
+func TestPut_PourDefaultsWithOptionalFields(t *testing.T) {
+	repo := newMockRepo()
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	// Pour with only pour_number (all others nil)
+	body := `{"pour_defaults": [{"pour_number": 1}]}`
+	req := authRequest(http.MethodPut, "/api/v1/defaults", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp DefaultsResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+
+	if len(resp.PourDefaults) != 1 {
+		t.Fatalf("expected 1 pour default, got %d", len(resp.PourDefaults))
+	}
+	if resp.PourDefaults[0].WaterAmount != nil {
+		t.Error("expected water_amount nil")
+	}
+	if resp.PourDefaults[0].PourStyle != nil {
+		t.Error("expected pour_style nil")
+	}
+	if resp.PourDefaults[0].WaitTime != nil {
+		t.Error("expected wait_time nil")
 	}
 }

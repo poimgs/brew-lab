@@ -5,72 +5,85 @@ import {
   useEffect,
   useState,
   type ReactNode,
-} from 'react';
+} from "react"
 import {
   login as apiLogin,
   logout as apiLogout,
-  refresh,
+  refresh as apiRefresh,
+  type LoginRequest,
   type User,
-} from '@/api/client';
+} from "@/api/auth"
+import { setAccessToken } from "@/api/client"
 
-interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+interface AuthContextValue {
+  user: User | null
+  isLoading: boolean
+  login: (data: LoginRequest) => Promise<void>
+  logout: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Restore session on mount
+  // Restore session on mount by trying to refresh
   useEffect(() => {
-    async function restoreSession() {
-      try {
-        const result = await refresh();
-        setUser(result.user);
-      } catch {
-        // No valid session - user remains null
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    restoreSession();
-  }, []);
+    apiRefresh()
+      .then((res) => {
+        setAccessToken(res.access_token)
+        // Decode user from the JWT payload (sub + email are in the access token)
+        const payload = JSON.parse(atob(res.access_token.split(".")[1]))
+        setUser({ id: payload.sub, email: payload.email, created_at: "" })
+      })
+      .catch(() => {
+        setAccessToken(null)
+        setUser(null)
+      })
+      .finally(() => {
+        setIsLoading(false)
+      })
+  }, [])
 
-  const login = useCallback(async (email: string, password: string) => {
-    const result = await apiLogin(email, password);
-    setUser(result.user);
-  }, []);
+  // Listen for session expiry events from the interceptor
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setUser(null)
+      setAccessToken(null)
+    }
+    window.addEventListener("auth:session-expired", handleSessionExpired)
+    return () => {
+      window.removeEventListener("auth:session-expired", handleSessionExpired)
+    }
+  }, [])
+
+  const login = useCallback(async (data: LoginRequest) => {
+    const res = await apiLogin(data)
+    setAccessToken(res.access_token)
+    setUser(res.user)
+  }, [])
 
   const logout = useCallback(async () => {
-    await apiLogout();
-    setUser(null);
-  }, []);
+    try {
+      await apiLogout()
+    } finally {
+      setAccessToken(null)
+      setUser(null)
+    }
+  }, [])
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        login,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
-  );
+  )
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext)
+  if (!ctx) {
+    throw new Error("useAuth must be used within an AuthProvider")
   }
-  return context;
+  return ctx
 }

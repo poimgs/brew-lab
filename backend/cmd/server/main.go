@@ -1,169 +1,171 @@
 package main
 
 import (
-	"flag"
+	"context"
 	"log"
 	"net/http"
-
-	"coffee-tracker/internal/auth"
-	"coffee-tracker/internal/config"
-	"coffee-tracker/internal/database"
-	"coffee-tracker/internal/domain/coffee"
-	"coffee-tracker/internal/domain/coffee_goal"
-	"coffee-tracker/internal/domain/defaults"
-	"coffee-tracker/internal/domain/experiment"
-	"coffee-tracker/internal/domain/filter_paper"
-	"coffee-tracker/internal/domain/mineral_profile"
-	"coffee-tracker/internal/domain/session"
-	"coffee-tracker/internal/domain/user"
-	"coffee-tracker/internal/middleware"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
-	chiMiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/joho/godotenv"
-	"golang.org/x/time/rate"
+	chimw "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+
+	"github.com/poimgs/coffee-tracker/backend/internal/config"
+	"github.com/poimgs/coffee-tracker/backend/internal/database"
+	"github.com/poimgs/coffee-tracker/backend/internal/domain/auth"
+	"github.com/poimgs/coffee-tracker/backend/internal/domain/brew"
+	"github.com/poimgs/coffee-tracker/backend/internal/domain/coffee"
+	"github.com/poimgs/coffee-tracker/backend/internal/domain/defaults"
+	"github.com/poimgs/coffee-tracker/backend/internal/domain/filterpaper"
+	"github.com/poimgs/coffee-tracker/backend/internal/middleware"
 )
 
 func main() {
-	migrate := flag.Bool("migrate", true, "Run database migrations on startup")
-	flag.Parse()
-
-	_ = godotenv.Load()
-
-	cfg := config.Load()
-
-	db, err := database.Connect(cfg.DatabaseURL)
+	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
-	}
-	defer db.Close()
-
-	if *migrate {
-		log.Println("Running database migrations...")
-		if err := database.RunMigrations(db); err != nil {
-			log.Fatalf("failed to run migrations: %v", err)
-		}
+		log.Fatalf("loading config: %v", err)
 	}
 
-	userRepo := user.NewRepository(db)
-	authService := auth.NewService(userRepo, cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
-	authHandler := auth.NewHandler(authService, cfg.RefreshTokenTTL, cfg.Environment == "production")
+	ctx := context.Background()
 
-	coffeeRepo := coffee.NewRepository(db)
+	// Run migrations
+	migrationsPath := "internal/database/migrations"
+	if err := database.RunMigrations(cfg.DatabaseURL, migrationsPath); err != nil {
+		log.Fatalf("running migrations: %v", err)
+	}
+
+	// Connect to database
+	pool, err := database.NewPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("connecting to database: %v", err)
+	}
+	defer pool.Close()
+
+	// Repositories
+	userRepo := auth.NewPgUserRepository(pool)
+	refreshTokenRepo := auth.NewPgRefreshTokenRepository(pool)
+	filterPaperRepo := filterpaper.NewPgRepository(pool)
+	coffeeRepo := coffee.NewPgRepository(pool)
+	brewRepo := brew.NewPgRepository(pool)
+	defaultsRepo := defaults.NewPgRepository(pool)
+
+	// Handlers
+	secureCookie := cfg.Environment != "development"
+	authHandler := auth.NewHandler(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL, secureCookie)
+	filterPaperHandler := filterpaper.NewHandler(filterPaperRepo)
 	coffeeHandler := coffee.NewHandler(coffeeRepo)
-
-	coffeeGoalRepo := coffee_goal.NewRepository(db)
-	coffeeGoalHandler := coffee_goal.NewHandler(coffeeGoalRepo)
-
-	filterPaperRepo := filter_paper.NewRepository(db)
-	filterPaperHandler := filter_paper.NewHandler(filterPaperRepo)
-
-	mineralProfileRepo := mineral_profile.NewRepository(db)
-	mineralProfileHandler := mineral_profile.NewHandler(mineralProfileRepo)
-
-	defaultsRepo := defaults.NewRepository(db)
+	brewHandler := brew.NewHandler(brewRepo)
 	defaultsHandler := defaults.NewHandler(defaultsRepo)
-
-	experimentRepo := experiment.NewRepository(db)
-	experimentHandler := experiment.NewHandler(experimentRepo)
-
-	sessionRepo := session.NewRepository(db)
-	sessionHandler := session.NewHandler(sessionRepo)
 
 	r := chi.NewRouter()
 
-	r.Use(chiMiddleware.Logger)
-	r.Use(chiMiddleware.Recoverer)
-	r.Use(chiMiddleware.RealIP)
-	r.Use(middleware.CORS(cfg.AllowedOrigin))
+	// Middleware
+	r.Use(chimw.Logger)
+	r.Use(chimw.Recoverer)
+	r.Use(chimw.RequestID)
+	r.Use(chimw.RealIP)
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:5173", "https://brew-lab.steven-chia.com"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 
-	loginLimiter := middleware.NewRateLimiter(rate.Limit(5.0/60.0), 5)
-
+	// Health check
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		w.Write([]byte(`{"status":"ok"}`))
 	})
 
+	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
+		// Auth routes (public)
 		r.Route("/auth", func(r chi.Router) {
-			r.With(loginLimiter.Middleware).Post("/login", authHandler.Login)
+			r.With(middleware.RateLimit(5, time.Minute)).Post("/login", authHandler.Login)
 			r.Post("/refresh", authHandler.Refresh)
-			r.Post("/logout", authHandler.Logout)
-
-			r.Group(func(r chi.Router) {
-				r.Use(auth.AuthMiddleware(cfg.JWTSecret))
-				r.Get("/me", authHandler.Me)
-			})
+			r.With(middleware.RequireAuth(cfg.JWTSecret)).Post("/logout", authHandler.Logout)
+			r.With(middleware.RequireAuth(cfg.JWTSecret)).Get("/me", authHandler.Me)
 		})
 
 		// Protected routes
 		r.Group(func(r chi.Router) {
-			r.Use(auth.AuthMiddleware(cfg.JWTSecret))
+			r.Use(middleware.RequireAuth(cfg.JWTSecret))
 
-			r.Route("/coffees", func(r chi.Router) {
-				r.Get("/", coffeeHandler.List)
-				r.Post("/", coffeeHandler.Create)
-				r.Get("/suggestions", coffeeHandler.Suggestions)
-				r.Get("/{id}", coffeeHandler.Get)
-				r.Put("/{id}", coffeeHandler.Update)
-				r.Delete("/{id}", coffeeHandler.Delete)
-				r.Post("/{id}/archive", coffeeHandler.Archive)
-				r.Post("/{id}/unarchive", coffeeHandler.Unarchive)
-				r.Post("/{id}/best-experiment", coffeeHandler.SetBestExperiment)
-				r.Get("/{id}/reference", coffeeHandler.GetReference)
-				r.Get("/{id}/goal-trends", coffeeHandler.GetGoalTrends)
-				r.Get("/{id}/goals", coffeeGoalHandler.Get)
-				r.Put("/{id}/goals", coffeeGoalHandler.Upsert)
-				r.Delete("/{id}/goals", coffeeGoalHandler.Delete)
-			})
-
+			// Filter papers
 			r.Route("/filter-papers", func(r chi.Router) {
 				r.Get("/", filterPaperHandler.List)
 				r.Post("/", filterPaperHandler.Create)
-				r.Get("/{id}", filterPaperHandler.Get)
+				r.Get("/{id}", filterPaperHandler.GetByID)
 				r.Put("/{id}", filterPaperHandler.Update)
 				r.Delete("/{id}", filterPaperHandler.Delete)
 			})
 
-			r.Route("/mineral-profiles", func(r chi.Router) {
-				r.Get("/", mineralProfileHandler.List)
-				r.Get("/{id}", mineralProfileHandler.Get)
+			// Coffees
+			r.Route("/coffees", func(r chi.Router) {
+				r.Get("/", coffeeHandler.List)
+				r.Post("/", coffeeHandler.Create)
+				r.Get("/suggestions", coffeeHandler.Suggestions)
+				r.Get("/{id}", coffeeHandler.GetByID)
+				r.Put("/{id}", coffeeHandler.Update)
+				r.Delete("/{id}", coffeeHandler.Delete)
+				r.Post("/{id}/archive", coffeeHandler.Archive)
+				r.Post("/{id}/unarchive", coffeeHandler.Unarchive)
+				r.Post("/{id}/reference-brew", coffeeHandler.SetReferenceBrew)
+				r.Get("/{id}/brews", brewHandler.ListByCoffee)
+				r.Get("/{id}/reference", brewHandler.GetReference)
 			})
 
+			// Defaults
 			r.Route("/defaults", func(r chi.Router) {
-				r.Get("/", defaultsHandler.GetAll)
-				r.Put("/", defaultsHandler.Update)
+				r.Get("/", defaultsHandler.Get)
+				r.Put("/", defaultsHandler.Put)
 				r.Delete("/{field}", defaultsHandler.DeleteField)
 			})
 
-			r.Route("/experiments", func(r chi.Router) {
-				r.Get("/", experimentHandler.List)
-				r.Post("/", experimentHandler.Create)
-				r.Get("/export", experimentHandler.Export)
-				r.Post("/compare", experimentHandler.Compare)
-				r.Post("/analyze", experimentHandler.Analyze)
-				r.Post("/analyze/detail", experimentHandler.AnalyzeDetail)
-				r.Get("/{id}", experimentHandler.Get)
-				r.Put("/{id}", experimentHandler.Update)
-				r.Delete("/{id}", experimentHandler.Delete)
-				r.Post("/{id}/copy", experimentHandler.Copy)
+			// Brews
+			r.Route("/brews", func(r chi.Router) {
+				r.Get("/", brewHandler.List)
+				r.Get("/recent", brewHandler.Recent)
+				r.Post("/", brewHandler.Create)
+				r.Get("/{id}", brewHandler.GetByID)
+				r.Put("/{id}", brewHandler.Update)
+				r.Delete("/{id}", brewHandler.Delete)
 			})
-
-			r.Route("/sessions", func(r chi.Router) {
-				r.Get("/", sessionHandler.List)
-				r.Post("/", sessionHandler.Create)
-				r.Get("/{id}", sessionHandler.Get)
-				r.Put("/{id}", sessionHandler.Update)
-				r.Delete("/{id}", sessionHandler.Delete)
-				r.Post("/{id}/experiments", sessionHandler.LinkExperiments)
-				r.Delete("/{id}/experiments/{expId}", sessionHandler.UnlinkExperiment)
-			})
-
 		})
 	})
 
-	log.Printf("Server starting on port %s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
-		log.Fatalf("server failed: %v", err)
+	// Server
+	srv := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      r,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
+
+	// Graceful shutdown
+	go func() {
+		log.Printf("server starting on port %s (env: %s)", cfg.Port, cfg.Environment)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("shutting down server...")
+	shutdownCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("server shutdown error: %v", err)
+	}
+	log.Println("server stopped")
 }

@@ -1,14 +1,14 @@
 package defaults
 
 import (
-	"encoding/json"
-	"errors"
+	"log"
 	"net/http"
 
-	"coffee-tracker/internal/auth"
-	"coffee-tracker/internal/response"
-
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
+
+	"github.com/poimgs/coffee-tracker/backend/internal/api"
+	"github.com/poimgs/coffee-tracker/backend/internal/middleware"
 )
 
 type Handler struct {
@@ -19,95 +19,82 @@ func NewHandler(repo Repository) *Handler {
 	return &Handler{repo: repo}
 }
 
-// GetAll handles GET /api/v1/defaults
-// Returns all defaults for the authenticated user as a key-value map
-func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
-		return
-	}
+func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
 
-	defaults, err := h.repo.GetAll(r.Context(), userID)
+	defaults, err := h.repo.Get(r.Context(), userID)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get defaults")
+		log.Printf("error getting defaults: %v", err)
+		api.InternalError(w)
 		return
 	}
 
-	response.JSON(w, http.StatusOK, defaults)
+	api.WriteJSON(w, http.StatusOK, defaults)
 }
 
-// Update handles PUT /api/v1/defaults
-// Merges provided defaults with existing ones
-func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+func (h *Handler) Put(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+
+	var req UpdateRequest
+	if err := api.DecodeJSON(r, &req); err != nil {
+		api.ValidationError(w, []api.FieldError{{Field: "body", Message: "Invalid request body"}})
 		return
 	}
 
-	var input UpdateDefaultsInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid request body")
-		return
-	}
-
-	// Validate that at least one field is provided
-	if len(input) == 0 {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "at least one field is required")
-		return
-	}
-
-	// Validate field names and values
-	for fieldName, value := range input {
-		if !IsValidField(fieldName) {
-			response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid field name: "+fieldName)
+	// Validate pour_defaults: pour_number must be >= 1
+	for i, pd := range req.PourDefaults {
+		if pd.PourNumber < 1 {
+			api.ValidationError(w, []api.FieldError{{
+				Field:   "pour_defaults",
+				Message: "pour_number must be >= 1",
+			}})
 			return
 		}
-		if fieldName == "pour_defaults" {
-			if err := ValidatePourDefaults(value); err != nil {
-				response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
-				return
-			}
+		// Validate pour_style if provided
+		if pd.PourStyle != nil && *pd.PourStyle != "circular" && *pd.PourStyle != "center" {
+			api.ValidationError(w, []api.FieldError{{
+				Field:   "pour_defaults",
+				Message: "pour_style must be 'circular' or 'center'",
+			}})
+			return
+		}
+		// Ensure pour numbers are sequential starting from 1
+		if pd.PourNumber != i+1 {
+			api.ValidationError(w, []api.FieldError{{
+				Field:   "pour_defaults",
+				Message: "pour_number must be sequential starting from 1",
+			}})
+			return
 		}
 	}
 
-	defaults, err := h.repo.Upsert(r.Context(), userID, input)
+	defaults, err := h.repo.Put(r.Context(), userID, req)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update defaults")
+		log.Printf("error updating defaults: %v", err)
+		api.InternalError(w)
 		return
 	}
 
-	response.JSON(w, http.StatusOK, defaults)
+	api.WriteJSON(w, http.StatusOK, defaults)
 }
 
-// DeleteField handles DELETE /api/v1/defaults/:field
-// Removes a single default value by field name
 func (h *Handler) DeleteField(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+	userID := middleware.GetUserID(r.Context())
+	field := chi.URLParam(r, "field")
+
+	if !IsValidFieldName(field) {
+		api.NotFoundError(w, "Unknown default field")
 		return
 	}
 
-	fieldName := chi.URLParam(r, "field")
-	if fieldName == "" {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "field parameter is required")
-		return
-	}
-
-	if !IsValidField(fieldName) {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid field name: "+fieldName)
-		return
-	}
-
-	err := h.repo.DeleteField(r.Context(), userID, fieldName)
+	err := h.repo.DeleteField(r.Context(), userID, field)
 	if err != nil {
-		if errors.Is(err, ErrDefaultNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "default not found")
+		if err == pgx.ErrNoRows {
+			api.NotFoundError(w, "Default not set")
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to delete default")
+		log.Printf("error deleting default field: %v", err)
+		api.InternalError(w)
 		return
 	}
 

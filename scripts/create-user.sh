@@ -1,12 +1,24 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+usage() {
+  echo "Usage: $0 -email=<email> -password=<password>"
+  exit 1
+}
 
-if [ $# -lt 2 ]; then
-    echo "Usage: ./scripts/create-user.sh -email=user@example.com -password=SecurePass123!"
-    exit 1
+EMAIL=""
+PASSWORD=""
+
+for arg in "$@"; do
+  case $arg in
+    -email=*) EMAIL="${arg#*=}" ;;
+    -password=*) PASSWORD="${arg#*=}" ;;
+    *) usage ;;
+  esac
+done
+
+if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ]; then
+  usage
 fi
 
-docker compose -f "$PROJECT_DIR/docker-compose.prod.yml" exec backend ./cli "$@"
+docker compose -f docker-compose.prod.yml exec -e EMAIL="$EMAIL" -e PASSWORD="$PASSWORD" backend ./seed

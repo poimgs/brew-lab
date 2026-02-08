@@ -2,20 +2,26 @@ package coffee
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
+type ListParams struct {
+	Page         int
+	PerPage      int
+	Search       string
+	Roaster      string
+	Country      string
+	Process      string
+	ArchivedOnly bool
+}
+
 type Repository interface {
-	Create(ctx context.Context, userID uuid.UUID, input CreateCoffeeInput) (*Coffee, error)
-	GetByID(ctx context.Context, userID, coffeeID uuid.UUID) (*Coffee, error)
-	List(ctx context.Context, userID uuid.UUID, params ListCoffeesParams) (*ListCoffeesResult, error)
-	Update(ctx context.Context, userID, coffeeID uuid.UUID, input UpdateCoffeeInput) (*Coffee, error)
-	Delete(ctx context.Context, userID, coffeeID uuid.UUID) error
-	Archive(ctx context.Context, userID, coffeeID uuid.UUID) (*Coffee, error)
-	Unarchive(ctx context.Context, userID, coffeeID uuid.UUID) (*Coffee, error)
-	GetSuggestions(ctx context.Context, userID uuid.UUID, field, query string) ([]string, error)
-	SetBestExperiment(ctx context.Context, userID, coffeeID uuid.UUID, experimentID *uuid.UUID) (*Coffee, error)
-	GetReference(ctx context.Context, userID, coffeeID uuid.UUID) (*CoffeeReference, error)
-	GetGoalTrends(ctx context.Context, userID, coffeeID uuid.UUID) (*GoalTrendResponse, error)
+	List(ctx context.Context, userID string, params ListParams) ([]Coffee, int, error)
+	GetByID(ctx context.Context, userID, id string) (*Coffee, error)
+	Create(ctx context.Context, userID string, req CreateRequest) (*Coffee, error)
+	Update(ctx context.Context, userID, id string, req UpdateRequest) (*Coffee, error)
+	Delete(ctx context.Context, userID, id string) error
+	Archive(ctx context.Context, userID, id string) (*Coffee, error)
+	Unarchive(ctx context.Context, userID, id string) (*Coffee, error)
+	SetReferenceBrew(ctx context.Context, userID, id string, brewID *string) (*Coffee, error)
+	Suggestions(ctx context.Context, userID, field, query string) ([]string, error)
 }

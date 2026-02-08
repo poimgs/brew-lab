@@ -1,13 +1,15 @@
-# Coffee Tracker
+# Brew Lab
 
-A personal brewing experiment tracker for capturing brewing parameters, taste outcomes, and discovering patterns in your coffee.
+A personal pour-over brewing tracker for dialing in your coffee.
 
 ## Features
 
-- **Experiment Tracking**: Capture brewing parameters and taste outcomes
-- **Coffee Library**: Maintain bean metadata independent from experiments
-- **Pattern Discovery**: Reveal relationships between variables and outcomes
-- **Actionable Recommendations**: Suggest improvements based on score gaps and effect mappings
+- **Brew Tracking**: Log brewing parameters and taste outcomes in a single form
+- **Coffee Library**: Manage bean metadata with reference brews
+- **Equipment**: Track filter papers
+- **User Preferences**: Set defaults for brew parameters
+- **PWA**: Installable, works offline for static assets
+- **Dark Mode**
 
 ## Tech Stack
 
@@ -17,9 +19,9 @@ A personal brewing experiment tracker for capturing brewing parameters, taste ou
 
 ## Prerequisites
 
-- Go 1.21+
-- Node.js 18+
-- Docker (for PostgreSQL)
+- Go 1.25+
+- Node.js 22+
+- Docker (for PostgreSQL, Caddy)
 
 ## Getting Started
 
@@ -27,6 +29,7 @@ A personal brewing experiment tracker for capturing brewing parameters, taste ou
 
 ```bash
 docker compose up -d   # Start PostgreSQL
+docker compose down    # Stop PostgreSQL
 ```
 
 ### Backend (from `backend/` directory)
@@ -67,25 +70,12 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 See [specs/foundations/deployment.md](specs/foundations/deployment.md) for full deployment documentation.
 
-### E2E Tests (from `e2e/` directory)
-
-```bash
-docker compose up -d   # Ensure database is running
-make install           # First time: install deps + browser
-make test              # Run all tests
-make test-ui           # Interactive UI mode
-make test-headed       # Run with visible browser
-```
-
-E2E tests use a separate database (`coffee_tracker_test`) and ports (5174/8081) to avoid conflicts with development.
-
 ## Project Structure
 
 ```
 specs/           # Specifications
 backend/         # Go backend (chi router)
 frontend/        # React + TypeScript (Vite)
-e2e/             # Playwright E2E tests
 docker-compose.yml       # Local dev (PostgreSQL only)
 docker-compose.prod.yml  # Production (all services)
 ```

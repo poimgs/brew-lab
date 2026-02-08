@@ -1,16 +1,16 @@
-import Header from './Header';
+import { Outlet } from "react-router-dom"
+import { Sidebar, MobileHeader } from "./Sidebar"
 
-interface LayoutProps {
-  children: React.ReactNode;
-}
-
-export default function Layout({ children }: LayoutProps) {
+export function Layout() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-1 bg-background">
-        {children}
-      </main>
+    <div className="flex min-h-screen">
+      <Sidebar />
+      <div className="flex flex-1 flex-col">
+        <MobileHeader />
+        <main className="flex-1 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
-  );
+  )
 }

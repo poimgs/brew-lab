@@ -2,203 +2,176 @@
 
 ## Overview
 
-Brew tracking is the core feature—logging coffee experiments with their parameters and outcomes. An Experiment represents a single pour-over brewing session, capturing the full context: which coffee was used, all brewing parameters, and the resulting taste outcomes.
+Brew tracking is the core feature—logging coffee brews with their parameters and outcomes. A Brew represents a single pour-over brewing session, capturing the full context: which coffee was used, all brewing parameters, and the resulting taste outcomes.
 
 The design prioritizes:
-- Minimal required fields (coffee + notes only)
-- Progressive disclosure of optional fields
-- Quick entry during/after brewing
-- User-configurable defaults
+- Minimal required fields (coffee only — everything else optional)
+- Single scrollable form with 3 collapsible sections (all collapsed by default)
+- Auto-fill from reference brew, latest brew, or user defaults
 - Low-friction entry that scales with user sophistication
 
 ---
 
-## Entity: Experiment
+## Entity: Brew
 
 ### Core Fields
+
+Fields in this section are not defaultable.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | id | UUID | Auto | Unique identifier |
 | coffee_id | UUID | Yes | Reference to Coffee entity |
-| brew_date | timestamp | Auto | When the experiment was recorded (defaults to now) |
-| overall_notes | text | Yes | Free-form notes about the brew |
+| brew_date | date | No | User-provided brew date. Defaults to today if omitted from POST. Cannot be in the future. |
+| days_off_roast | integer | No | Days between coffee's roast_date and brew_date (computed at save time, stored immutably) |
+| overall_notes | text | No | Free-form notes about the brew |
 | overall_score | integer | No | 1-10 rating |
 | improvement_notes | text | No | Ideas for improving the next brew |
 | created_at | timestamp | Auto | Record creation time |
 | updated_at | timestamp | Auto | Last modification time |
 
-### Pre-Brew Variables
+### Setup Variables
 
 These are set before brewing begins.
 
+| Field | Type | Unit | Defaultable | Description |
+|-------|------|------|-------------|-------------|
+| coffee_weight | decimal | grams | Yes | Dose of coffee grounds |
+| ratio | decimal | — | Yes | Brew ratio (e.g., 15 for 1:15). Used with coffee_weight to compute water_weight on display. |
+| grind_size | decimal | — | Yes | Numeric grinder setting (e.g., 3.5 for Fellow Ode 2) |
+| water_temperature | decimal | C | Yes | Water temperature at pour |
+| filter_paper_id | UUID | — | Yes | Reference to filter paper (see [Equipment](setup.md)) |
+
+### Brewing Variables
+
+Parameters during the brewing process. Fields in this section (excluding pours) are not defaultable.
+
 | Field | Type | Unit | Description |
 |-------|------|------|-------------|
-| coffee_weight | decimal | grams | Dose of coffee grounds |
-| water_weight | decimal | grams | Total water used. Calculated from coffee_weight × ratio, but can be overridden manually. |
-| ratio | decimal | — | Brew ratio (e.g., 15 for 1:15). Used with coffee_weight to calculate water_weight. |
-| grind_size | decimal | — | Numeric grinder setting (e.g., 3.5 for Fellow Ode 2) |
-| water_temperature | decimal | °C | Water temperature at pour |
-| filter_paper_id | UUID | — | Reference to filter paper (see [Library](library.md)) |
-
-### Brew Variables
-
-Parameters during the brewing process.
-
-| Field | Type | Unit | Description |
-|-------|------|------|-------------|
-| bloom_water | decimal | grams | Water used for bloom |
-| bloom_time | integer | seconds | Bloom duration |
-| pours | array | — | List of pour entries (see experiment_pours table) |
+| pours | array | — | List of pour entries (see brew_pours table). Pour #1 is the bloom pour. Individual pour fields are defaultable — see Pours table below. |
 | total_brew_time | integer | seconds | Total time from first pour to drawdown complete |
-| drawdown_time | integer | seconds | Time for final drawdown |
 | technique_notes | text | — | Additional technique details |
 
-### Post-Brew Variables
-
-Modifications made after brewing, before tasting.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| water_bypass_ml | integer | Water added post-brew in milliliters |
-| mineral_profile_id | UUID | Reference to mineral profile (see [Library](library.md)) |
-
 ### Quantitative Outcomes
+
+Fields in this section are not defaultable.
 
 | Field | Type | Unit | Description |
 |-------|------|------|-------------|
 | coffee_ml | decimal | milliliters | Volume of brewed coffee |
 | tds | decimal | % | Total Dissolved Solids reading |
-| extraction_yield | decimal | % | Calculated or measured extraction |
 
 ### Sensory Outcomes
 
-All intensity fields are 1-10 scale. Each attribute has an intensity score and optional notes.
+Fields in this section are not defaultable. All intensity fields are 1-10 scale. Six sensory attributes, intensity only (no per-attribute notes).
 
 | Field | Type | Description |
 |-------|------|-------------|
 | aroma_intensity | integer | Strength and quality of aroma |
-| aroma_notes | text | Aroma descriptors |
 | body_intensity | integer | Body/mouthfeel weight and texture |
-| body_notes | text | Body/mouthfeel descriptors |
-| flavor_intensity | integer | Overall flavor intensity and clarity |
-| flavor_notes | text | Taste descriptors |
-| brightness_intensity | integer | Perceived acidity quality (liveliness, sparkle) |
-| brightness_notes | text | Brightness/acidity descriptors |
 | sweetness_intensity | integer | Perceived sweetness level |
-| sweetness_notes | text | Sweetness descriptors |
-| cleanliness_intensity | integer | Clarity and definition of flavors |
-| cleanliness_notes | text | Cleanliness descriptors |
+| brightness_intensity | integer | Perceived acidity quality (liveliness, sparkle) |
 | complexity_intensity | integer | Layered, evolving flavor experience |
-| complexity_notes | text | Complexity descriptors |
-| balance_intensity | integer | Harmony between all taste attributes |
-| balance_notes | text | Balance descriptors |
 | aftertaste_intensity | integer | Strength and quality of aftertaste |
-| aftertaste_notes | text | Aftertaste descriptors |
 
-### Computed Properties
+**Total: 6 sensory attributes** — aroma, body, sweetness, brightness, complexity, aftertaste
 
-- **Days Off Roast**: `brew_date - coffee.roast_date` (if roast_date provided)
-- **Calculated Ratio**: `water_weight / coffee_weight` (if both provided)
-- **Extraction Yield**: `(coffee_ml × TDS%) / coffee_weight` (if all provided)
+### Pours (brew_pours table)
+
+| Field | Type | Defaultable | Description |
+|-------|------|-------------|-------------|
+| pour_number | integer | No | Sequence number (1-based). Pour #1 is the bloom. |
+| water_amount | decimal | Yes | Water amount in grams |
+| pour_style | enum | Yes | `circular` or `center` |
+| wait_time | integer | Yes | Wait time in seconds after this pour before the next (used for bloom on pour #1, nullable for other pours) |
+
+**Bloom handling:** Pour #1 in the pours array represents the bloom. It has a `wait_time` field (seconds) indicating the bloom wait before the next pour. Other pours may also use `wait_time` if desired but it's primarily for bloom.
+
+### Computed Properties (not stored in DB)
+
+- **Water Weight**: `coffee_weight × ratio`. Null until both `coffee_weight` and `ratio` are set. Included in API responses as a convenience field.
+- **Extraction Yield**: `(coffee_ml × tds) / coffee_weight`. TDS is stored as `DECIMAL(4,2)` representing the percentage directly (e.g., 1.38 means 1.38%). The formula produces EY as a percentage (e.g., 18.4%). Example: `(200ml × 1.38) / 15g = 18.4%`. Null until all three inputs are present. Included in API GET responses as a computed field — not accepted in POST/PUT request bodies.
 
 ### Database Schema
 
 ```sql
-CREATE TABLE experiments (
+CREATE TABLE brews (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id),
-    coffee_id UUID NOT NULL REFERENCES coffees(id) ON DELETE RESTRICT,
-    brew_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    is_draft BOOLEAN DEFAULT FALSE,
+    coffee_id UUID NOT NULL REFERENCES coffees(id) ON DELETE CASCADE,
+    brew_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    days_off_roast INTEGER,
 
-    -- Pre-brew variables
+    -- Setup variables
     coffee_weight DECIMAL(5,2),
-    water_weight DECIMAL(6,2),
     ratio DECIMAL(4,1),
+    -- water_weight is computed as coffee_weight × ratio (not stored)
     grind_size DECIMAL(4,1),
     water_temperature DECIMAL(4,1),
     filter_paper_id UUID REFERENCES filter_papers(id),
 
-    -- Brew variables
-    bloom_water DECIMAL(5,2),
-    bloom_time INTEGER,
-    -- Pours stored in experiment_pours table
+    -- Brewing variables
+    -- Pours stored in brew_pours table (pour #1 = bloom)
     total_brew_time INTEGER,
-    drawdown_time INTEGER,
     technique_notes TEXT,
-
-    -- Post-brew variables
-    water_bypass_ml INTEGER,
-    mineral_profile_id UUID REFERENCES mineral_profiles(id),
 
     -- Quantitative outcomes
     coffee_ml DECIMAL(6,2),
     tds DECIMAL(4,2),
-    extraction_yield DECIMAL(5,2),
+    -- extraction_yield is computed: (coffee_ml * tds) / coffee_weight (not stored)
 
-    -- Sensory outcomes (1-10 scale)
+    -- Sensory outcomes (1-10 scale, 6 attributes, intensity only)
     aroma_intensity INTEGER CHECK (aroma_intensity BETWEEN 1 AND 10),
-    aroma_notes TEXT,
     body_intensity INTEGER CHECK (body_intensity BETWEEN 1 AND 10),
-    body_notes TEXT,
-    flavor_intensity INTEGER CHECK (flavor_intensity BETWEEN 1 AND 10),
-    flavor_notes TEXT,
-    brightness_intensity INTEGER CHECK (brightness_intensity BETWEEN 1 AND 10),
-    brightness_notes TEXT,
     sweetness_intensity INTEGER CHECK (sweetness_intensity BETWEEN 1 AND 10),
-    sweetness_notes TEXT,
-    cleanliness_intensity INTEGER CHECK (cleanliness_intensity BETWEEN 1 AND 10),
-    cleanliness_notes TEXT,
+    brightness_intensity INTEGER CHECK (brightness_intensity BETWEEN 1 AND 10),
     complexity_intensity INTEGER CHECK (complexity_intensity BETWEEN 1 AND 10),
-    complexity_notes TEXT,
-    balance_intensity INTEGER CHECK (balance_intensity BETWEEN 1 AND 10),
-    balance_notes TEXT,
     aftertaste_intensity INTEGER CHECK (aftertaste_intensity BETWEEN 1 AND 10),
-    aftertaste_notes TEXT,
 
     -- Overall assessment
     overall_score INTEGER CHECK (overall_score BETWEEN 1 AND 10),
-    overall_notes TEXT NOT NULL,
+    overall_notes TEXT,
     improvement_notes TEXT,
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE experiment_pours (
+CREATE TABLE brew_pours (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    experiment_id UUID NOT NULL REFERENCES experiments(id) ON DELETE CASCADE,
+    brew_id UUID NOT NULL REFERENCES brews(id) ON DELETE CASCADE,
     pour_number INTEGER NOT NULL,
     water_amount DECIMAL(5,2),
     pour_style VARCHAR(50),
-    notes TEXT,
-    UNIQUE(experiment_id, pour_number)
+    wait_time INTEGER,
+    UNIQUE(brew_id, pour_number)
 );
 
-CREATE INDEX idx_experiments_user_id ON experiments(user_id);
-CREATE INDEX idx_experiments_coffee_id ON experiments(coffee_id);
-CREATE INDEX idx_experiments_brew_date ON experiments(brew_date);
-CREATE INDEX idx_experiment_pours_experiment_id ON experiment_pours(experiment_id);
+CREATE INDEX idx_brews_user_id ON brews(user_id);
+CREATE INDEX idx_brews_coffee_id ON brews(coffee_id);
+CREATE INDEX idx_brews_brew_date ON brews(brew_date);
+CREATE INDEX idx_brew_pours_brew_id ON brew_pours(brew_id);
 ```
 
 ---
 
 ## API Endpoints
 
-### List Experiments
+### List Brews
+
+Brews are accessible via two endpoints:
+- **Coffee-scoped:** `GET /api/v1/coffees/:id/brews` — see [coffees.md](coffees.md) for query parameters and response format
+- **Global:** `GET /api/v1/brews` — paginated, with filters for date, score, and coffee — see [brews.md](brews.md) for full spec
+
+### Recent Brews
 ```
-GET /api/v1/experiments
+GET /api/v1/brews/recent?limit=5
 ```
 
+Returns the most recent brews across all coffees for the authenticated user. Used by the Home page recent brews widget.
+
 **Query Parameters:**
-- `page`, `per_page`: Pagination
-- `sort`: Field name, `-` prefix for descending (default: `-brew_date`)
-- `coffee_id`: Filter by coffee
-- `score_gte`: Minimum score
-- `score_lte`: Maximum score
-- `has_tds`: `true` to only show experiments with TDS data
-- `date_from`, `date_to`: Date range filter
+- `limit`: Number of brews to return (default: 5, max: 20)
 
 **Response:**
 ```json
@@ -207,143 +180,194 @@ GET /api/v1/experiments
     {
       "id": "uuid",
       "coffee_id": "uuid",
-      "coffee": {
-        "id": "uuid",
-        "roaster": "Cata Coffee",
-        "name": "Kiamaina",
-        "roast_date": "2025-11-19"
-      },
-      "filter_paper_id": "uuid",
+      "coffee_name": "Kiamaina",
+      "coffee_roaster": "Cata Coffee",
+      "brew_date": "2026-01-19",
+      "days_off_roast": 61,
+      "ratio": 15.0,
+      "overall_score": 7,
+      "water_temperature": 96.0,
       "filter_paper": {
         "id": "uuid",
         "name": "Abaca",
         "brand": "Cafec"
-      },
-      "brew_date": "2026-01-19T10:30:00Z",
-      "days_off_roast": 61,
-      "coffee_weight": 15.0,
-      "water_weight": 225.0,
-      "ratio": 15.0,
-      "grind_size": 3.5,
-      "overall_score": 7,
-      "overall_notes": "Bright acidity, lemon notes...",
-      "improvement_notes": "Try finer grind next time",
-      "created_at": "2026-01-19T10:35:00Z"
+      }
     }
-  ],
-  "pagination": {
-    "page": 1,
-    "per_page": 20,
-    "total": 45,
-    "total_pages": 3
-  }
+  ]
 }
 ```
 
-### Create Experiment
+**Sorting:** `brew_date DESC` (most recent first, not configurable).
+
+**Note:** All brew list/detail responses include `coffee_name` and `coffee_roaster` fields, as well as a nested `filter_paper` object (`{ id, name, brand }`) instead of just `filter_paper_id`. Soft-deleted filter papers are still included in responses for historical accuracy.
+
+### Create Brew
 ```
-POST /api/v1/experiments
+POST /api/v1/brews
 ```
 
 **Request:**
 ```json
 {
   "coffee_id": "uuid",
+  "brew_date": "2026-01-19",
   "coffee_weight": 15.0,
   "ratio": 15.0,
-  "water_weight": 225.0,
   "grind_size": 3.5,
   "water_temperature": 90.0,
   "filter_paper_id": "uuid",
-  "bloom_water": 45.0,
-  "bloom_time": 75,
   "pours": [
-    { "pour_number": 1, "water_amount": 90.0, "pour_style": "circular", "notes": "Gentle circles" },
-    { "pour_number": 2, "water_amount": 90.0, "pour_style": "circular", "notes": "Faster pour" }
+    { "pour_number": 1, "water_amount": 45.0, "pour_style": "center", "wait_time": 30 },
+    { "pour_number": 2, "water_amount": 90.0, "pour_style": "circular" },
+    { "pour_number": 3, "water_amount": 90.0, "pour_style": "circular" }
   ],
+  "total_brew_time": 165,
+  "technique_notes": "Gentle swirl after bloom",
+  "coffee_ml": 200.0,
+  "tds": 1.38,
+  "aroma_intensity": 7,
+  "body_intensity": 7,
+  "sweetness_intensity": 8,
+  "brightness_intensity": 7,
+  "complexity_intensity": 6,
+  "aftertaste_intensity": 7,
+  "overall_score": 8,
   "overall_notes": "Bright acidity, lemon notes",
-  "overall_score": 7
+  "improvement_notes": "Try finer grind to boost sweetness"
 }
 ```
 
 **Notes:**
-- `water_weight` is calculated from `coffee_weight × ratio` if not provided
-- `water_weight` can be manually overridden by providing it explicitly
-- `pours` array creates corresponding `experiment_pours` records
+- `brew_date` is optional — defaults to today if omitted. Cannot be in the future. Editable on PUT.
+- `water_weight` is not stored — it is computed as `coffee_weight × ratio` and included in GET responses
+- `extraction_yield` is not accepted in the request body — it is computed from `(coffee_ml × tds) / coffee_weight` and included in GET responses
+- `pours` array creates corresponding `brew_pours` records. Pour #1 is bloom (has `wait_time`).
+- `days_off_roast` is computed at save time: `brew_date - coffee.roast_date`. Stored as an immutable integer (not recomputed on read). If the coffee has no `roast_date`, `days_off_roast` is `null`.
+- Only `coffee_id` is required. All other fields are optional.
 
-**Response:** `201 Created` with experiment object including computed fields and nested pours
+**Response:** `201 Created` with brew object including computed fields and nested pours
 
-### Get Experiment
+### Get Brew
 ```
-GET /api/v1/experiments/:id
-```
-
-**Response:** Full experiment object with nested coffee and computed properties
-
-### Update Experiment
-```
-PUT /api/v1/experiments/:id
+GET /api/v1/brews/:id
 ```
 
-**Request:** Full or partial experiment object
+**Response:** Full brew object with coffee metadata, nested filter_paper, and computed properties
 
-**Response:** Updated experiment object
+```json
+{
+  "id": "uuid",
+  "coffee_id": "uuid",
+  "coffee_name": "Kiamaina",
+  "coffee_roaster": "Cata Coffee",
+  "brew_date": "2026-01-15",
+  "days_off_roast": 57,
+  "coffee_weight": 15.0,
+  "ratio": 15.0,
+  "water_weight": 225.0,
+  "grind_size": 3.5,
+  "water_temperature": 96.0,
+  "filter_paper": {
+    "id": "uuid",
+    "name": "Abaca",
+    "brand": "Cafec"
+  },
+  "pours": [
+    { "pour_number": 1, "water_amount": 45.0, "pour_style": "center", "wait_time": 30 },
+    { "pour_number": 2, "water_amount": 90.0, "pour_style": "circular" }
+  ],
+  "total_brew_time": 165,
+  "technique_notes": "Gentle swirl after bloom",
+  "coffee_ml": 200.0,
+  "tds": 1.38,
+  "extraction_yield": 18.4,
+  "aroma_intensity": 7,
+  "body_intensity": 7,
+  "sweetness_intensity": 8,
+  "brightness_intensity": 7,
+  "complexity_intensity": 6,
+  "aftertaste_intensity": 7,
+  "overall_score": 8,
+  "overall_notes": "Bright acidity, lemon notes",
+  "improvement_notes": "Try finer grind",
+  "created_at": "2026-01-15T10:30:00Z",
+  "updated_at": "2026-01-15T11:00:00Z"
+}
+```
 
-### Delete Experiment
+**Note:** `water_weight` and `extraction_yield` are computed fields (not stored). `coffee_name`, `coffee_roaster`, and `filter_paper` are joined/nested from related tables.
+
+### Update Brew
 ```
-DELETE /api/v1/experiments/:id
+PUT /api/v1/brews/:id
 ```
+
+**Request:** Full brew object (all fields; omitted optional fields are set to null). Includes `brew_date` (cannot be in the future). `days_off_roast` is recomputed when `brew_date` changes.
+
+**Pours replacement:** The `pours` array in the PUT body is the complete set. The backend deletes all existing `brew_pours` rows for this brew and inserts the new set. Sending `pours: []` removes all pours. This matches the pour defaults replacement pattern.
+
+**Response:** Updated brew object (same format as GET, with computed fields)
+
+### Delete Brew
+```
+DELETE /api/v1/brews/:id
+```
+
+**Behavior:**
+- Hard delete: permanently removes the brew
+- Cascades: brew_pours rows for this brew are also deleted
+- If this brew was the coffee's `reference_brew_id`, that field is set to NULL
 
 **Response:** `204 No Content`
 
-### Copy Experiment as Template
-```
-POST /api/v1/experiments/:id/copy
-```
+### Brew Detail Modal
 
-Creates a new experiment with same parameters:
-- New ID and timestamps
-- All parameters copied including `coffee_id`
-- `overall_notes`, `overall_score`, and `improvement_notes` cleared (must be entered fresh)
-- Sensory scores and sensory notes are NOT copied (only input parameters)
-- `brew_date` set to now
-
-**Response:** `201 Created` with new experiment template
-
-### Experiment Detail Display
-
-Experiment details are displayed in a **modal dialog** (not a dedicated page). The modal is opened from:
+Brew details are displayed in a **modal dialog** (not a dedicated page). The modal is opened from:
 - Coffee detail page brew history rows
-- Dashboard brew history rows
-- Session experiment lists
+- Home page recent brews widget
 
-See [dashboard.md](dashboard.md) for the full experiment detail modal specification.
+**Modal Content:**
+```
++-----------------------------------------------------+
+| Brew Detail — Jan 15, 2026                       [x]  |
++-----------------------------------------------------+
+| Kiamaina - Cata Coffee                               |
+| Days Off Roast: 57                                   |
+|                                                      |
+| --- Setup ---                                        |
+| Coffee: 15g  Ratio: 1:15  Water: 225g (computed)     |
+| Grind: 3.5  Temp: 96C  Filter: Abaca (Cafec)        |
+|                                                      |
+| --- Brewing ---                                      |
+| Pours: 45g center (30s bloom), 90g circular, 90g circular |
+| Total: 2:45                                          |
+| Technique: Gentle swirl after bloom                  |
+|                                                      |
+| --- Tasting ---                                      |
+| Coffee: 180ml  TDS: 1.38  Extraction: 20.1%         |
+| Overall: 8/10                                        |
+|                                                      |
+| Aroma: 7  Body: 7  Sweetness: 8                     |
+| Brightness: 7  Complexity: 6  Aftertaste: 7          |
+|                                                      |
+| Notes: "Bright acidity, lemon notes..."              |
+| Improvement: "Try finer grind to boost sweetness"    |
+|                                                      |
+| [Edit] [Brew Again] [Star as Reference] [Delete]     |
++-----------------------------------------------------+
+```
+
+**Actions:**
+- **[Edit]**: Navigate to `/brews/:id/edit` (closes modal)
+- **[Brew Again]**: Navigate to `/brews/new?from=:id`. The form fetches `GET /api/v1/brews/:id` and pre-fills Setup + Brewing fields. Outcomes, notes, and sensory scores are NOT pre-filled (must be fresh). No server-side copy endpoint — no record created until user saves.
+- **[Star as Reference]**: Stars/unstars this brew as reference for its coffee
+- **[Delete]**: Hard-deletes the brew with confirmation dialog
 
 ---
 
 ## User Defaults
 
-For defaults API endpoints and database schema, see [User Preferences](user-preferences.md).
-
-### Pour Defaults
-
-Users can configure default pour templates that are applied when entering the Brew step for new experiments.
-
-**Structure:**
-- Pour defaults are stored as a JSON string containing an array of pour templates
-- Each template specifies: `water_amount`, `pour_style`, and optional `notes`
-- When the user enters the Brew step, the pours field is pre-populated with these defaults
-- Users can modify, add, or remove pours as needed for each experiment
-
-**Example JSON:**
-```json
-{
-  "pours": [
-    { "water_amount": 90, "pour_style": "circular", "notes": "" },
-    { "water_amount": 90, "pour_style": "circular", "notes": "" }
-  ]
-}
-```
+User defaults (entity, schema, API, and Preferences page UI) are defined in [preferences.md](preferences.md). The brew form auto-fills from defaults — see Auto-Fill Priority below. Fields that support defaults are marked **Defaultable: Yes** in the entity tables above.
 
 ---
 
@@ -355,528 +379,472 @@ Users can configure default pour templates that are applied when entering the Br
 2. **Detailed Log**: As a user, I can add detailed parameters when I want precision
 3. **Use Defaults**: As a user, I can set defaults for my common setup to reduce entry
 4. **Edit Later**: As a user, I can add details after the initial entry
-5. **Copy Previous**: As a user, I can start from a previous experiment's settings
+5. **Brew Again**: As a user, I can start from a previous brew's settings via "Brew Again"
 
 ### Entry Flow
 
-**Step 1: Select Coffee (Required)**
+**Single scrollable form** with 3 collapsible sections, all collapsed by default.
+
+**Route:** `/brews/new` (new brew) or `/brews/:id/edit` (edit existing)
+
+**Form Layout:**
 ```
-┌─────────────────────────────────────────┐
-│ New Experiment                          │
-├─────────────────────────────────────────┤
-│ Select Coffee*                          │
-│ [Search coffees...               ▼]     │
-│                                         │
-│ Recent:                                 │
-│ • Kiamaina - Cata Coffee (61 days)      │
-│ • El Calagual - Cata Coffee (52 days)   │
-│ • Stellar S Venus - Curista             │
-└─────────────────────────────────────────┘
++---------------------------------------+
+| New Brew                              |
++---------------------------------------+
+| Coffee*  [Search coffees...        v] |
+| Kiamaina - Cata Coffee                |
+|                                       |
+| Brew Date     [2026-01-19  📅]        |
+| Days Off Roast: 61                    |
+|                                       |
+| Overall Notes                         |
+| [                                 ]   |
+| [                                 ]   |
+|                                       |
+| Overall Score                         |
+| [  ] 1-10                             |
+|                                       |
+| Improvement Notes                     |
+| [                                 ]   |
+|                                       |
+| [> Setup          ○]                  |
+| [> Brewing        ○]                  |
+| [> Tasting        ○]                  |
+|                                       |
+|      [Cancel]  [Save Brew]            |
++---------------------------------------+
 ```
 
-**Step 2: Main Entry Form**
-```
-┌─────────────────────────────────────────┐
-│ Kiamaina · Cata Coffee                  │
-│ 61 days off roast                       │
-├─────────────────────────────────────────┤
-│                                         │
-│ Overall Notes*                          │
-│ [                                   ]   │
-│ [                                   ]   │
-│                                         │
-│ Overall Score                           │
-│ [  ] 1-10                               │
-│                                         │
-│ [+ Pre-Brew Variables]                  │
-│ [+ Brew Variables]                      │
-│ [+ Post-Brew Variables]                 │
-│ [+ Quantitative Outcomes]               │
-│ [+ Sensory Outcomes]                    │
-│                                         │
-│      [Cancel]  [Save Experiment]        │
-└─────────────────────────────────────────┘
-```
+**Top-level fields** (always visible):
+- Coffee selector (required)
+- Brew date (calendar date picker, defaults to today)
+- Days off roast (computed live from coffee's roast_date minus brew_date, display only)
+- Overall notes
+- Overall score
+- Improvement notes
 
-**Expanded Section Example (Pre-Brew):**
+**Section fill-status indicators** (see [design-system.md](../foundations/design-system.md)):
+- Each collapsible section header has a 3-state dot indicator
+- Gray dot (○): no fields filled in section
+- Half-teal dot (◐): some fields filled
+- Full teal dot (●): all fields filled
+- Indicators update in real-time as the user fills or clears fields
+
+**Section 1 — Setup** (collapsible, collapsed by default):
 ```
-│ ─── Pre-Brew Variables ───        [−]   │
-│                                         │
-│ Coffee Weight    [15    ] g             │
-│ Ratio            [15    ] (1:15)        │
-│ Water Weight     [225   ] g             │
-│ Grind Size       [3.5   ]               │
-│ Temperature      [90    ] °C            │
-│ Filter           [Select filter... ▼]   │
+| --- Setup ---                    [-]  |
+|                                       |
+| Coffee Weight    [15    ] g           |
+| Ratio            [15    ] (1:15)      |
+| Water Weight     225g (computed)      |
+| Grind Size       [3.5   ]            |
+| Temperature      [90    ] C          |
+| Filter           [Select filter... v] |
 ```
 
-Note: Water weight is auto-calculated from coffee_weight × ratio but the "(auto-calculated)" indicator is not displayed. The calculation still happens automatically when coffee weight and ratio are entered.
+Fields: coffee_weight, ratio, *water_weight (display only)*, grind_size, water_temperature, filter_paper_id
 
-### Field Sections
+**Section 2 — Brewing** (collapsible, collapsed by default):
+```
+| --- Brewing ---                  [-]  |
+|                                       |
+| Pours:                                |
+| #1 [45   ] g  [center v]  wait [30]s |
+| #2 [90   ] g  [circular v]           |
+| #3 [90   ] g  [circular v]           |
+| [+ Add Pour]                          |
+|                                       |
+| Total Brew Time  [2:45 ]  (165s)      |
+| Technique Notes  [                ]   |
+```
 
-**Pre-Brew Variables:**
+Fields: pours array (pour_number, water_amount, pour_style, wait_time for pour #1), total_brew_time, technique_notes
+
+**Section 3 — Tasting** (collapsible, collapsed by default):
+```
+| --- Tasting ---                  [-]  |
+|                                       |
+| Coffee (ml)      [200   ]            |
+| TDS              [1.38  ]            |
+| Extraction Yield  18.4% (computed)    |
+|                                       |
+| --- Sensory (1-10) ---               |
+| Aroma     [7 ]  Body       [7 ]      |
+| Sweetness [8 ]  Brightness [7 ]      |
+| Complexity[6 ]  Aftertaste [7 ]      |
+```
+
+Fields: coffee_ml, tds, extraction_yield (read-only, computed from `(coffee_ml × tds) / coffee_weight` — shows "—" when inputs missing), 6 sensory intensities
+
+**Note:** Archived coffees are hidden from the coffee selector. Users must unarchive a coffee before creating new brews for it.
+
+### Auto-Fill Priority
+
+When creating a new brew, fields are auto-filled following this priority chain:
+1. **Starred reference brew** — if the selected coffee has a starred `reference_brew_id`
+2. **Latest brew** — most recent brew for the selected coffee (by brew_date)
+3. **User defaults** — from `/api/v1/defaults`
+4. **Blank** — no auto-fill
+
+Auto-fill applies to Setup and Brewing section fields only (not tasting/sensory outcomes). When the coffee selection changes, auto-fill re-runs with the new coffee's data.
+
+### Field Details
+
+**Setup:**
 - Coffee Weight (g)
 - Ratio (numeric, e.g., 15 for 1:15)
-- Water Weight (g) - calculated from coffee_weight × ratio, editable to override
+- Water Weight (g) - display-only, computed as `coffee_weight × ratio`. Shown for reference but not stored.
 - Grind Size (numeric, e.g., 3.5 for Fellow Ode 2)
-- Water Temperature (°C)
-- Filter Paper (dropdown, see [Library](library.md))
+- Water Temperature (C)
+- Filter Paper (dropdown, see [Equipment](setup.md)). Soft-deleted filter papers are excluded from the dropdown when creating/editing brews, but show normally in existing brew views (detail modal, history table).
 
-**Brew Variables:**
-- Bloom Water (g)
-- Bloom Time (seconds)
+**Brewing:**
 - Pours (dynamic list):
-  - Pour Number (auto-incremented)
+  - Pour Number (auto-incremented, #1 = bloom)
   - Water Amount (g)
-  - Pour Style (dropdown: circular, center, pulse)
-  - Notes (text)
+  - Pour Style (dropdown: circular, center)
+  - Wait Time (seconds, shown for pour #1 as bloom wait; available for other pours)
   - [+ Add Pour] button
-  - Pre-populated from user's pour defaults (if configured)
-- Total Brew Time (seconds)
-- Drawdown Time (seconds)
+  - Pre-populated from reference brew or user's pour defaults
+  - Mobile: pours displayed as stacked cards (not inline rows)
+- Total Brew Time: input accepts mm:ss format (e.g., "2:45"). Stored as seconds in DB (165). Display: mm:ss primary, seconds in parentheses.
 - Technique Notes (text)
 
 **Water Weight Validation:**
-- Non-blocking warning when `bloom_water + sum(pour amounts) ≠ water_weight`
+- Non-blocking warning when `sum(pour amounts) != computed water_weight`
 - Displayed as informational warning, does not prevent saving
-- Helps users catch input errors
+- Show computed water_weight for reference when the warning fires
 
-**Post-Brew Variables:**
-- Water Bypass (ml) - with equal spacing to mineral profile
-- Mineral Profile (dropdown with "None" option, see [Library](library.md))
-
-**Quantitative Outcomes (Step 5):**
+**Tasting:**
 - Coffee (ml) - volume of brewed coffee
 - TDS (%)
-- Extraction Yield (%)
-- **Target Goals subsection** (editable, see Target Goals on Wizard Steps below)
+- Extraction Yield — read-only, auto-calculated from `(coffee_ml × tds) / coffee_weight`. Shows "—" when any input is missing. Not a form input.
+- 6 sensory intensity fields (1-10 scale)
 
-**Sensory Outcomes (Step 6):**
-
-Nine sensory attributes, each with intensity (1-10) and optional notes:
-
-1. Aroma - strength and quality of smell
-2. Body - weight and texture of mouthfeel
-3. Flavor - overall taste intensity and clarity
-4. Brightness - perceived acidity quality (liveliness, sparkle)
-5. Sweetness - perceived sweetness level
-6. Cleanliness - clarity and definition of flavors
-7. Complexity - layered, evolving flavor experience
-8. Balance - harmony between all taste attributes
-9. Aftertaste - strength and quality of finish
-
-- **Target Goals subsection** (editable, see Target Goals on Wizard Steps below)
-
-**Flavor Wheel Reference:**
-- Collapsible image showing SCA/common flavor wheel
-- Helps users identify and describe flavor notes
-- Displayed in a collapsible section to save space
-
-### Target Goals on Wizard Steps
-
-Steps 5 (Quantitative) and 6 (Sensory) include editable target goal sections that allow users to view and update their coffee's target goals inline while filling out the experiment.
-
-**Step 5 — Quantitative Outcomes:**
-```
-┌─────────────────────────────────────────┐
-│ ─── Quantitative Outcomes ───           │
-│                                         │
-│ Coffee (ml)      [180   ]               │
-│ TDS (%)          [1.38  ]               │
-│ Extraction (%)   [20.1  ]               │
-│                                         │
-│ ─── Target Goals ───                    │
-│ Coffee (ml)      [180   ]               │
-│ TDS              [1.38  ]               │
-│ Extraction       [20.5  ]               │
-│                                         │
-│            [Back]  [Next]  [Save Draft] │
-└─────────────────────────────────────────┘
-```
-
-**Step 6 — Sensory Outcomes:**
-```
-┌─────────────────────────────────────────┐
-│ ─── Sensory Outcomes ───                │
-│                                         │
-│ [Sensory attribute fields...]           │
-│                                         │
-│ ─── Target Goals ───                    │
-│ Aroma       [7 ]  Sweetness  [8 ]      │
-│ Body        [7 ]  Flavor     [8 ]      │
-│ Brightness  [7 ]  Cleanliness [7]      │
-│ Complexity  [6 ]  Balance    [8 ]      │
-│ Aftertaste  [7 ]  Overall    [9 ]      │
-│                                         │
-│            [Back]  [Next]  [Save Draft] │
-└─────────────────────────────────────────┘
-```
-
-**Behavior:**
-- Target goals are fetched when a coffee is selected (from `GET /api/v1/coffees/:id/goals`)
-- Goals are pre-populated with existing values (if any)
-- Changes to target goals are saved via `PUT /api/v1/coffees/:id/goals` when the user navigates away from the step or saves
-- Target goal fields are visually distinct from experiment outcome fields (e.g., different background or border)
-- All target goal fields are optional
-- Step 5 targets: `coffee_ml`, `tds`, `extraction_yield`
-- Step 6 targets: 9 sensory intensities (`aroma_intensity`, `sweetness_intensity`, `body_intensity`, `flavor_intensity`, `brightness_intensity`, `cleanliness_intensity`, `complexity_intensity`, `balance_intensity`, `aftertaste_intensity`) + `overall_score`
-
-### Defaults System
-
-**Setting Defaults:**
-
-Brew defaults are managed in User Preferences (see [user-preferences.md](user-preferences.md) for UI wireframe).
-
-Navigate to: User menu → Preferences → Brew Defaults section
-
-**Default Behavior:**
-- Defaults pre-populate fields when expanding sections
-- User can override any default per experiment
-- Defaults are per-user
-- Clear button removes individual defaults
-
-### Copy from Previous
+### Brew Again
 
 **Access Points:**
-- Experiment list: "Copy" action on experiment row
-- Experiment detail: "Use as Template" button
+- Brew detail modal: "Brew Again" button
+- Home page recent brews: row action button
+- Global Brews page: (via brew detail modal)
 
 **Behavior:**
-- Creates new experiment with same parameters including coffee selection
-- Notes and score are NOT copied (must be entered fresh)
+- Navigates to `/brews/new?from=:id`
+- Form loads, fetches `GET /api/v1/brews/:id`, pre-fills Setup + Brewing fields
+- `coffee_id` is also pre-filled (coffee selector shows the original brew's coffee)
+- `brew_date` defaults to today (not copied from original)
+- Outcomes (`coffee_ml`, `tds`), overall notes, overall score, improvement notes, and sensory scores are NOT pre-filled (must be entered fresh)
+- No server-side copy endpoint — no record created until user saves
 - Useful for A/B testing with one variable changed
 
 ### Real-Time Calculations
 
-**Water Weight Calculation:**
-- If coffee weight and ratio entered, water weight is calculated: `coffee_weight × ratio`
-- User can override water_weight by editing the field directly
-- Visual indicator shows "calculated" vs "manual" state
+**Water Weight Display:**
+- Computed as `coffee_weight × ratio` and displayed as a read-only value
+- Not stored in the database — computed on display
 - Example: 15g coffee × 15 ratio = 225g water
 
 **Extraction Yield:**
 - If TDS, coffee weight, and coffee_ml entered:
-- `EY = (coffee_ml × TDS%) / coffee_weight`
+- `EY = (coffee_ml × tds) / coffee_weight` (TDS stored as percentage, e.g., 1.38 = 1.38%)
 - Display calculated value with "calculated" indicator
 
 **Days Off Roast:**
-- Calculated from coffee's roast date and experiment brew date
-- Displayed but not stored (derived on read)
+- Computed at save time: `brew_date - coffee.roast_date` (uses user-provided `brew_date`, or today if omitted)
+- Stored as an immutable integer on the brew record
+- Recomputed if `brew_date` is changed via PUT
+- If coffee has no roast_date, value is null
+- Displayed in brew header and brew history tables
 
 ### Validation
 
 **Required:**
-- Coffee selection
-- Overall notes (minimum 10 characters) - required only for final save, not drafts
+- Coffee selection (only field required for saving)
 
 **Format Validation:**
 - Weights: Positive decimals
-- Temperature: 0-100°C
+- Temperature: 0-100C
 - Intensity scores: 1-10 integers
 - Times: Positive integers (seconds)
 - Volume: Positive decimals for coffee_ml
+- Brew date: Valid date, cannot be in the future
 
 **Warnings (not blocking):**
-- Unusual values: "Temperature 50°C seems low for brewing"
-- Missing common fields: "Consider adding brew time for better analysis"
-- Water weight mismatch: "Bloom + pours (X g) differs from water weight (Y g)"
+- Unusual values: "Temperature 50C seems low for brewing"
+- Water weight mismatch: "Sum of pours (X g) differs from computed water weight (Y g)"
 
 ### Navigation & Save Behavior
 
-**Multi-Step Wizard Navigation:**
-- Next button available on ALL steps (Pre-Brew, Brew, Post-Brew, Quantitative, Sensory, Improvement Notes)
-- Next button works even with partial/empty optional fields
-- Back button returns to previous step
-- Users can reach Improvement Notes step before final save
+**Save Brew:**
+- "Save Brew" button at the bottom of the form
+- Validates only coffee_id, then saves
+- If editing an existing brew, updates it (PUT)
+- If new, creates it (POST)
 
-**Save Draft Feature:**
-- "Save Draft" button available alongside Next/Back navigation on all steps
-- Saves current experiment state with `is_draft: true`
-- Draft experiments can be resumed later from the experiments list
-- Prevents data loss if user navigates away mid-entry
-- Draft experiments are marked with a visual indicator in lists
+**Post-save navigation:**
+- Entry from Home (`/`) -> save -> return to Home
+- Entry from Coffee detail (`/coffees/:id`) -> save -> return to Coffee detail
+- Direct navigation -> save -> return to Home
 
-**Final Save:**
-- Only available on the last step (Improvement Notes)
-- Validates required fields (coffee selection, overall notes)
-- Sets `is_draft: false` on save
-
-### Wizard Progress Indicator
-
-The wizard displays a progress indicator showing all steps with their current state.
-
-**Step Circles:**
-```
-┌─────────────────────────────────────────────────────┐
-│  ① ─── ② ─── ③ ─── ④ ─── ⑤ ─── ⑥ ─── ⑦          │
-│  ●     ○     ○     ○     ○     ○     ○              │
-│ Coffee Pre   Brew  Post  Quant Sens  Notes          │
-└─────────────────────────────────────────────────────┘
-```
-
-**States:**
-- **Default**: Neutral circle (unfilled)
-- **Active**: Highlighted circle (current step)
-- **Completed**: Filled circle (step visited and has data)
-- **Error**: Red circle border/background — indicates validation errors on that step
-
-**Error Indicator Behavior:**
-- Step circles get a red border when their section has validation errors
-- Currently affected steps:
-  - Step 1 (Select Coffee): Red when `coffee_id` is not selected
-  - Step 6 (Sensory): Red when `overall_notes` is empty (required for final save)
-- Red indicator appears **after** the user attempts to submit (clicks "Save Experiment" on the last step) or navigates away from a step with required field errors
-- Red indicator clears when the user fixes the validation errors on that step
-- Clicking a red step circle navigates to that step so the user can fix errors
+**Unsaved changes:**
+- Browser `beforeunload` warning when form has changes and user navigates away
+- Cancel button navigates back without saving (with beforeunload warning if dirty)
 
 ---
 
 ## Reference Sidebar
 
-When logging an experiment, users can view reference information for the selected coffee in a sidebar. This shows the reference brew parameters and target goals, providing context while filling out the form.
+When logging a brew, users can view reference information for the selected coffee in a sidebar. The sidebar is a **single panel** (no tabs) showing whichever brew is being used as reference.
 
 ### Layout
 
-**Desktop (lg+ breakpoints):**
+**Desktop (`lg+` breakpoints):**
+
+Form and sidebar are shown side-by-side. Sidebar is **collapsed by default** — displayed as a thin panel/button labeled "Reference" on the right. Click to expand and see reference content alongside the form.
+
+**Collapsed state:**
 ```
-┌─────────────────────────────────────┬─────────────────────────────────┐
-│ Log Experiment                      │ Reference Brew        [Change]  │
-│                                     │ ─────────────────────────────── │
-│ Coffee*  [Kiamaina - Cata ▼]        │ Based on: Jan 15 brew           │
-│                                     │                                 │
-│ ─── Pre-Brew ───                    │ INPUT PARAMETERS                │
-│ Coffee (g)  [15        ]            │ • Coffee: 15g                   │
-│ Ratio       [15        ]            │ • Ratio: 1:15                   │
-│ Water (g)   [225       ] calc       │ • Water: 225g                   │
-│ Grind       [3.5       ]            │ • Grind: 3.5                    │
-│ Temp (°C)   [96        ]            │ • Temp: 96°C                    │
-│ Filter      [Abaca ▼   ]            │ • Filter: Abaca                 │
-│                                     │ • Bloom: 40g / 30s              │
-│ ─── Brew ───                        │                                 │
-│ Bloom (g)   [40        ]            │ ─────────────────────────────── │
-│ Bloom (s)   [30        ]            │ TARGET GOALS              [✏️]  │
-│ ...                                 │ • TDS: 1.35-1.40                │
-│                                     │ • Extraction: 20-22%            │
-│ ─── Outcomes ───                    │ • Brightness: 7/10              │
-│ TDS         [1.38      ]            │ • Sweetness: 8/10               │
-│ Extraction  [20.1      ]            │ • Balance: 8/10                 │
-│ ...                                 │ • Overall: 9/10                 │
-│                                     │                                 │
-│                                     │ ─────────────────────────────── │
-│                                     │ IMPROVEMENT NOTES               │
-│                                     │ "Try finer grind to boost       │
-│                                     │ sweetness, maybe 3.2"           │
-│                                     │                                 │
-│              [Save Experiment]      │ [Copy Parameters]               │
-└─────────────────────────────────────┴─────────────────────────────────┘
++-----------------------------------------------+---+
+| New Brew                                       |[R]|
+|                                                |[e]|
+| Coffee*  [Kiamaina - Cata v]                   |[f]|
+| Brew Date [2026-01-19 📅]                       |   |
+| Days Off Roast: 61                             |   |
+|                                                |   |
+| Overall Notes                                  |   |
+| [                                          ]   |   |
+|                                                |   |
+| [> Setup          ○]                           |   |
+| [> Brewing        ○]                           |   |
+| [> Tasting        ○]                           |   |
+|                                                |   |
+|                 [Save Brew]                     |   |
++-----------------------------------------------+---+
 ```
 
-**Mobile (< lg breakpoint):**
-
-On mobile, the sidebar is a **slide-out drawer** (Sheet component) rather than stacking below the form:
-- Triggered by a "Reference" floating button visible on all wizard steps
-- Slides in from the right, overlays the form
-- Same content and functionality as desktop sidebar
-- Close button or swipe to dismiss
-
+**Expanded state:**
 ```
-┌─────────────────────────────────────┐
-│ Log Experiment        [Reference →] │
-│                                     │
-│ Coffee*  [Kiamaina - Cata ▼]        │
-│ ...form fields...                   │
-│                                     │
-└─────────────────────────────────────┘
-
-When "Reference" tapped:
-┌──────────────────┬──────────────────┐
-│ (form, dimmed)   │ Reference   [×]  │
-│                  │ Change: [▼]      │
-│                  │                  │
-│                  │ Based on: Jan 15 │
-│                  │ INPUT PARAMETERS │
-│                  │ • Coffee: 15g    │
-│                  │ • Ratio: 1:15    │
-│                  │ ...              │
-│                  │                  │
-│                  │ TARGET GOALS     │
-│                  │ ...              │
-│                  │                  │
-│                  │ [Copy Parameters]│
-└──────────────────┴──────────────────┘
++-----------------------------------+---------------------------------+
+| New Brew                          | Reference (starred)    [Change] |
+|                                   | --------------------------------|
+| Coffee*  [Kiamaina - Cata v]      | Based on: Jan 15 brew           |
+| Brew Date [2026-01-19 📅]         |                                 |
+| Days Off Roast: 61                | INPUT PARAMETERS                |
+|                                   | - Coffee: 15g                   |
+| Overall Notes                     | - Ratio: 1:15                   |
+| [                             ]   | - Water: 225g                   |
+|                                   | - Grind: 3.5                    |
+| Overall Score  [  ]               | - Temp: 96C                     |
+|                                   | - Filter: Abaca (Cafec)         |
+| Improvement Notes                 | - Bloom: 45g / 30s wait         |
+| [                             ]   | - Pours: 90g circ, 90g circ     |
+|                                   |                                 |
+| [> Setup          ○]             | OUTCOMES                        |
+| [> Brewing        ○]             | - Score: 8/10                   |
+| [> Tasting        ○]             | - TDS: 1.38                     |
+|                                   | - Extraction: 20.1%             |
+|              [Save Brew]          |                                 |
+|                                   | IMPROVEMENT NOTES               |
+|                                   | "Try finer grind to boost       |
+|                                   | sweetness, maybe 3.2"           |
++-----------------------------------+---------------------------------+
 ```
+
+**Mobile/tablet (`< lg` breakpoint):**
+
+Sidebar becomes a **Sheet overlay**:
+- Triggered by a "Reference" button visible when a coffee is selected
+- Tapping the button dims the background and slides the sidebar in from the right, taking focus
+- Same content and functionality as the desktop expanded sidebar
+- Tap outside or close button to dismiss
+
+### Sidebar Content
+
+**Header:**
+- Label: "Reference (starred)" or "Reference (latest)" based on source
+- [Change] button to select a different reference
+
+**Sections:**
+
+1. **Input Parameters**
+   - Coffee weight, ratio, water weight (computed)
+   - Grind size, temperature
+   - Filter paper name (soft-deleted filter papers show normally here)
+   - Pours summary (amounts, styles, bloom wait time)
+   - Total brew time (if recorded)
+
+2. **Outcomes**
+   - Overall score
+   - TDS, extraction yield
+
+3. **Improvement Notes**
+   - Shows the reference brew's `improvement_notes`
+   - Read-only in sidebar context
 
 ### Select Different Reference Brew
 
-A **[Change]** button in the sidebar header allows the user to view a different experiment as the reference during this session.
+A **[Change]** button in the sidebar header allows the user to view a different brew as the reference during this form session.
 
 **Behavior:**
-- Clicking "Change" opens a modal dialog listing all experiments for the selected coffee
-- Dialog shows: Date, Score, key params (grind, ratio, temp) for each experiment
+- Clicking "Change" opens a modal dialog listing all brews for the selected coffee
+- Dialog shows: Date, Score, key params (grind, ratio, temp) for each brew
 - Current sidebar reference has a checkmark
-- Selecting an experiment updates the sidebar to show that experiment's parameters
-- This is a **session-level override** — it does NOT change the coffee's `best_experiment_id` in the database
-- Useful for comparing against a specific past experiment while brewing
+- Selecting a brew updates the sidebar to show that brew's parameters
+- This is a **form-session-level override** — it does NOT change the coffee's `reference_brew_id` in the database
+- Useful for comparing against a specific past brew while brewing
 - Reset to default reference when coffee selection changes
 
 ### Sidebar Behavior
 
 **Visibility:**
 - Sidebar hidden when no coffee is selected
-- Desktop: Sidebar appears when coffee is selected (collapsed by default), fixed position on the right (w-80)
-- Mobile: "Reference" button appears when coffee is selected
-- Expansion state persists during the session
+- Desktop (`lg+`): Sidebar appears as a thin collapsed panel when coffee is selected. Click to expand to full width (w-80). Click again to collapse.
+- Mobile/tablet (`< lg`): "Reference" button appears when coffee is selected. Opens Sheet overlay.
+- Expansion state persists during the form lifecycle
 
 **Data Source:**
 - Fetches data from `GET /api/v1/coffees/:id/reference` when coffee is selected
-- Shows reference experiment parameters (or latest if no reference marked)
-- Shows target goals if they exist for this coffee
-- When user selects a different reference via "Change", fetches that experiment's data from `GET /api/v1/experiments/:id`
-
-**Sections:**
-
-1. **Reference Brew Header**
-   - Shows date of the reference experiment
-   - [Change] button to select a different reference
-   - Indicates if this is explicitly marked reference or just latest
-
-2. **Input Parameters**
-   - Coffee weight, ratio, water weight
-   - Grind size, temperature
-   - Filter paper name
-   - Bloom water and time
-   - Total brew time (if recorded)
-
-3. **Target Goals** (editable)
-   - Target outcome values (TDS, extraction, sensory scores)
-   - Edit icon opens inline edit or modal
-   - Changes saved to `PUT /api/v1/coffees/:id/goals`
-
-4. **Improvement Notes**
-   - Shows the latest experiment's `improvement_notes` for this coffee
-   - Read-only in sidebar context
-
-**Actions:**
-
-- **Copy Parameters**: Fills form fields with reference brew's input parameters
-  - Copies: coffee weight, ratio, water weight, grind, temp, filter, bloom
-  - Does NOT copy: outcomes, sensory data, notes
-  - Shows toast confirmation: "Parameters copied from Jan 15 brew"
-
-- **Edit Goals** (✏️): Opens inline editor for target goals
-  - All goal fields editable
-  - Save/Cancel buttons
-  - Auto-saves on blur or explicit save
+- Returns starred reference brew, or falls back to latest brew
+- When user selects a different reference via "Change", fetches that brew's data from `GET /api/v1/brews/:id`
 
 ### Empty States
 
-**No experiments for coffee:**
+**No brews for coffee:**
 ```
-┌─────────────────────────────────┐
-│ Reference Brew                  │
-│ ─────────────────────────────── │
-│                                 │
-│ No experiments yet for this     │
-│ coffee. This will show your     │
-│ reference brew parameters after │
-│ you log some experiments.       │
-│                                 │
-│ ─────────────────────────────── │
-│ TARGET GOALS              [✏️]  │
-│ No goals set. Add targets to    │
-│ track what you're aiming for.   │
-│                                 │
-└─────────────────────────────────┘
++---------------------------------+
+| Reference                       |
+| --------------------------------|
+|                                 |
+| No brews yet for this           |
+| coffee. This will show your     |
+| reference brew parameters after |
+| you log some brews.             |
+|                                 |
++---------------------------------+
 ```
 
-**No goals set:**
-```
-│ TARGET GOALS              [Add] │
-│ No goals set yet.               │
-│ Set targets for TDS,            │
-│ extraction, or taste scores.    │
-```
+---
+
+## Toast Notifications
+
+The following actions trigger toast notifications (see [design-system.md](../foundations/design-system.md) for style/duration):
+
+| Action | Type | Message |
+|--------|------|---------|
+| Save brew (create/update) | Success | "Brew saved" |
+| Delete brew | Success | "Brew deleted" |
+| Star/unstar reference | Success | "Reference updated" / "Reference cleared" |
+| Archive coffee | Success | "Coffee archived" |
+| Unarchive coffee | Success | "Coffee unarchived" |
+| Delete coffee | Success | "Coffee deleted" |
+| Water weight mismatch | Warning | "Sum of pours (X g) differs from water weight (Y g)" |
+| Server error | Error | "Something went wrong. Please try again." |
+
+---
+
+## Autocomplete Behavior (Coffee Form)
+
+Applies to: roaster, country, process fields in the Add/Edit Coffee form.
+
+- **Debounce:** 300ms after last keystroke before fetching suggestions
+- **Minimum characters:** 2 characters before triggering autocomplete
+- **Empty state:** "No matches" message when query returns no results
+- **Endpoint:** `GET /api/v1/coffees/suggestions?field={field}&q={query}`
+
+---
+
+## Mobile Form Layout
+
+- Brew form takes full width on mobile (no side margins beyond standard page padding)
+- Reference sidebar presented as Sheet overlay (see sidebar layout above)
+- Pours: displayed as stacked cards on mobile (not inline row layout)
+- All collapsible sections work identically on mobile and desktop
 
 ---
 
 ## Design Decisions
 
+### Single Form Over Wizard
+
+The brew form uses a single scrollable page with collapsible sections instead of a multi-step wizard because:
+- Reduces step count from 7 to 1 page with 3 optional sections
+- All fields visible at a glance when expanded
+- Faster for experienced users who want to fill everything
+- No step-tracking UI complexity (progress indicators, step circles)
+- Sections collapsed by default keeps it clean for quick entries
+
+### Collapsible Sections All Collapsed
+
+All 3 sections (Setup, Brewing, Tasting) are collapsed by default because:
+- Quick log: just pick coffee, add notes/score, save
+- Detailed log: expand the sections you care about
+- Progressive disclosure without forcing navigation
+
+### Bloom as Pour #1
+
+Bloom is modeled as the first pour (with a `wait_time` field) rather than separate bloom fields because:
+- Simplifies the data model — one table for all pours including bloom
+- `wait_time` on pour #1 captures the bloom wait naturally
+- Reduces field count (removed separate `bloom_water` and `bloom_time`)
+- More flexible — some techniques don't use a traditional bloom
+
+### Reduced Sensory Attributes (9 -> 6)
+
+Reduced from 9 to 6 sensory attributes (removed flavor, cleanliness, balance) because:
+- Flavor overlaps heavily with the overall score
+- Cleanliness is hard to distinguish from other attributes for most users
+- Balance is a meta-attribute that's better captured by overall score
+- 6 attributes is enough granularity without being overwhelming
+- Faster to fill out during tasting
+
+### No Per-Sensory Notes
+
+Removed per-attribute notes (e.g., `aroma_notes`) because:
+- `overall_notes` covers the tasting narrative
+- Per-attribute notes were rarely useful in practice
+- Reduces form fields significantly (removed 9 text fields)
+
 ### Minimal Required Fields
 
-Only `coffee_id` and `overall_notes` are required because:
+Only `coffee_id` is required because:
 - Reduces friction for quick logging
 - Users may not have measuring equipment initially
-- Overall notes capture the essential learnings even without quantitative data
+- Overall notes are encouraged but not enforced
 
-### Brew Date Auto-Population
+### Auto-Fill Priority Chain
 
-`brew_date` defaults to current timestamp at entry. Users can edit it for backdated entries. Combined with coffee's `roast_date`, this enables calculating days off roast.
+Starred reference > latest brew > user defaults > blank because:
+- Starred reference is the user's explicit choice — highest priority
+- Latest brew provides continuity when no reference is starred
+- User defaults provide a baseline for new coffees
+- Blank is the fallback when nothing else exists
 
-### Structured Pours
+### Days Off Roast as Stored Column
 
-Pour data stored in a separate `experiment_pours` table because:
-- Enables variable number of pours (not limited to 3)
-- Structured data allows for analysis and correlation
-- Each pour captures water amount, style, and notes
-- Maintains flexibility while enabling pattern discovery
+`days_off_roast` is stored on the brew (not computed at read time) because:
+- Immutable once saved — the value captures the state at brew time
+- Coffee's `roast_date` may be updated later (new bag), which shouldn't retroactively change historical brews
+- Simpler queries — no need to join coffee table for this field
+
+### Brew Date User-Editable
+
+`brew_date` is user-provided via a calendar date picker, defaulting to today if omitted. It is included in both POST and PUT request bodies and cannot be in the future. Combined with coffee's `roast_date`, this enables calculating `days_off_roast` at save time. Users can back-date brews (e.g., logging a brew from yesterday) which is a common need.
 
 ### Ratio-Driven Water Calculation
 
 Ratio is a numeric value (e.g., 15 for 1:15) that drives water calculation:
 - User enters coffee_weight and ratio
-- water_weight is calculated as coffee_weight × ratio
-- User can override water_weight manually if needed
-- Common workflow: "I use 15g at 1:15" → auto-calculates 225g water
+- water_weight is computed as `coffee_weight × ratio` and displayed as a read-only value
+- water_weight is not stored in the database — only coffee_weight and ratio are persisted
 
-### Sensory Scales
+### Structured Pours
 
-1-10 scale chosen for consistency and granularity:
-- Sufficient resolution to track changes
-- Intuitive for users
-- Matches common cupping conventions
-
-### Sessions for Experiment Grouping
-
-Experiments can be grouped into sessions for deliberate variable testing. See [sessions.md](sessions.md) for the full Sessions feature spec. Sessions are created from the coffee detail page and group experiments with a hypothesis and conclusion.
-
-### Collapsible Sections
-
-Optional fields in collapsible sections because:
-- Reduces visual overwhelm for quick entries
-- Users expand what they care about
-- Sections remember expansion state per session
-- Progressive disclosure pattern
-
-### Grind Size as Numeric
-
-Grind size is a decimal value rather than free text because:
-- App assumes Fellow Ode 2 grinder (see index.md)
-- Numeric values enable correlation analysis
-- Common usage: "3.5" rather than "3.5 on Ode"
-- Future equipment tracking can add grinder context if needed
-
-### No Timer Integration (Initial)
-
-Built-in timer not included initially:
-- Users have phone timers, scales with timers
-- Adds significant UI complexity
-- Can be added later as enhancement
-
-### Wizard Error Indicators
-
-Red circles on wizard steps with validation errors because:
-- Users can see at a glance which steps need attention
-- Prevents frustrating "find the error" experience on submit
-- Only shown after user attempts to submit, not while actively filling in
-- Clickable for quick navigation to the problem step
-
-### Target Goals Inline on Wizard Steps
-
-Target goals editable directly on quantitative/sensory steps because:
-- Users can compare their outcomes against targets as they fill them in
-- Reduces context switching between experiment form and coffee goals
-- Goals naturally evolve as users learn about a coffee
-- Saves are implicit (on step navigation), reducing friction
+Pour data stored in a separate `brew_pours` table because:
+- Enables variable number of pours (not limited to 3)
+- Structured data allows for analysis and correlation
+- Each pour captures water amount, style, and optional wait time
+- Pour #1 with wait_time naturally represents bloom
 
 ### Reference Sidebar as Drawer on Mobile
 
@@ -884,22 +852,10 @@ Mobile uses a slide-out drawer instead of stacking below the form because:
 - Form is the primary focus — sidebar should not push it down
 - Drawer provides on-demand access without layout shift
 - Consistent with mobile UX patterns for supplementary content
-- Right-side slide matches the desktop sidebar position
 
-### Session-Level Reference Override
+### Form-Level Reference Override
 
 The "Change" reference in the sidebar doesn't persist because:
-- Users may want to compare against a specific experiment during this session only
+- Users may want to compare against a specific brew during this form interaction only
 - Changing the coffee's permanent reference should be a deliberate action (done from coffee detail)
 - Avoids accidental changes to the reference brew
-
----
-
-## Open Questions
-
-1. **Equipment Tracking**: Should brewer device (V60, Kalita, etc.) be a field? Currently implicit.
-2. **Photo Attachments**: Capture images of the brew/cup?
-3. **Timestamps During Brew**: Would step-by-step timer integration be valuable?
-4. **Offline Support**: Cache form state if connection lost?
-5. **Timer**: Add built-in brew timer with auto-fill?
-6. **Voice Entry**: Dictate notes while brewing?

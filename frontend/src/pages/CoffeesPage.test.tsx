@@ -1,242 +1,381 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { BrowserRouter } from 'react-router-dom';
-import CoffeesPage from './CoffeesPage';
-import * as coffeesApi from '@/api/coffees';
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { vi, describe, it, expect, beforeEach } from "vitest"
+import { MemoryRouter } from "react-router-dom"
+import { CoffeesPage } from "./CoffeesPage"
 
-// Mock the API modules
-vi.mock('@/api/coffees', () => ({
+vi.mock("@/api/coffees", () => ({
   listCoffees: vi.fn(),
-  archiveCoffee: vi.fn(),
-  unarchiveCoffee: vi.fn(),
-  deleteCoffee: vi.fn(),
-  getCoffeeSuggestions: vi.fn(),
-}));
+  createCoffee: vi.fn(),
+  updateCoffee: vi.fn(),
+  getSuggestions: vi.fn().mockResolvedValue([]),
+}))
 
-// Mock react-router-dom's useNavigate
-const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
+import {
+  listCoffees,
+  createCoffee,
+} from "@/api/coffees"
 
-const mockCoffee: coffeesApi.Coffee = {
-  id: 'coffee-123',
-  roaster: 'Cata Coffee',
-  name: 'Kiamaina',
-  country: 'Kenya',
-  farm: 'Nyeri',
-  process: 'Washed',
-  roast_level: 'Light',
-  tasting_notes: 'Apricot Nectar, Lemon Sorbet',
-  roast_date: '2025-11-19',
-  days_off_roast: 61,
-  experiment_count: 8,
-  created_at: '2025-11-22T15:00:00Z',
-  updated_at: '2025-11-22T15:00:00Z',
-};
+const mockedList = vi.mocked(listCoffees)
+const mockedCreate = vi.mocked(createCoffee)
 
-const mockListResponse: coffeesApi.ListCoffeesResponse = {
-  items: [mockCoffee],
-  pagination: {
-    page: 1,
-    per_page: 20,
-    total: 1,
-    total_pages: 1,
+const mockCoffees = [
+  {
+    id: "c-1",
+    roaster: "Cata Coffee",
+    name: "Kiamaina",
+    country: "Kenya",
+    farm: "Kiamaina Estate",
+    process: "Washed",
+    roast_level: "Light",
+    tasting_notes: "Apricot Nectar, Lemon Sorbet",
+    roast_date: "2025-11-19",
+    notes: "Best around 3-4 weeks",
+    reference_brew_id: null,
+    archived_at: null,
+    brew_count: 8,
+    last_brewed: "2026-01-19T10:30:00Z",
+    created_at: "2025-11-22T15:00:00Z",
+    updated_at: "2025-11-22T15:00:00Z",
   },
-};
+  {
+    id: "c-2",
+    roaster: "April",
+    name: "El Diamante",
+    country: "Colombia",
+    farm: null,
+    process: "Natural",
+    roast_level: null,
+    tasting_notes: null,
+    roast_date: null,
+    notes: null,
+    reference_brew_id: null,
+    archived_at: null,
+    brew_count: 3,
+    last_brewed: null,
+    created_at: "2025-12-01T10:00:00Z",
+    updated_at: "2025-12-01T10:00:00Z",
+  },
+]
 
-function renderWithRouter(ui: React.ReactElement) {
-  return render(<BrowserRouter>{ui}</BrowserRouter>);
+function mockPaginatedResponse(items: typeof mockCoffees) {
+  return {
+    items,
+    pagination: { page: 1, per_page: 100, total: items.length, total_pages: 1 },
+  }
 }
 
-describe('CoffeesPage', () => {
+function renderWithRouter() {
+  return render(
+    <MemoryRouter>
+      <CoffeesPage />
+    </MemoryRouter>
+  )
+}
+
+describe("CoffeesPage", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    vi.mocked(coffeesApi.listCoffees).mockResolvedValue(mockListResponse);
-  });
+    vi.clearAllMocks()
+  })
 
-  it('renders the page title', async () => {
-    renderWithRouter(<CoffeesPage />);
+  it("shows loading spinner then renders coffee cards", async () => {
+    mockedList.mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
 
-    expect(screen.getByRole('heading', { name: 'Coffees' })).toBeInTheDocument();
-  });
+    renderWithRouter()
 
-  it('fetches and displays coffees on load', async () => {
-    renderWithRouter(<CoffeesPage />);
+    // Loading state
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument()
+
+    // Cards appear after load
+    await waitFor(() => {
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
+
+    expect(screen.getByText("Cata Coffee")).toBeInTheDocument()
+    expect(screen.getByText("El Diamante")).toBeInTheDocument()
+    expect(screen.getByText("April")).toBeInTheDocument()
+  })
+
+  it("shows empty state when no coffees exist", async () => {
+    mockedList.mockResolvedValueOnce(mockPaginatedResponse([]))
+
+    renderWithRouter()
 
     await waitFor(() => {
-      expect(screen.getByText('Kiamaina')).toBeInTheDocument();
-    });
+      expect(
+        screen.getByText("No coffees in your library yet")
+      ).toBeInTheDocument()
+    })
 
-    expect(screen.getByText('Cata Coffee')).toBeInTheDocument();
-  });
+    expect(screen.getByText("Add Your First Coffee")).toBeInTheDocument()
+  })
 
-  it('displays loading state initially', () => {
-    vi.mocked(coffeesApi.listCoffees).mockImplementation(
-      () => new Promise(() => {}) // Never resolves
-    );
+  it("shows error state when fetching fails", async () => {
+    mockedList.mockRejectedValueOnce(new Error("Network error"))
 
-    renderWithRouter(<CoffeesPage />);
-
-    // Check for the loading spinner (Loader2 icon has animate-spin class)
-    expect(document.querySelector('.animate-spin')).toBeInTheDocument();
-  });
-
-  it('displays empty state when no coffees exist', async () => {
-    vi.mocked(coffeesApi.listCoffees).mockResolvedValue({
-      items: [],
-      pagination: { page: 1, per_page: 20, total: 0, total_pages: 0 },
-    });
-
-    renderWithRouter(<CoffeesPage />);
+    renderWithRouter()
 
     await waitFor(() => {
-      expect(screen.getByText('No coffees in your library yet')).toBeInTheDocument();
-    });
+      expect(
+        screen.getByText("Failed to load coffees. Please try again.")
+      ).toBeInTheDocument()
+    })
 
-    expect(screen.getByRole('button', { name: /add your first coffee/i })).toBeInTheDocument();
-  });
+    expect(screen.getByText("Try Again")).toBeInTheDocument()
+  })
 
-  it('shows search empty state when search returns no results', async () => {
-    const user = userEvent.setup();
-    vi.mocked(coffeesApi.listCoffees).mockResolvedValue(mockListResponse);
+  it("retries loading when Try Again is clicked", async () => {
+    mockedList
+      .mockRejectedValueOnce(new Error("Network error"))
+      .mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
 
-    renderWithRouter(<CoffeesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Kiamaina')).toBeInTheDocument();
-    });
-
-    // Update mock to return empty for search
-    vi.mocked(coffeesApi.listCoffees).mockResolvedValue({
-      items: [],
-      pagination: { page: 1, per_page: 20, total: 0, total_pages: 0 },
-    });
-
-    // Type in search
-    const searchInput = screen.getByPlaceholderText('Search coffees...');
-    await user.type(searchInput, 'nonexistent');
+    const user = userEvent.setup()
+    renderWithRouter()
 
     await waitFor(() => {
-      expect(screen.getByText('No coffees match your search')).toBeInTheDocument();
-    });
-  });
+      expect(
+        screen.getByText("Failed to load coffees. Please try again.")
+      ).toBeInTheDocument()
+    })
 
-  it('navigates to coffee detail when clicking a card', async () => {
-    const user = userEvent.setup();
-    renderWithRouter(<CoffeesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Kiamaina')).toBeInTheDocument();
-    });
-
-    // Click on the card (coffee name)
-    await user.click(screen.getByText('Kiamaina'));
-
-    expect(mockNavigate).toHaveBeenCalledWith('/coffees/coffee-123');
-  });
-
-  it('opens add coffee form when clicking add button', async () => {
-    const user = userEvent.setup();
-    renderWithRouter(<CoffeesPage />);
+    await user.click(screen.getByText("Try Again"))
 
     await waitFor(() => {
-      expect(screen.getByText('Kiamaina')).toBeInTheDocument();
-    });
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
 
-    const addButton = screen.getByRole('button', { name: /add coffee/i });
-    await user.click(addButton);
+    expect(mockedList).toHaveBeenCalledTimes(2)
+  })
 
-    // Should show the form - verify form inputs are present
-    await waitFor(() => {
-      expect(screen.getByLabelText(/roaster/i)).toBeInTheDocument();
-    });
-    expect(screen.getByLabelText(/^name/i)).toBeInTheDocument();
-  });
+  it("opens add form dialog when clicking Add Coffee", async () => {
+    mockedList.mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
+    const user = userEvent.setup()
 
-  it('displays pagination when there are multiple pages', async () => {
-    vi.mocked(coffeesApi.listCoffees).mockResolvedValue({
-      items: [mockCoffee],
-      pagination: { page: 1, per_page: 20, total: 50, total_pages: 3 },
-    });
-
-    renderWithRouter(<CoffeesPage />);
+    renderWithRouter()
 
     await waitFor(() => {
-      expect(screen.getByText('Showing 1 to 20 of 50 coffees')).toBeInTheDocument();
-    });
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
 
-    expect(screen.getByRole('button', { name: 'Previous' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
-  });
+    await user.click(screen.getByText("Add Coffee"))
 
-  it('fetches coffees with correct default parameters (no sort)', async () => {
-    renderWithRouter(<CoffeesPage />);
+    expect(
+      screen.getByRole("dialog", { name: "Add Coffee" })
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText(/Roaster/)).toHaveValue("")
+    expect(screen.getByLabelText(/^Name/)).toHaveValue("")
+  })
 
-    await waitFor(() => {
-      expect(coffeesApi.listCoffees).toHaveBeenCalledWith(
-        expect.objectContaining({
-          page: 1,
-          per_page: 20,
-        })
-      );
-    });
+  it("creates a new coffee via the form", async () => {
+    mockedList
+      .mockResolvedValueOnce(mockPaginatedResponse([]))
+      .mockResolvedValueOnce(
+        mockPaginatedResponse([
+          {
+            ...mockCoffees[0],
+            id: "c-new",
+            roaster: "Square Mile",
+            name: "Red Brick",
+          },
+        ])
+      )
+    mockedCreate.mockResolvedValueOnce({
+      ...mockCoffees[0],
+      id: "c-new",
+      roaster: "Square Mile",
+      name: "Red Brick",
+    })
 
-    // Sort should not be sent (backend hardcodes -created_at)
-    const callArgs = vi.mocked(coffeesApi.listCoffees).mock.calls[0][0];
-    expect(callArgs).not.toHaveProperty('sort');
-  });
-
-  it('sends archived_only when clicking show archived button', async () => {
-    const user = userEvent.setup();
-    renderWithRouter(<CoffeesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Kiamaina')).toBeInTheDocument();
-    });
-
-    // Click show archived
-    const archivedButton = screen.getByRole('button', { name: /show archived/i });
-    await user.click(archivedButton);
-
-    await waitFor(() => {
-      expect(coffeesApi.listCoffees).toHaveBeenCalledWith(
-        expect.objectContaining({
-          archived_only: true,
-        })
-      );
-    });
-  });
-
-  it('displays coffee cards with name and roaster', async () => {
-    renderWithRouter(<CoffeesPage />);
+    const user = userEvent.setup()
+    renderWithRouter()
 
     await waitFor(() => {
-      expect(screen.getByText('Kiamaina')).toBeInTheDocument();
-    });
+      expect(
+        screen.getByText("No coffees in your library yet")
+      ).toBeInTheDocument()
+    })
 
-    // Card shows coffee name and roaster
-    expect(screen.getByText('Cata Coffee')).toBeInTheDocument();
-    // Card shows "No experiments yet" when no best_experiment
-    expect(screen.getByText('No experiments yet')).toBeInTheDocument();
-    // Card shows "New Experiment" action button
-    expect(screen.getByRole('button', { name: /new experiment/i })).toBeInTheDocument();
-  });
+    await user.click(screen.getByText("Add Your First Coffee"))
 
-  it('displays error state when API fails', async () => {
-    vi.mocked(coffeesApi.listCoffees).mockRejectedValue(new Error('API Error'));
+    await user.type(screen.getByLabelText(/Roaster/), "Square Mile")
+    await user.type(screen.getByLabelText(/^Name/), "Red Brick")
 
-    renderWithRouter(<CoffeesPage />);
+    await user.click(screen.getByText("Save Coffee"))
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load coffees')).toBeInTheDocument();
-    });
+      expect(mockedCreate).toHaveBeenCalledWith({
+        roaster: "Square Mile",
+        name: "Red Brick",
+        country: null,
+        farm: null,
+        process: null,
+        roast_level: null,
+        tasting_notes: null,
+        roast_date: null,
+        notes: null,
+      })
+    })
 
-    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
-  });
-});
+    // Dialog should close
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    })
+  })
+
+  it("shows validation errors for empty required fields", async () => {
+    mockedList.mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
+    const user = userEvent.setup()
+
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText("Add Coffee"))
+    await user.click(screen.getByText("Save Coffee"))
+
+    await waitFor(() => {
+      expect(screen.getByText("Roaster is required")).toBeInTheDocument()
+    })
+    expect(screen.getByText("Name is required")).toBeInTheDocument()
+    expect(mockedCreate).not.toHaveBeenCalled()
+  })
+
+  it("closes form dialog when pressing Escape", async () => {
+    mockedList.mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
+    const user = userEvent.setup()
+
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText("Add Coffee"))
+    expect(screen.getByRole("dialog")).toBeInTheDocument()
+
+    await user.keyboard("{Escape}")
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
+
+  it("passes search parameter to API", async () => {
+    mockedList.mockResolvedValue(mockPaginatedResponse(mockCoffees))
+
+    const user = userEvent.setup()
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
+
+    await user.type(screen.getByPlaceholderText("Search coffees..."), "Cata")
+
+    await waitFor(() => {
+      const calls = mockedList.mock.calls
+      const lastCall = calls[calls.length - 1]
+      expect(lastCall[0]).toEqual(
+        expect.objectContaining({ search: "Cata" })
+      )
+    })
+  })
+
+  it("passes archived_only parameter when toggle is checked", async () => {
+    mockedList
+      .mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
+      .mockResolvedValueOnce(mockPaginatedResponse([]))
+
+    const user = userEvent.setup()
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByLabelText("Show Archived"))
+
+    await waitFor(() => {
+      expect(mockedList).toHaveBeenCalledWith(
+        expect.objectContaining({ archived_only: true })
+      )
+    })
+  })
+
+  it("shows archived empty state when filter is on", async () => {
+    mockedList
+      .mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
+      .mockResolvedValueOnce(mockPaginatedResponse([]))
+
+    const user = userEvent.setup()
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByLabelText("Show Archived"))
+
+    await waitFor(() => {
+      expect(screen.getByText("No archived coffees.")).toBeInTheDocument()
+    })
+
+    // Should NOT show "Add Your First Coffee" in archived mode
+    expect(screen.queryByText("Add Your First Coffee")).not.toBeInTheDocument()
+  })
+
+  it("renders coffee cards with country and process tags", async () => {
+    mockedList.mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
+
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
+
+    expect(screen.getByText("Kenya")).toBeInTheDocument()
+    expect(screen.getByText("Washed")).toBeInTheDocument()
+    expect(screen.getByText("Colombia")).toBeInTheDocument()
+    expect(screen.getByText("Natural")).toBeInTheDocument()
+  })
+
+  it("renders responsive grid layout", async () => {
+    mockedList.mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
+
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
+
+    // Cards should be clickable articles
+    const cards = screen.getAllByRole("article")
+    expect(cards).toHaveLength(2)
+  })
+
+  it("handles server error on form submission", async () => {
+    mockedList.mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
+    mockedCreate.mockRejectedValueOnce(new Error("Server error"))
+
+    const user = userEvent.setup()
+    renderWithRouter()
+
+    await waitFor(() => {
+      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText("Add Coffee"))
+    await user.type(screen.getByLabelText(/Roaster/), "Test")
+    await user.type(screen.getByLabelText(/^Name/), "Test")
+    await user.click(screen.getByText("Save Coffee"))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Something went wrong. Please try again.")
+      ).toBeInTheDocument()
+    })
+
+    // Dialog should remain open
+    expect(screen.getByRole("dialog")).toBeInTheDocument()
+  })
+})

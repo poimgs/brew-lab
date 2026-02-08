@@ -1,95 +1,67 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 
-type Theme = 'light' | 'dark' | 'system';
-type ResolvedTheme = 'light' | 'dark';
+type Theme = "light" | "dark" | "system"
 
-interface ThemeContextType {
-  theme: Theme;
-  resolvedTheme: ResolvedTheme;
-  setTheme: (theme: Theme) => void;
+interface ThemeContextValue {
+  theme: Theme
+  resolved: "light" | "dark"
+  setTheme: (theme: Theme) => void
 }
 
-const ThemeContext = createContext<ThemeContextType | null>(null);
+const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-const STORAGE_KEY = 'theme';
+const STORAGE_KEY = "coffee-tracker-theme"
 
-function getSystemPreference(): ResolvedTheme {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+function getSystemTheme(): "light" | "dark" {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 }
 
-function resolveTheme(theme: Theme): ResolvedTheme {
-  if (theme === 'system') {
-    return getSystemPreference();
-  }
-  return theme;
-}
-
-function applyTheme(resolvedTheme: ResolvedTheme) {
-  const root = document.documentElement;
-  if (resolvedTheme === 'dark') {
-    root.classList.add('dark');
-  } else {
-    root.classList.remove('dark');
-  }
+function resolveTheme(theme: Theme): "light" | "dark" {
+  return theme === "system" ? getSystemTheme() : theme
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark' || stored === 'system') {
-      return stored;
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored === "light" || stored === "dark" || stored === "system") return stored
+    return "system"
+  })
+
+  const [resolved, setResolved] = useState<"light" | "dark">(() => resolveTheme(theme))
+
+  useEffect(() => {
+    const r = resolveTheme(theme)
+    setResolved(r)
+    document.documentElement.classList.toggle("dark", r === "dark")
+  }, [theme])
+
+  // Listen for system preference changes when in "system" mode
+  useEffect(() => {
+    if (theme !== "system") return
+    const mql = window.matchMedia("(prefers-color-scheme: dark)")
+    const handler = () => {
+      const r = getSystemTheme()
+      setResolved(r)
+      document.documentElement.classList.toggle("dark", r === "dark")
     }
-    return 'system';
-  });
+    mql.addEventListener("change", handler)
+    return () => mql.removeEventListener("change", handler)
+  }, [theme])
 
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(theme));
-
-  // Apply theme and update resolved theme when theme changes
-  useEffect(() => {
-    const resolved = resolveTheme(theme);
-    setResolvedTheme(resolved);
-    applyTheme(resolved);
-  }, [theme]);
-
-  // Listen for system preference changes when in system mode
-  useEffect(() => {
-    if (theme !== 'system') return;
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-    const handleChange = () => {
-      const resolved = getSystemPreference();
-      setResolvedTheme(resolved);
-      applyTheme(resolved);
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme]);
-
-  const setTheme = useCallback((newTheme: Theme) => {
-    localStorage.setItem(STORAGE_KEY, newTheme);
-    setThemeState(newTheme);
-  }, []);
+  function setTheme(next: Theme) {
+    setThemeState(next)
+    localStorage.setItem(STORAGE_KEY, next)
+  }
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, resolved, setTheme }}>
       {children}
     </ThemeContext.Provider>
-  );
+  )
 }
 
 export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
+  const ctx = useContext(ThemeContext)
+  if (!ctx) throw new Error("useTheme must be used within a ThemeProvider")
+  return ctx
 }

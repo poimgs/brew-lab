@@ -1,17 +1,16 @@
 package coffee
 
 import (
-	"encoding/json"
-	"errors"
+	"fmt"
+	"log"
 	"net/http"
-	"strconv"
-	"time"
-
-	"coffee-tracker/internal/auth"
-	"coffee-tracker/internal/response"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+
+	"github.com/poimgs/coffee-tracker/backend/internal/api"
+	"github.com/poimgs/coffee-tracker/backend/internal/middleware"
 )
 
 type Handler struct {
@@ -23,152 +22,141 @@ func NewHandler(repo Repository) *Handler {
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
-		return
+	userID := middleware.GetUserID(r.Context())
+	pagination := api.ParsePagination(r)
+	q := r.URL.Query()
+
+	params := ListParams{
+		Page:         pagination.Page,
+		PerPage:      pagination.PerPage,
+		Search:       q.Get("search"),
+		Roaster:      q.Get("roaster"),
+		Country:      q.Get("country"),
+		Process:      q.Get("process"),
+		ArchivedOnly: q.Get("archived_only") == "true",
 	}
 
-	params := ListCoffeesParams{
-		Page:            parseIntOrDefault(r.URL.Query().Get("page"), 1),
-		PerPage:         parseIntOrDefault(r.URL.Query().Get("per_page"), 20),
-		Roaster:         r.URL.Query().Get("roaster"),
-		Country:         r.URL.Query().Get("country"),
-		Process:         r.URL.Query().Get("process"),
-		Search:          r.URL.Query().Get("search"),
-		IncludeArchived: r.URL.Query().Get("include_archived") == "true",
-		ArchivedOnly:    r.URL.Query().Get("archived_only") == "true",
-		IncludeDeleted:  r.URL.Query().Get("include_deleted") == "true",
-		IncludeGoals:    r.URL.Query().Get("include_goals") == "true",
-		IncludeTrend:    r.URL.Query().Get("include_trend") == "true",
-	}
-
-	result, err := h.repo.List(r.Context(), userID, params)
+	coffees, total, err := h.repo.List(r.Context(), userID, params)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list coffees")
+		log.Printf("error listing coffees: %v", err)
+		api.InternalError(w)
 		return
 	}
 
-	response.JSON(w, http.StatusOK, result)
+	api.WriteJSON(w, http.StatusOK, api.PaginatedResponse{
+		Items: coffees,
+		Pagination: api.PaginationMeta{
+			Page:       pagination.Page,
+			PerPage:    pagination.PerPage,
+			Total:      total,
+			TotalPages: api.TotalPages(total, pagination.PerPage),
+		},
+	})
+}
+
+func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+	id := chi.URLParam(r, "id")
+
+	coffee, err := h.repo.GetByID(r.Context(), userID, id)
+	if err != nil {
+		log.Printf("error getting coffee: %v", err)
+		api.InternalError(w)
+		return
+	}
+	if coffee == nil {
+		api.NotFoundError(w, "Coffee not found")
+		return
+	}
+
+	api.WriteJSON(w, http.StatusOK, coffee)
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+	userID := middleware.GetUserID(r.Context())
+
+	var req CreateRequest
+	if err := api.DecodeJSON(r, &req); err != nil {
+		api.ValidationError(w, []api.FieldError{{Field: "body", Message: "Invalid request body"}})
 		return
 	}
 
-	var input CreateCoffeeInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid request body")
+	req.Roaster = strings.TrimSpace(req.Roaster)
+	req.Name = strings.TrimSpace(req.Name)
+
+	var fieldErrors []api.FieldError
+	if req.Roaster == "" {
+		fieldErrors = append(fieldErrors, api.FieldError{Field: "roaster", Message: "Roaster is required"})
+	}
+	if req.Name == "" {
+		fieldErrors = append(fieldErrors, api.FieldError{Field: "name", Message: "Name is required"})
+	}
+	if len(fieldErrors) > 0 {
+		api.ValidationError(w, fieldErrors)
 		return
 	}
 
-	if input.Roaster == "" || input.Name == "" {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "roaster and name are required")
-		return
-	}
-
-	// Validate roast_date is not in the future
-	if input.RoastDate != nil && input.RoastDate.After(time.Now()) {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "roast date cannot be in the future")
-		return
-	}
-
-	coffee, err := h.repo.Create(r.Context(), userID, input)
+	coffee, err := h.repo.Create(r.Context(), userID, req)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create coffee")
+		log.Printf("error creating coffee: %v", err)
+		api.InternalError(w)
 		return
 	}
 
-	response.JSON(w, http.StatusCreated, coffee)
-}
-
-func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
-		return
-	}
-
-	coffeeID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid coffee id")
-		return
-	}
-
-	coffee, err := h.repo.GetByID(r.Context(), userID, coffeeID)
-	if err != nil {
-		if errors.Is(err, ErrCoffeeNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
-			return
-		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get coffee")
-		return
-	}
-
-	response.JSON(w, http.StatusOK, coffee)
+	api.WriteJSON(w, http.StatusCreated, coffee)
 }
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+	userID := middleware.GetUserID(r.Context())
+	id := chi.URLParam(r, "id")
+
+	var req UpdateRequest
+	if err := api.DecodeJSON(r, &req); err != nil {
+		api.ValidationError(w, []api.FieldError{{Field: "body", Message: "Invalid request body"}})
 		return
 	}
 
-	coffeeID, err := uuid.Parse(chi.URLParam(r, "id"))
+	req.Roaster = strings.TrimSpace(req.Roaster)
+	req.Name = strings.TrimSpace(req.Name)
+
+	var fieldErrors []api.FieldError
+	if req.Roaster == "" {
+		fieldErrors = append(fieldErrors, api.FieldError{Field: "roaster", Message: "Roaster is required"})
+	}
+	if req.Name == "" {
+		fieldErrors = append(fieldErrors, api.FieldError{Field: "name", Message: "Name is required"})
+	}
+	if len(fieldErrors) > 0 {
+		api.ValidationError(w, fieldErrors)
+		return
+	}
+
+	coffee, err := h.repo.Update(r.Context(), userID, id, req)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid coffee id")
+		log.Printf("error updating coffee: %v", err)
+		api.InternalError(w)
+		return
+	}
+	if coffee == nil {
+		api.NotFoundError(w, "Coffee not found")
 		return
 	}
 
-	var input UpdateCoffeeInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid request body")
-		return
-	}
-
-	// Validate roast_date is not in the future
-	if input.RoastDate != nil && input.RoastDate.After(time.Now()) {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "roast date cannot be in the future")
-		return
-	}
-
-	coffee, err := h.repo.Update(r.Context(), userID, coffeeID, input)
-	if err != nil {
-		if errors.Is(err, ErrCoffeeNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
-			return
-		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update coffee")
-		return
-	}
-
-	response.JSON(w, http.StatusOK, coffee)
+	api.WriteJSON(w, http.StatusOK, coffee)
 }
 
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
-		return
-	}
+	userID := middleware.GetUserID(r.Context())
+	id := chi.URLParam(r, "id")
 
-	coffeeID, err := uuid.Parse(chi.URLParam(r, "id"))
+	err := h.repo.Delete(r.Context(), userID, id)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid coffee id")
-		return
-	}
-
-	err = h.repo.Delete(r.Context(), userID, coffeeID)
-	if err != nil {
-		if errors.Is(err, ErrCoffeeNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
+		if err == pgx.ErrNoRows {
+			api.NotFoundError(w, "Coffee not found")
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to delete coffee")
+		log.Printf("error deleting coffee: %v", err)
+		api.InternalError(w)
 		return
 	}
 
@@ -176,180 +164,95 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Archive(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
-		return
-	}
+	userID := middleware.GetUserID(r.Context())
+	id := chi.URLParam(r, "id")
 
-	coffeeID, err := uuid.Parse(chi.URLParam(r, "id"))
+	coffee, err := h.repo.Archive(r.Context(), userID, id)
 	if err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid coffee id")
+		log.Printf("error archiving coffee: %v", err)
+		api.InternalError(w)
+		return
+	}
+	if coffee == nil {
+		api.NotFoundError(w, "Coffee not found or already archived")
 		return
 	}
 
-	coffee, err := h.repo.Archive(r.Context(), userID, coffeeID)
-	if err != nil {
-		if errors.Is(err, ErrCoffeeNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
-			return
-		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to archive coffee")
-		return
-	}
-
-	response.JSON(w, http.StatusOK, coffee)
+	api.WriteJSON(w, http.StatusOK, coffee)
 }
 
 func (h *Handler) Unarchive(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
+	userID := middleware.GetUserID(r.Context())
+	id := chi.URLParam(r, "id")
+
+	coffee, err := h.repo.Unarchive(r.Context(), userID, id)
+	if err != nil {
+		log.Printf("error unarchiving coffee: %v", err)
+		api.InternalError(w)
+		return
+	}
+	if coffee == nil {
+		api.NotFoundError(w, "Coffee not found or not archived")
 		return
 	}
 
-	coffeeID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid coffee id")
+	api.WriteJSON(w, http.StatusOK, coffee)
+}
+
+func (h *Handler) SetReferenceBrew(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+	id := chi.URLParam(r, "id")
+
+	var req SetReferenceRequest
+	if err := api.DecodeJSON(r, &req); err != nil {
+		api.ValidationError(w, []api.FieldError{{Field: "body", Message: "Invalid request body"}})
 		return
 	}
 
-	coffee, err := h.repo.Unarchive(r.Context(), userID, coffeeID)
+	coffee, err := h.repo.SetReferenceBrew(r.Context(), userID, id, req.BrewID)
 	if err != nil {
-		if errors.Is(err, ErrCoffeeNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
+		if isInvalidBrewError(err) {
+			api.ValidationError(w, []api.FieldError{{Field: "brew_id", Message: "Brew does not belong to this coffee"}})
 			return
 		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to unarchive coffee")
+		log.Printf("error setting reference brew: %v", err)
+		api.InternalError(w)
+		return
+	}
+	if coffee == nil {
+		api.NotFoundError(w, "Coffee not found")
 		return
 	}
 
-	response.JSON(w, http.StatusOK, coffee)
+	api.WriteJSON(w, http.StatusOK, coffee)
 }
 
 func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
-		return
-	}
-
+	userID := middleware.GetUserID(r.Context())
 	field := r.URL.Query().Get("field")
 	query := r.URL.Query().Get("q")
 
 	if field == "" {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "field parameter is required")
+		api.ValidationError(w, []api.FieldError{{Field: "field", Message: "Field parameter is required"}})
 		return
 	}
 
-	suggestions, err := h.repo.GetSuggestions(r.Context(), userID, field, query)
+	validFields := map[string]bool{"roaster": true, "country": true, "process": true}
+	if !validFields[field] {
+		api.ValidationError(w, []api.FieldError{{Field: "field", Message: fmt.Sprintf("Invalid field: %s. Supported: roaster, country, process", field)}})
+		return
+	}
+
+	items, err := h.repo.Suggestions(r.Context(), userID, field, query)
 	if err != nil {
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get suggestions")
+		log.Printf("error getting suggestions: %v", err)
+		api.InternalError(w)
 		return
 	}
 
-	response.JSON(w, http.StatusOK, map[string][]string{"items": suggestions})
+	api.WriteJSON(w, http.StatusOK, SuggestionsResponse{Items: items})
 }
 
-func (h *Handler) SetBestExperiment(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
-		return
-	}
-
-	coffeeID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid coffee id")
-		return
-	}
-
-	var input SetBestExperimentInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid request body")
-		return
-	}
-
-	coffee, err := h.repo.SetBestExperiment(r.Context(), userID, coffeeID, input.ExperimentID)
-	if err != nil {
-		if errors.Is(err, ErrCoffeeNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
-			return
-		}
-		if errors.Is(err, ErrExperimentNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "experiment not found")
-			return
-		}
-		if errors.Is(err, ErrExperimentWrongCoffee) {
-			response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "experiment does not belong to this coffee")
-			return
-		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to set best experiment")
-		return
-	}
-
-	response.JSON(w, http.StatusOK, coffee)
-}
-
-func (h *Handler) GetReference(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
-		return
-	}
-
-	coffeeID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid coffee id")
-		return
-	}
-
-	reference, err := h.repo.GetReference(r.Context(), userID, coffeeID)
-	if err != nil {
-		if errors.Is(err, ErrCoffeeNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
-			return
-		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get reference")
-		return
-	}
-
-	response.JSON(w, http.StatusOK, reference)
-}
-
-func (h *Handler) GetGoalTrends(w http.ResponseWriter, r *http.Request) {
-	userID, ok := auth.GetUserID(r.Context())
-	if !ok {
-		response.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
-		return
-	}
-
-	coffeeID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		response.Error(w, http.StatusBadRequest, "VALIDATION_ERROR", "invalid coffee id")
-		return
-	}
-
-	trends, err := h.repo.GetGoalTrends(r.Context(), userID, coffeeID)
-	if err != nil {
-		if errors.Is(err, ErrCoffeeNotFound) {
-			response.Error(w, http.StatusNotFound, "NOT_FOUND", "coffee not found")
-			return
-		}
-		response.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get goal trends")
-		return
-	}
-
-	response.JSON(w, http.StatusOK, trends)
-}
-
-func parseIntOrDefault(s string, defaultVal int) int {
-	if s == "" {
-		return defaultVal
-	}
-	val, err := strconv.Atoi(s)
-	if err != nil {
-		return defaultVal
-	}
-	return val
+func isInvalidBrewError(err error) bool {
+	return strings.Contains(err.Error(), "brew does not belong to this coffee")
 }
