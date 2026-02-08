@@ -108,8 +108,8 @@ This specification defines the deployment architecture for Coffee Tracker. A VPS
 
 4. **Clone Repo and Configure**
    ```bash
-   git clone <repo-url> coffee-tracker
-   cd coffee-tracker
+   git clone <repo-url> brew-lab
+   cd brew-lab
    cp .env.example .env
    # Edit .env with actual values
    ```
