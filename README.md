@@ -70,6 +70,23 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 See [specs/foundations/deployment.md](specs/foundations/deployment.md) for full deployment documentation.
 
+### CI/CD
+
+Pushing to `main` triggers a GitHub Actions pipeline that runs backend and frontend tests in parallel, then deploys to the VPS via SSH.
+
+**Setup** — add these 3 secrets to the GitHub repo (`Settings > Secrets > Actions`):
+
+| Secret | Description |
+|--------|-------------|
+| `VPS_HOST` | VPS hostname (e.g. `brew-lab.steven-chia.com`) |
+| `VPS_USER` | SSH username on the VPS |
+| `VPS_SSH_KEY` | Private SSH key for VPS access |
+
+**SSH key setup:**
+1. Generate a key pair: `ssh-keygen -t ed25519 -f deploy_key -C "github-actions"`
+2. Add the public key to the VPS: `ssh-copy-id -i deploy_key.pub user@brew-lab.steven-chia.com`
+3. Add the private key contents as the `VPS_SSH_KEY` secret in GitHub
+
 ## Project Structure
 
 ```

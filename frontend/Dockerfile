@@ -9,4 +9,5 @@ COPY . .
 RUN npm run build
 
 FROM alpine:3.19
-COPY --from=builder /app/dist /dist
+COPY --from=builder /app/dist /build
+CMD ["sh", "-c", "cp -r /build/. /dist/ && echo 'Frontend assets deployed'"]
