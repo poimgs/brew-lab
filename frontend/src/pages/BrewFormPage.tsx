@@ -10,8 +10,6 @@ import {
   ChevronRight,
   Plus,
   Trash2,
-  PanelRightOpen,
-  PanelRightClose,
   X,
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/Skeleton"
@@ -28,6 +26,8 @@ import {
   type ReferenceResponse,
 } from "@/api/brews"
 import { getDefaults, type DefaultsResponse } from "@/api/defaults"
+import { BrewDetailContent } from "@/components/brew/BrewDetailContent"
+import { formatBrewDateShort } from "@/lib/brew-utils"
 
 // --- Zod schema ---
 
@@ -306,185 +306,72 @@ function CoffeeSelector({
   )
 }
 
-// --- Reference Sidebar ---
+// --- Reference Modal ---
 
-function ReferenceSidebar({
+function ReferenceModal({
   reference,
-  isOpen,
-  onToggle,
   onClose,
-  isMobile,
 }: {
   reference: ReferenceResponse | null
-  isOpen: boolean
-  onToggle: () => void
   onClose: () => void
-  isMobile: boolean
 }) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [onClose])
+
   const brew = reference?.brew
 
-  const content = (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">
-          Reference{" "}
-          {reference?.source && (
-            <span className="font-normal text-muted-foreground">
-              ({reference.source})
-            </span>
-          )}
-        </h3>
-        {isMobile && (
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 sm:px-4 sm:py-8"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Reference brew"
+    >
+      <div className="flex min-h-screen w-full flex-col bg-card sm:min-h-0 sm:max-w-lg sm:rounded-lg sm:shadow-lg">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <h2 className="text-lg font-semibold text-card-foreground">
+            Reference{" "}
+            {reference?.source && (
+              <span className="font-normal text-muted-foreground">
+                ({reference.source})
+              </span>
+            )}
+          </h2>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
-            aria-label="Close reference"
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Close"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
-        )}
-      </div>
+        </div>
 
-      {!brew ? (
-        <p className="text-sm text-muted-foreground">
-          No brews yet for this coffee. This will show your reference brew
-          parameters after you log some brews.
-        </p>
-      ) : (
-        <>
-          <p className="text-xs text-muted-foreground">
-            Based on:{" "}
-            {new Date(brew.brew_date + "T00:00:00").toLocaleDateString(
-              undefined,
-              { month: "short", day: "numeric" }
-            )}{" "}
-            brew
-          </p>
-
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Input Parameters
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {!brew ? (
+            <p className="text-sm text-muted-foreground">
+              No brews yet for this coffee. This will show your reference brew
+              parameters after you log some brews.
             </p>
-            <div className="space-y-1 text-sm">
-              {brew.coffee_weight != null && (
-                <p>Coffee: {brew.coffee_weight}g</p>
-              )}
-              {brew.ratio != null && <p>Ratio: 1:{brew.ratio}</p>}
-              {brew.water_weight != null && (
-                <p>Water: {brew.water_weight}g</p>
-              )}
-              {brew.grind_size != null && <p>Grind: {brew.grind_size}</p>}
-              {brew.water_temperature != null && (
-                <p>Temp: {brew.water_temperature}C</p>
-              )}
-              {brew.filter_paper && (
-                <p>
-                  Filter: {brew.filter_paper.name}
-                  {brew.filter_paper.brand
-                    ? ` (${brew.filter_paper.brand})`
-                    : ""}
-                </p>
-              )}
-              {brew.pours.length > 0 && (
-                <p>
-                  Pours:{" "}
-                  {brew.pours
-                    .map((p) => {
-                      let s = p.water_amount ? `${p.water_amount}g` : "?"
-                      if (p.pour_style) s += ` ${p.pour_style}`
-                      if (p.wait_time)
-                        s += p.pour_number === 1
-                          ? ` (${p.wait_time}s bloom)`
-                          : ` (${p.wait_time}s wait)`
-                      return s
-                    })
-                    .join(", ")}
-                </p>
-              )}
-              {brew.total_brew_time != null && (
-                <p>Total: {formatBrewTime(brew.total_brew_time)}</p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Outcomes
-            </p>
-            <div className="space-y-1 text-sm">
-              {brew.overall_score != null && (
-                <p>Score: {brew.overall_score}/10</p>
-              )}
-              {brew.tds != null && <p>TDS: {brew.tds}</p>}
-              {brew.extraction_yield != null && (
-                <p>Extraction: {brew.extraction_yield}%</p>
-              )}
-            </div>
-          </div>
-
-          {brew.improvement_notes && (
-            <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Improvement Notes
+          ) : (
+            <>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Based on: {formatBrewDateShort(brew.brew_date)} brew
               </p>
-              <p className="text-sm italic text-muted-foreground">
-                "{brew.improvement_notes}"
-              </p>
-            </div>
+              <BrewDetailContent brew={brew} />
+            </>
           )}
-        </>
-      )}
-    </div>
-  )
-
-  // Mobile: sheet overlay
-  if (isMobile) {
-    if (!isOpen) return null
-    return (
-      <div
-        className="fixed inset-0 z-50 bg-black/50"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) onClose()
-        }}
-      >
-        <div className="absolute right-0 top-0 h-full w-80 overflow-y-auto bg-card p-4 shadow-lg">
-          {content}
         </div>
       </div>
-    )
-  }
-
-  // Desktop: collapsible panel
-  if (!isOpen) {
-    return (
-      <button
-        onClick={onToggle}
-        className="flex h-full w-10 flex-col items-center justify-start gap-1 rounded-md border border-border bg-card pt-4 text-xs text-muted-foreground hover:bg-muted"
-        aria-label="Open reference sidebar"
-      >
-        <PanelRightOpen className="h-4 w-4" />
-        <span
-          className="mt-2"
-          style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
-        >
-          Reference
-        </span>
-      </button>
-    )
-  }
-
-  return (
-    <div className="w-72 shrink-0 overflow-y-auto rounded-md border border-border bg-card p-4">
-      <div className="mb-3 flex justify-end">
-        <button
-          onClick={onToggle}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
-          aria-label="Close reference sidebar"
-        >
-          <PanelRightClose className="h-4 w-4" />
-        </button>
-      </div>
-      {content}
     </div>
   )
 }
@@ -511,8 +398,7 @@ export function BrewFormPage() {
   const [setupOpen, setSetupOpen] = useState(false)
   const [brewingOpen, setBrewingOpen] = useState(false)
   const [tastingOpen, setTastingOpen] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [showReference, setShowReference] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -561,14 +447,6 @@ export function BrewFormPage() {
   const watchedRatio = watch("ratio")
   const watchedCoffeeMl = watch("coffee_ml")
   const watchedTds = watch("tds")
-
-  // Responsive check
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 1024)
-    check()
-    window.addEventListener("resize", check)
-    return () => window.removeEventListener("resize", check)
-  }, [])
 
   // beforeunload
   useEffect(() => {
@@ -984,11 +862,11 @@ export function BrewFormPage() {
 
   if (isPageLoading) {
     return (
-      <div className="flex h-full gap-4 p-8" data-testid="brew-form-skeleton">
-        <div className="min-w-0 flex-1">
+      <div className="h-full overflow-y-auto p-8" data-testid="brew-form-skeleton">
+        <div className="mx-auto max-w-2xl">
           <Skeleton className="h-5 w-16" />
           <Skeleton className="mt-4 h-8 w-32" />
-          <div className="mt-6 max-w-2xl space-y-6">
+          <div className="mt-6 space-y-6">
             <div className="space-y-2">
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-10 w-full" />
@@ -1020,9 +898,8 @@ export function BrewFormPage() {
   }
 
   return (
-    <div className="flex h-full gap-4 p-8">
-      {/* Main form */}
-      <div className="min-w-0 flex-1">
+    <div className="h-full overflow-y-auto p-8">
+      <div className="mx-auto max-w-2xl">
         <button
           type="button"
           onClick={handleCancel}
@@ -1032,11 +909,20 @@ export function BrewFormPage() {
           Back
         </button>
 
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">
             {isEditing ? "Edit Brew" : "New Brew"}
           </h1>
           <div className="flex items-center gap-3">
+            {watchedCoffeeId && (
+              <button
+                type="button"
+                onClick={() => setShowReference(true)}
+                className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                Reference
+              </button>
+            )}
             <button
               type="button"
               onClick={handleCancel}
@@ -1064,7 +950,7 @@ export function BrewFormPage() {
 
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="mt-6 max-w-2xl space-y-6"
+          className="mt-6 space-y-6"
         >
           {serverError && (
             <div className="rounded-md bg-error-muted p-3 text-sm text-error">
@@ -1500,27 +1386,11 @@ export function BrewFormPage() {
         </form>
       </div>
 
-      {/* Reference sidebar (desktop) or trigger button (mobile) */}
-      {watchedCoffeeId && (
-        <>
-          {isMobile && (
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="fixed bottom-6 right-6 z-40 flex h-12 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow-lg hover:bg-primary-hover"
-            >
-              <PanelRightOpen className="h-4 w-4" />
-              Reference
-            </button>
-          )}
-          <ReferenceSidebar
-            reference={reference}
-            isOpen={sidebarOpen}
-            onToggle={() => setSidebarOpen(!sidebarOpen)}
-            onClose={() => setSidebarOpen(false)}
-            isMobile={isMobile}
-          />
-        </>
+      {showReference && (
+        <ReferenceModal
+          reference={reference}
+          onClose={() => setShowReference(false)}
+        />
       )}
     </div>
   )

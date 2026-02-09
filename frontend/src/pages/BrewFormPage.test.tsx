@@ -537,12 +537,8 @@ describe("BrewFormPage", () => {
     })
   })
 
-  it("renders only one reference sidebar button on desktop when coffee is selected", async () => {
+  it("shows Reference button when coffee is selected", async () => {
     setupMocks()
-
-    // Simulate desktop width (>= 1024)
-    Object.defineProperty(window, "innerWidth", { value: 1280, writable: true })
-    window.dispatchEvent(new Event("resize"))
 
     const user = userEvent.setup()
     renderNewBrew()
@@ -551,16 +547,16 @@ describe("BrewFormPage", () => {
       expect(screen.getByText("New Brew")).toBeInTheDocument()
     })
 
-    // No sidebar before coffee selection
-    expect(screen.queryByLabelText("Open reference sidebar")).not.toBeInTheDocument()
+    // No Reference button before coffee selection
+    expect(screen.queryByRole("button", { name: "Reference" })).not.toBeInTheDocument()
 
     // Select a coffee
     await user.click(screen.getByText("Select coffee..."))
     await user.click(screen.getByText("Kiamaina"))
 
-    // Wait for reference fetch and sidebar to appear
+    // Reference button should appear in header
     await waitFor(() => {
-      expect(screen.queryAllByLabelText("Open reference sidebar")).toHaveLength(1)
+      expect(screen.getByRole("button", { name: "Reference" })).toBeInTheDocument()
     })
   })
 
