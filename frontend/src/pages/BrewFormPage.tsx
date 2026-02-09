@@ -10,7 +10,6 @@ import {
   ChevronRight,
   Plus,
   Trash2,
-  X,
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { toast } from "sonner"
@@ -26,8 +25,7 @@ import {
   type ReferenceResponse,
 } from "@/api/brews"
 import { getDefaults, type DefaultsResponse } from "@/api/defaults"
-import { BrewDetailContent } from "@/components/brew/BrewDetailContent"
-import { formatBrewDateShort } from "@/lib/brew-utils"
+import { BrewDetailModal } from "@/components/brew/BrewDetailModal"
 
 // --- Zod schema ---
 
@@ -302,83 +300,6 @@ function CoffeeSelector({
         )}
       </div>
       {error && <p className="text-sm text-error">{error}</p>}
-    </div>
-  )
-}
-
-// --- Reference Modal ---
-
-function ReferenceModal({
-  reference,
-  onClose,
-}: {
-  reference: ReferenceResponse | null
-  onClose: () => void
-}) {
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
-    }
-    window.addEventListener("keydown", handleKey)
-    return () => window.removeEventListener("keydown", handleKey)
-  }, [onClose])
-
-  const brew = reference?.brew
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 sm:px-4 sm:py-8"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Reference brew"
-    >
-      <div className="flex min-h-screen w-full flex-col bg-card sm:min-h-0 sm:max-w-lg sm:rounded-lg sm:shadow-lg">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-lg font-semibold text-card-foreground">
-            Reference{" "}
-            {reference?.source && (
-              <span className="font-normal text-muted-foreground">
-                ({reference.source})
-              </span>
-            )}
-          </h2>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {!brew ? (
-            <p className="text-sm text-muted-foreground">
-              No brews yet for this coffee. This will show your reference brew
-              parameters after you log some brews.
-            </p>
-          ) : (
-            <>
-              <div className="mb-4">
-                <p className="text-sm text-muted-foreground">
-                  Based on: {formatBrewDateShort(brew.brew_date)} brew
-                </p>
-                {brew.coffee_tasting_notes && (
-                  <p className="text-sm italic text-muted-foreground">
-                    {brew.coffee_tasting_notes}
-                  </p>
-                )}
-              </div>
-              <BrewDetailContent brew={brew} />
-            </>
-          )}
-        </div>
-      </div>
     </div>
   )
 }
@@ -1395,9 +1316,9 @@ export function BrewFormPage() {
         </form>
       </div>
 
-      {showReference && (
-        <ReferenceModal
-          reference={reference}
+      {showReference && reference?.brew && (
+        <BrewDetailModal
+          brew={reference.brew}
           onClose={() => setShowReference(false)}
         />
       )}
