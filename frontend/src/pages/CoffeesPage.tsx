@@ -163,12 +163,12 @@ export function CoffeesPage() {
             className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
           <input
             type="checkbox"
             checked={archivedOnly}
             onChange={(e) => setArchivedOnly(e.target.checked)}
-            className="h-4 w-4 rounded border-input"
+            className="h-4 w-4 shrink-0 appearance-none rounded border border-input bg-background checked:border-primary checked:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           />
           Show Archived
         </label>
