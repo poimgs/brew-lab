@@ -117,6 +117,7 @@ const mockExistingBrew = {
   coffee_id: "c-1",
   coffee_name: "Kiamaina",
   coffee_roaster: "Cata Coffee",
+  coffee_tasting_notes: "Blackberry, lime, brown sugar",
   brew_date: "2026-01-15",
   days_off_roast: 57,
   coffee_weight: 15,
@@ -215,9 +216,6 @@ describe("BrewFormPage", () => {
 
     expect(screen.getByText("Coffee")).toBeInTheDocument()
     expect(screen.getByLabelText("Brew Date")).toBeInTheDocument()
-    expect(screen.getByLabelText("Overall Notes")).toBeInTheDocument()
-    expect(screen.getByLabelText("Overall Score")).toBeInTheDocument()
-    expect(screen.getByLabelText("Improvement Notes")).toBeInTheDocument()
     expect(screen.getByText("Save Brew")).toBeInTheDocument()
     expect(screen.getByText("Cancel")).toBeInTheDocument()
   })
@@ -296,6 +294,9 @@ describe("BrewFormPage", () => {
     expect(screen.getByLabelText("Brightness")).toBeInTheDocument()
     expect(screen.getByLabelText("Complexity")).toBeInTheDocument()
     expect(screen.getByLabelText("Aftertaste")).toBeInTheDocument()
+    expect(screen.getByLabelText("Overall Score")).toBeInTheDocument()
+    expect(screen.getByLabelText("Overall Notes")).toBeInTheDocument()
+    expect(screen.getByLabelText("Improvement Notes")).toBeInTheDocument()
   })
 
   it("shows coffee selector dropdown with non-archived coffees", async () => {
@@ -453,13 +454,16 @@ describe("BrewFormPage", () => {
   it("loads existing brew data when editing", async () => {
     setupMocks()
     mockedGetBrew.mockResolvedValue(mockExistingBrew)
+    const user = userEvent.setup()
     renderEditBrew()
 
     await waitFor(() => {
       expect(screen.getByText("Edit Brew")).toBeInTheDocument()
     })
 
-    // Overall notes should be populated
+    // Expand Tasting to access overall notes and score
+    await user.click(screen.getByText("Tasting"))
+
     const notesField = screen.getByLabelText("Overall Notes") as HTMLTextAreaElement
     expect(notesField.value).toBe("Bright acidity")
 
@@ -470,22 +474,24 @@ describe("BrewFormPage", () => {
   it("pre-fills only setup/brewing for Brew Again (not outcomes)", async () => {
     setupMocks()
     mockedGetBrew.mockResolvedValue(mockExistingBrew)
+    const user = userEvent.setup()
     renderNewBrew("/brews/new?from=b-1")
 
     await waitFor(() => {
       expect(screen.getByText("New Brew")).toBeInTheDocument()
     })
 
-    // Overall notes should be empty (not pre-filled for brew again)
+    // Expand Tasting to check that outcomes are NOT pre-filled
+    await user.click(screen.getByText("Tasting"))
+
     const notesField = screen.getByLabelText("Overall Notes") as HTMLTextAreaElement
     expect(notesField.value).toBe("")
 
-    // Score should be empty
     const scoreField = screen.getByLabelText("Overall Score") as HTMLInputElement
     expect(scoreField.value).toBe("")
 
     // But setup fields should be pre-filled when we expand the section
-    await userEvent.setup().click(screen.getByText("Setup"))
+    await user.click(screen.getByText("Setup"))
     const coffeeWeightInput = screen.getByLabelText("Coffee Weight (g)") as HTMLInputElement
     expect(coffeeWeightInput.value).toBe("15")
   })

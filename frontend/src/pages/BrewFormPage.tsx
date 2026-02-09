@@ -364,9 +364,16 @@ function ReferenceModal({
             </p>
           ) : (
             <>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Based on: {formatBrewDateShort(brew.brew_date)} brew
-              </p>
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground">
+                  Based on: {formatBrewDateShort(brew.brew_date)} brew
+                </p>
+                {brew.coffee_tasting_notes && (
+                  <p className="text-sm italic text-muted-foreground">
+                    {brew.coffee_tasting_notes}
+                  </p>
+                )}
+              </div>
               <BrewDetailContent brew={brew} />
             </>
           )}
@@ -747,6 +754,7 @@ export function BrewFormPage() {
       watchAll.brightness_intensity,
       watchAll.complexity_intensity,
       watchAll.aftertaste_intensity,
+      watchAll.overall_score,
     ]
     const filled = fields.filter(
       (v) => v !== "" && v !== null && v !== undefined
@@ -763,6 +771,7 @@ export function BrewFormPage() {
     watchAll.brightness_intensity,
     watchAll.complexity_intensity,
     watchAll.aftertaste_intensity,
+    watchAll.overall_score,
   ])
 
   // Pour total warning
@@ -986,55 +995,6 @@ export function BrewFormPage() {
               Days Off Roast: <span className="font-medium text-foreground">{daysOffRoast}</span>
             </p>
           )}
-
-          {/* Overall notes */}
-          <div className="space-y-2">
-            <label htmlFor="overall-notes" className="text-sm font-medium text-foreground">
-              Overall Notes
-            </label>
-            <textarea
-              id="overall-notes"
-              rows={3}
-              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder="How was this brew?"
-              {...register("overall_notes")}
-            />
-          </div>
-
-          {/* Overall score */}
-          <div className="space-y-2">
-            <label htmlFor="overall-score" className="text-sm font-medium text-foreground">
-              Overall Score
-            </label>
-            <input
-              id="overall-score"
-              type="number"
-              min={1}
-              max={10}
-              placeholder="1-10"
-              className={inputClass(!!errors.overall_score)}
-              {...register("overall_score")}
-            />
-            {errors.overall_score && (
-              <p className="text-sm text-error">
-                {errors.overall_score.message}
-              </p>
-            )}
-          </div>
-
-          {/* Improvement notes */}
-          <div className="space-y-2">
-            <label htmlFor="improvement-notes" className="text-sm font-medium text-foreground">
-              Improvement Notes
-            </label>
-            <textarea
-              id="improvement-notes"
-              rows={2}
-              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder="Ideas for next time..."
-              {...register("improvement_notes")}
-            />
-          </div>
 
           {/* --- Section 1: Setup --- */}
           <div className="rounded-md border border-border">
@@ -1378,6 +1338,55 @@ export function BrewFormPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Overall score */}
+                <div className="space-y-2">
+                  <label htmlFor="overall-score" className="text-sm font-medium text-foreground">
+                    Overall Score
+                  </label>
+                  <input
+                    id="overall-score"
+                    type="number"
+                    min={1}
+                    max={10}
+                    placeholder="1-10"
+                    className={inputClass(!!errors.overall_score)}
+                    {...register("overall_score")}
+                  />
+                  {errors.overall_score && (
+                    <p className="text-sm text-error">
+                      {errors.overall_score.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Overall notes */}
+                <div className="space-y-2">
+                  <label htmlFor="overall-notes" className="text-sm font-medium text-foreground">
+                    Overall Notes
+                  </label>
+                  <textarea
+                    id="overall-notes"
+                    rows={3}
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    placeholder="How was this brew?"
+                    {...register("overall_notes")}
+                  />
+                </div>
+
+                {/* Improvement notes */}
+                <div className="space-y-2">
+                  <label htmlFor="improvement-notes" className="text-sm font-medium text-foreground">
+                    Improvement Notes
+                  </label>
+                  <textarea
+                    id="improvement-notes"
+                    rows={2}
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    placeholder="Ideas for next time..."
+                    {...register("improvement_notes")}
+                  />
                 </div>
               </div>
             )}
