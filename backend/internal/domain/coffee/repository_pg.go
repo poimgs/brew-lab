@@ -288,9 +288,12 @@ func (r *PgRepository) SetReferenceBrew(ctx context.Context, userID, id string, 
 }
 
 var allowedSuggestionFields = map[string]string{
-	"roaster": "roaster",
-	"country": "country",
-	"process": "process",
+	"roaster":  "roaster",
+	"country":  "country",
+	"process":  "process",
+	"region":   "region",
+	"farm":     "farm",
+	"varietal": "varietal",
 }
 
 func (r *PgRepository) Suggestions(ctx context.Context, userID, field, query string) ([]string, error) {

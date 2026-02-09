@@ -237,9 +237,9 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validFields := map[string]bool{"roaster": true, "country": true, "process": true}
+	validFields := map[string]bool{"roaster": true, "country": true, "process": true, "region": true, "farm": true, "varietal": true}
 	if !validFields[field] {
-		api.ValidationError(w, []api.FieldError{{Field: "field", Message: fmt.Sprintf("Invalid field: %s. Supported: roaster, country, process", field)}})
+		api.ValidationError(w, []api.FieldError{{Field: "field", Message: fmt.Sprintf("Invalid field: %s. Supported: roaster, country, process, region, farm, varietal", field)}})
 		return
 	}
 

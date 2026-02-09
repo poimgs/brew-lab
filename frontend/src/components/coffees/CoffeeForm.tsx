@@ -89,7 +89,7 @@ function AutocompleteInput({
   id: string
   label: string
   placeholder: string
-  field: "roaster" | "country" | "process"
+  field: "roaster" | "country" | "process" | "region" | "farm" | "varietal"
   register: ReturnType<typeof useForm<CoffeeFormData>>["register"]
   setValue: ReturnType<typeof useForm<CoffeeFormData>>["setValue"]
   watch: ReturnType<typeof useForm<CoffeeFormData>>["watch"]
@@ -99,9 +99,12 @@ function AutocompleteInput({
     useAutocomplete(field)
   const value = watch(field) ?? ""
   const containerRef = useRef<HTMLDivElement>(null)
+  const hasTyped = useRef(false)
 
   useEffect(() => {
-    fetchSuggestions(value)
+    if (hasTyped.current) {
+      fetchSuggestions(value)
+    }
   }, [value, fetchSuggestions])
 
   useEffect(() => {
@@ -134,6 +137,7 @@ function AutocompleteInput({
           }`}
           placeholder={placeholder}
           {...register(field)}
+          onInput={() => { hasTyped.current = true }}
         />
         {isOpen && (
           <ul
@@ -227,8 +231,8 @@ export function CoffeeForm({
       aria-modal="true"
       aria-label={isEditing ? "Edit Coffee" : "Add Coffee"}
     >
-      <div className="flex h-screen w-full flex-col overflow-y-auto bg-card p-6 sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg sm:shadow-lg">
-        <div className="flex items-center justify-between">
+      <div className="flex h-screen w-full flex-col bg-card sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-lg sm:shadow-lg">
+        <div className="flex items-center justify-between p-6 pb-0">
           <h2 className="text-xl font-semibold text-card-foreground">
             {isEditing ? "Edit Coffee" : "Add Coffee"}
           </h2>
@@ -241,7 +245,8 @@ export function CoffeeForm({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex-1 space-y-4 overflow-y-auto p-6">
           {serverError && (
             <div className="rounded-md bg-error-muted p-3 text-sm text-error">
               {serverError}
@@ -296,53 +301,35 @@ export function CoffeeForm({
                 watch={watch}
               />
 
-              <div className="space-y-2">
-                <label
-                  htmlFor="coffee-region"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Region
-                </label>
-                <input
-                  id="coffee-region"
-                  type="text"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  placeholder="e.g., Nyeri"
-                  {...register("region")}
-                />
-              </div>
+              <AutocompleteInput
+                id="coffee-region"
+                label="Region"
+                placeholder="e.g., Nyeri"
+                field="region"
+                register={register}
+                setValue={setValue}
+                watch={watch}
+              />
 
-              <div className="space-y-2">
-                <label
-                  htmlFor="coffee-farm"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Farm
-                </label>
-                <input
-                  id="coffee-farm"
-                  type="text"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  placeholder="e.g., Kiamaina Estate"
-                  {...register("farm")}
-                />
-              </div>
+              <AutocompleteInput
+                id="coffee-farm"
+                label="Farm"
+                placeholder="e.g., Kiamaina Estate"
+                field="farm"
+                register={register}
+                setValue={setValue}
+                watch={watch}
+              />
 
-              <div className="space-y-2">
-                <label
-                  htmlFor="coffee-varietal"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Varietal
-                </label>
-                <input
-                  id="coffee-varietal"
-                  type="text"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  placeholder="e.g., SL28, SL34"
-                  {...register("varietal")}
-                />
-              </div>
+              <AutocompleteInput
+                id="coffee-varietal"
+                label="Varietal"
+                placeholder="e.g., SL28, SL34"
+                field="varietal"
+                register={register}
+                setValue={setValue}
+                watch={watch}
+              />
 
               <div className="space-y-2">
                 <label
@@ -455,7 +442,9 @@ export function CoffeeForm({
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
+          </div>
+
+          <div className="flex justify-end gap-3 border-t border-border p-6">
             <button
               type="button"
               onClick={onClose}
