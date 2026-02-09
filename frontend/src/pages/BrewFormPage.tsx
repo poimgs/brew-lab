@@ -1032,9 +1032,35 @@ export function BrewFormPage() {
           Back
         </button>
 
-        <h1 className="mt-4 text-2xl font-semibold">
-          {isEditing ? "Edit Brew" : "New Brew"}
-        </h1>
+        <div className="mt-4 flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">
+            {isEditing ? "Edit Brew" : "New Brew"}
+          </h1>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit(onSubmit)}
+              disabled={isSubmitting}
+              className="flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Brew"
+              )}
+            </button>
+          </div>
+        </div>
 
         <form
           onSubmit={handleSubmit(onSubmit)}
@@ -1471,30 +1497,6 @@ export function BrewFormPage() {
             )}
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Brew"
-              )}
-            </button>
-          </div>
         </form>
       </div>
 
