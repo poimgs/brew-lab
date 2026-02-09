@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ArrowDown, ArrowUp, X } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { ArrowDown, ArrowUp, Plus, X } from "lucide-react"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { listBrews, type Brew, type BrewListParams } from "@/api/brews"
 import { listCoffees, type Coffee } from "@/api/coffees"
@@ -14,6 +15,7 @@ type SortField = "date" | "score"
 type SortDir = "desc" | "asc"
 
 export function BrewsPage() {
+  const navigate = useNavigate()
   const [brews, setBrews] = useState<Brew[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -125,7 +127,16 @@ export function BrewsPage() {
   if (isLoading) {
     return (
       <div className="p-8" data-testid="brews-skeleton">
-        <Skeleton className="h-9 w-20" />
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-9 w-20" />
+          <button
+            onClick={() => navigate("/brews/new")}
+            className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          >
+            <Plus className="h-4 w-4" />
+            Log a Brew
+          </button>
+        </div>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="flex flex-col gap-1">
             <Skeleton className="h-3 w-12" />
@@ -181,7 +192,16 @@ export function BrewsPage() {
   if (loadError) {
     return (
       <div className="p-8">
-        <h1 className="text-3xl font-semibold">Brews</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-semibold">Brews</h1>
+          <button
+            onClick={() => navigate("/brews/new")}
+            className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          >
+            <Plus className="h-4 w-4" />
+            Log a Brew
+          </button>
+        </div>
         <div className="mt-6 text-center">
           <p className="text-muted-foreground">{loadError}</p>
           <button
@@ -201,7 +221,16 @@ export function BrewsPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-semibold">Brews</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-semibold">Brews</h1>
+        <button
+          onClick={() => navigate("/brews/new")}
+          className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+        >
+          <Plus className="h-4 w-4" />
+          Log a Brew
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
