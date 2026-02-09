@@ -102,7 +102,10 @@ export function CoffeeDetailPage() {
       roaster: data.roaster,
       name: data.name,
       country: data.country || null,
+      region: data.region || null,
       farm: data.farm || null,
+      varietal: data.varietal || null,
+      elevation: data.elevation || null,
       process: data.process || null,
       roast_level: data.roast_level || null,
       tasting_notes: data.tasting_notes || null,
@@ -284,7 +287,7 @@ export function CoffeeDetailPage() {
     )
   }
 
-  const subtitle = [coffee.roaster, coffee.country, coffee.farm, coffee.process]
+  const subtitle = [coffee.roaster, coffee.country, coffee.region, coffee.farm, coffee.process]
     .filter(Boolean)
     .join(" \u2022 ")
 

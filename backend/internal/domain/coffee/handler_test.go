@@ -95,7 +95,10 @@ func (m *mockRepo) Create(_ context.Context, userID string, req CreateRequest) (
 		Roaster:      req.Roaster,
 		Name:         req.Name,
 		Country:      req.Country,
+		Region:       req.Region,
 		Farm:         req.Farm,
+		Varietal:     req.Varietal,
+		Elevation:    req.Elevation,
 		Process:      req.Process,
 		RoastLevel:   req.RoastLevel,
 		TastingNotes: req.TastingNotes,
@@ -117,7 +120,10 @@ func (m *mockRepo) Update(_ context.Context, userID, id string, req UpdateReques
 	c.Roaster = req.Roaster
 	c.Name = req.Name
 	c.Country = req.Country
+	c.Region = req.Region
 	c.Farm = req.Farm
+	c.Varietal = req.Varietal
+	c.Elevation = req.Elevation
 	c.Process = req.Process
 	c.RoastLevel = req.RoastLevel
 	c.TastingNotes = req.TastingNotes

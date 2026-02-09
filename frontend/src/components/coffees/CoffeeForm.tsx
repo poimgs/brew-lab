@@ -10,7 +10,10 @@ const coffeeSchema = z.object({
   roaster: z.string().min(1, "Roaster is required").max(255),
   name: z.string().min(1, "Name is required").max(255),
   country: z.string().max(100).optional().or(z.literal("")),
+  region: z.string().max(255).optional().or(z.literal("")),
   farm: z.string().max(255).optional().or(z.literal("")),
+  varietal: z.string().max(255).optional().or(z.literal("")),
+  elevation: z.string().max(100).optional().or(z.literal("")),
   process: z.string().max(100).optional().or(z.literal("")),
   roast_level: z.string().optional().or(z.literal("")),
   tasting_notes: z.string().optional().or(z.literal("")),
@@ -187,7 +190,10 @@ export function CoffeeForm({
         roaster: coffee?.roaster ?? "",
         name: coffee?.name ?? "",
         country: coffee?.country ?? "",
+        region: coffee?.region ?? "",
         farm: coffee?.farm ?? "",
+        varietal: coffee?.varietal ?? "",
+        elevation: coffee?.elevation ?? "",
         process: coffee?.process ?? "",
         roast_level: coffee?.roast_level ?? "",
         tasting_notes: coffee?.tasting_notes ?? "",
@@ -292,6 +298,22 @@ export function CoffeeForm({
 
               <div className="space-y-2">
                 <label
+                  htmlFor="coffee-region"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Region
+                </label>
+                <input
+                  id="coffee-region"
+                  type="text"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder="e.g., Nyeri"
+                  {...register("region")}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label
                   htmlFor="coffee-farm"
                   className="text-sm font-medium text-foreground"
                 >
@@ -303,6 +325,38 @@ export function CoffeeForm({
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   placeholder="e.g., Kiamaina Estate"
                   {...register("farm")}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="coffee-varietal"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Varietal
+                </label>
+                <input
+                  id="coffee-varietal"
+                  type="text"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder="e.g., SL28, SL34"
+                  {...register("varietal")}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor="coffee-elevation"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Elevation
+                </label>
+                <input
+                  id="coffee-elevation"
+                  type="text"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder="e.g., 1800 masl"
+                  {...register("elevation")}
                 />
               </div>
             </div>

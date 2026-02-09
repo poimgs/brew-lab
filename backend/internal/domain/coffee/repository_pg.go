@@ -19,7 +19,8 @@ func NewPgRepository(pool *pgxpool.Pool) *PgRepository {
 	return &PgRepository{pool: pool}
 }
 
-const coffeeColumns = `c.id, c.user_id, c.roaster, c.name, c.country, c.farm, c.process,
+const coffeeColumns = `c.id, c.user_id, c.roaster, c.name, c.country, c.region, c.farm,
+	c.varietal, c.elevation, c.process,
 	c.roast_level, c.tasting_notes, c.roast_date, c.notes, c.reference_brew_id,
 	c.archived_at, c.created_at, c.updated_at`
 
@@ -27,7 +28,8 @@ func scanCoffee(row pgx.Row) (*Coffee, error) {
 	var c Coffee
 	var roastDate *time.Time
 	err := row.Scan(
-		&c.ID, &c.UserID, &c.Roaster, &c.Name, &c.Country, &c.Farm, &c.Process,
+		&c.ID, &c.UserID, &c.Roaster, &c.Name, &c.Country, &c.Region, &c.Farm,
+		&c.Varietal, &c.Elevation, &c.Process,
 		&c.RoastLevel, &c.TastingNotes, &roastDate, &c.Notes, &c.ReferenceBrewID,
 		&c.ArchivedAt, &c.CreatedAt, &c.UpdatedAt,
 		&c.BrewCount, &c.LastBrewed,
@@ -112,7 +114,8 @@ func (r *PgRepository) List(ctx context.Context, userID string, params ListParam
 		var c Coffee
 		var roastDate *time.Time
 		if err := rows.Scan(
-			&c.ID, &c.UserID, &c.Roaster, &c.Name, &c.Country, &c.Farm, &c.Process,
+			&c.ID, &c.UserID, &c.Roaster, &c.Name, &c.Country, &c.Region, &c.Farm,
+			&c.Varietal, &c.Elevation, &c.Process,
 			&c.RoastLevel, &c.TastingNotes, &roastDate, &c.Notes, &c.ReferenceBrewID,
 			&c.ArchivedAt, &c.CreatedAt, &c.UpdatedAt,
 			&c.BrewCount, &c.LastBrewed,
@@ -153,8 +156,8 @@ func (r *PgRepository) GetByID(ctx context.Context, userID, id string) (*Coffee,
 func (r *PgRepository) Create(ctx context.Context, userID string, req CreateRequest) (*Coffee, error) {
 	query := fmt.Sprintf(
 		`WITH inserted AS (
-			INSERT INTO coffees (user_id, roaster, name, country, farm, process, roast_level, tasting_notes, roast_date, notes)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			INSERT INTO coffees (user_id, roaster, name, country, region, farm, varietal, elevation, process, roast_level, tasting_notes, roast_date, notes)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 			RETURNING *
 		)
 		SELECT %s, %s AS brew_count, %s AS last_brewed
@@ -163,8 +166,9 @@ func (r *PgRepository) Create(ctx context.Context, userID string, req CreateRequ
 	)
 
 	c, err := scanCoffee(r.pool.QueryRow(ctx, query,
-		userID, req.Roaster, req.Name, req.Country, req.Farm,
-		req.Process, req.RoastLevel, req.TastingNotes, req.RoastDate, req.Notes,
+		userID, req.Roaster, req.Name, req.Country, req.Region, req.Farm,
+		req.Varietal, req.Elevation, req.Process, req.RoastLevel, req.TastingNotes,
+		req.RoastDate, req.Notes,
 	))
 	if err != nil {
 		return nil, err
@@ -176,10 +180,11 @@ func (r *PgRepository) Update(ctx context.Context, userID, id string, req Update
 	query := fmt.Sprintf(
 		`WITH updated AS (
 			UPDATE coffees
-			SET roaster = $1, name = $2, country = $3, farm = $4, process = $5,
-				roast_level = $6, tasting_notes = $7, roast_date = $8, notes = $9,
+			SET roaster = $1, name = $2, country = $3, region = $4, farm = $5,
+				varietal = $6, elevation = $7, process = $8,
+				roast_level = $9, tasting_notes = $10, roast_date = $11, notes = $12,
 				updated_at = NOW()
-			WHERE id = $10 AND user_id = $11
+			WHERE id = $13 AND user_id = $14
 			RETURNING *
 		)
 		SELECT %s, %s AS brew_count, %s AS last_brewed
@@ -188,7 +193,8 @@ func (r *PgRepository) Update(ctx context.Context, userID, id string, req Update
 	)
 
 	c, err := scanCoffee(r.pool.QueryRow(ctx, query,
-		req.Roaster, req.Name, req.Country, req.Farm, req.Process,
+		req.Roaster, req.Name, req.Country, req.Region, req.Farm,
+		req.Varietal, req.Elevation, req.Process,
 		req.RoastLevel, req.TastingNotes, req.RoastDate, req.Notes,
 		id, userID,
 	))

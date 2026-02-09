@@ -10,7 +10,10 @@ type Coffee struct {
 	Roaster         string     `json:"roaster"`
 	Name            string     `json:"name"`
 	Country         *string    `json:"country"`
+	Region          *string    `json:"region"`
 	Farm            *string    `json:"farm"`
+	Varietal        *string    `json:"varietal"`
+	Elevation       *string    `json:"elevation"`
 	Process         *string    `json:"process"`
 	RoastLevel      *string    `json:"roast_level"`
 	TastingNotes    *string    `json:"tasting_notes"`
@@ -28,7 +31,10 @@ type CreateRequest struct {
 	Roaster      string  `json:"roaster"`
 	Name         string  `json:"name"`
 	Country      *string `json:"country"`
+	Region       *string `json:"region"`
 	Farm         *string `json:"farm"`
+	Varietal     *string `json:"varietal"`
+	Elevation    *string `json:"elevation"`
 	Process      *string `json:"process"`
 	RoastLevel   *string `json:"roast_level"`
 	TastingNotes *string `json:"tasting_notes"`
@@ -40,7 +46,10 @@ type UpdateRequest struct {
 	Roaster      string  `json:"roaster"`
 	Name         string  `json:"name"`
 	Country      *string `json:"country"`
+	Region       *string `json:"region"`
 	Farm         *string `json:"farm"`
+	Varietal     *string `json:"varietal"`
+	Elevation    *string `json:"elevation"`
 	Process      *string `json:"process"`
 	RoastLevel   *string `json:"roast_level"`
 	TastingNotes *string `json:"tasting_notes"`

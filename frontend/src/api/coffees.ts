@@ -6,7 +6,10 @@ export interface Coffee {
   roaster: string
   name: string
   country: string | null
+  region: string | null
   farm: string | null
+  varietal: string | null
+  elevation: string | null
   process: string | null
   roast_level: string | null
   tasting_notes: string | null
@@ -24,7 +27,10 @@ export interface CoffeeRequest {
   roaster: string
   name: string
   country?: string | null
+  region?: string | null
   farm?: string | null
+  varietal?: string | null
+  elevation?: string | null
   process?: string | null
   roast_level?: string | null
   tasting_notes?: string | null
