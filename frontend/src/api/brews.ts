@@ -19,6 +19,7 @@ export interface Brew {
   coffee_id: string
   coffee_name: string
   coffee_roaster: string
+  coffee_tasting_notes: string | null
   brew_date: string
   days_off_roast: number | null
   coffee_weight: number | null

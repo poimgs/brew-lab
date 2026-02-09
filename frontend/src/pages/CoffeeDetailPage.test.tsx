@@ -75,6 +75,7 @@ const mockBrew = {
   coffee_id: "c-1",
   coffee_name: "Kiamaina",
   coffee_roaster: "Cata Coffee",
+  coffee_tasting_notes: "Blackberry, lime, brown sugar",
   brew_date: "2026-01-15",
   days_off_roast: 57,
   coffee_weight: 15,

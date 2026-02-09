@@ -10,7 +10,8 @@ type Brew struct {
 	UserID           string       `json:"-"`
 	CoffeeID         string       `json:"coffee_id"`
 	CoffeeName       string       `json:"coffee_name"`
-	CoffeeRoaster    string       `json:"coffee_roaster"`
+	CoffeeRoaster       string       `json:"coffee_roaster"`
+	CoffeeTastingNotes  *string      `json:"coffee_tasting_notes"`
 	BrewDate         string       `json:"brew_date"`
 	DaysOffRoast     *int         `json:"days_off_roast"`
 	CoffeeWeight     *float64     `json:"coffee_weight"`

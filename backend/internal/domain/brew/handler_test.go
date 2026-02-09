@@ -32,11 +32,12 @@ type mockRepo struct {
 }
 
 type mockCoffee struct {
-	ID             string
-	UserID         string
-	Name           string
-	Roaster        string
-	RoastDate      *string
+	ID              string
+	UserID          string
+	Name            string
+	Roaster         string
+	TastingNotes    *string
+	RoastDate       *string
 	ReferenceBrewID *string
 }
 
@@ -155,6 +156,7 @@ func (m *mockRepo) Create(_ context.Context, userID string, req CreateRequest) (
 		CoffeeID:            req.CoffeeID,
 		CoffeeName:          c.Name,
 		CoffeeRoaster:       c.Roaster,
+		CoffeeTastingNotes:  c.TastingNotes,
 		BrewDate:            brewDate,
 		DaysOffRoast:        daysOffRoast,
 		CoffeeWeight:        req.CoffeeWeight,

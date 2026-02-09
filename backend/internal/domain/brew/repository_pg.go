@@ -27,7 +27,7 @@ const brewColumns = `b.id, b.user_id, b.coffee_id, b.brew_date, b.days_off_roast
 	b.brightness_intensity, b.complexity_intensity, b.aftertaste_intensity,
 	b.overall_score, b.overall_notes, b.improvement_notes,
 	b.created_at, b.updated_at,
-	c.name AS coffee_name, c.roaster AS coffee_roaster,
+	c.name AS coffee_name, c.roaster AS coffee_roaster, c.tasting_notes AS coffee_tasting_notes,
 	fp.id AS fp_id, fp.name AS fp_name, fp.brand AS fp_brand`
 
 func scanBrew(row pgx.Row) (*Brew, error) {
@@ -46,7 +46,7 @@ func scanBrew(row pgx.Row) (*Brew, error) {
 		&b.BrightnessIntensity, &b.ComplexityIntensity, &b.AftertasteIntensity,
 		&b.OverallScore, &b.OverallNotes, &b.ImprovementNotes,
 		&b.CreatedAt, &b.UpdatedAt,
-		&b.CoffeeName, &b.CoffeeRoaster,
+		&b.CoffeeName, &b.CoffeeRoaster, &b.CoffeeTastingNotes,
 		&fpID, &fpName, &fpBrand,
 	)
 	if err != nil {
@@ -297,7 +297,7 @@ func scanBrewFromRows(rows pgx.Rows) (*Brew, error) {
 		&b.BrightnessIntensity, &b.ComplexityIntensity, &b.AftertasteIntensity,
 		&b.OverallScore, &b.OverallNotes, &b.ImprovementNotes,
 		&b.CreatedAt, &b.UpdatedAt,
-		&b.CoffeeName, &b.CoffeeRoaster,
+		&b.CoffeeName, &b.CoffeeRoaster, &b.CoffeeTastingNotes,
 		&fpID, &fpName, &fpBrand,
 	)
 	if err != nil {
