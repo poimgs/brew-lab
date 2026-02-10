@@ -1,13 +1,21 @@
-import { Outlet } from "react-router-dom"
+import { useRef, useEffect } from "react"
+import { Outlet, useLocation } from "react-router-dom"
 import { Sidebar, MobileHeader } from "./Sidebar"
 
 export function Layout() {
+  const mainRef = useRef<HTMLElement>(null)
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0
+  }, [pathname])
+
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-dvh">
       <Sidebar />
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         <MobileHeader />
-        <main className="flex-1 overflow-auto">
+        <main ref={mainRef} className="flex-1 overflow-auto">
           <Outlet />
         </main>
       </div>

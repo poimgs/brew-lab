@@ -65,16 +65,15 @@ import {
   updateFilterPaper,
   deleteFilterPaper,
 } from "@/api/filterPapers"
-import { listCoffees, createCoffee } from "@/api/coffees"
+import { createCoffee } from "@/api/coffees"
 
 import { EquipmentPage } from "@/pages/EquipmentPage"
-import { CoffeesPage } from "@/pages/CoffeesPage"
+import { CoffeeFormPage } from "@/pages/CoffeeFormPage"
 
 const mockedListFilterPapers = vi.mocked(listFilterPapers)
 const mockedCreateFilterPaper = vi.mocked(createFilterPaper)
 const mockedUpdateFilterPaper = vi.mocked(updateFilterPaper)
 const mockedDeleteFilterPaper = vi.mocked(deleteFilterPaper)
-const mockedListCoffees = vi.mocked(listCoffees)
 const mockedCreateCoffee = vi.mocked(createCoffee)
 
 const emptyPaginated = { items: [], pagination: { page: 1, per_page: 100, total: 0, total_pages: 0 } }
@@ -243,32 +242,16 @@ describe("Toast notifications", () => {
     })
   })
 
-  describe("CoffeesPage", () => {
+  describe("CoffeeFormPage", () => {
     it("shows success toast when creating a coffee", async () => {
-      mockedListCoffees
-        .mockResolvedValueOnce(emptyPaginated)
-        .mockResolvedValueOnce({
-          ...emptyPaginated,
-          items: [mockCoffee],
-        })
       mockedCreateCoffee.mockResolvedValueOnce(mockCoffee)
 
       const user = userEvent.setup()
-      render(<CoffeesPage />)
-
-      await waitFor(() => {
-        expect(screen.getByText("Add Coffee")).toBeInTheDocument()
-      })
-
-      await user.click(screen.getByText("Add Coffee"))
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Roaster/)).toBeInTheDocument()
-      })
+      render(<CoffeeFormPage />)
 
       await user.type(screen.getByLabelText(/Roaster/), "April")
       await user.type(screen.getByLabelText(/^Name/), "Ethiopia Chelbesa")
-      await user.click(screen.getByText("Save Coffee"))
+      await user.click(screen.getAllByText("Save Coffee")[0])
 
       await waitFor(() => {
         expect(toast.success).toHaveBeenCalledWith("Coffee added")

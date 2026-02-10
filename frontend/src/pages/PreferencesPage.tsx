@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Loader2, Plus, Trash2, X } from "lucide-react"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { toast } from "sonner"
@@ -9,6 +10,7 @@ import {
   type UpdateDefaultsRequest,
 } from "@/api/defaults"
 import { listFilterPapers, type FilterPaper } from "@/api/filterPapers"
+import { FormPageLayout } from "@/components/layout/FormPageLayout"
 
 interface PourFormData {
   water_amount: string
@@ -21,6 +23,7 @@ export function PreferencesPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [filterPapers, setFilterPapers] = useState<FilterPaper[]>([])
+  const navigate = useNavigate()
 
   // Setup defaults
   const [coffeeWeight, setCoffeeWeight] = useState("")
@@ -112,6 +115,10 @@ export function PreferencesPage() {
     }
   }
 
+  const handleCancel = () => {
+    navigate(-1)
+  }
+
   const addPour = () => {
     setPours([...pours, { water_amount: "", pour_style: "", wait_time: "" }])
   }
@@ -127,32 +134,66 @@ export function PreferencesPage() {
   const inputClass =
     "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 
+  const actionButtons = () => (
+    <>
+      <button
+        type="button"
+        onClick={handleCancel}
+        className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={handleSave}
+        disabled={isSaving}
+        className="flex h-10 shrink-0 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
+      >
+        {isSaving ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          "Save"
+        )}
+      </button>
+    </>
+  )
+
   if (isLoading) {
     return (
-      <div className="p-4 sm:p-8" data-testid="preferences-skeleton">
-        <Skeleton className="h-8 w-36" />
-        <div className="mt-6 max-w-2xl rounded-md border border-border">
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
-            <div className="space-y-1">
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-64" />
+      <div className="flex h-full flex-col" data-testid="preferences-skeleton">
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="mx-auto max-w-2xl">
+            <Skeleton className="h-5 w-16" />
+            <div className="mt-4 flex items-center justify-between">
+              <Skeleton className="h-8 w-36" />
+              <div className="hidden items-center gap-3 lg:flex">
+                <Skeleton className="h-10 w-20" />
+                <Skeleton className="h-10 w-16" />
+              </div>
             </div>
-            <Skeleton className="h-10 w-16" />
+            <div className="mt-6 space-y-6">
+              <div className="space-y-4">
+                <Skeleton className="h-4 w-28" />
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-10 flex-1" />
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-16 w-full rounded-md" />
+              </div>
+            </div>
           </div>
-          <div className="space-y-6 px-6 py-6">
-            <div className="space-y-4">
-              <Skeleton className="h-4 w-28" />
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-10 flex-1" />
-                </div>
-              ))}
-            </div>
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-16 w-full rounded-md" />
-            </div>
+        </div>
+        <div className="border-t border-border px-8 py-3 lg:hidden">
+          <div className="mx-auto flex max-w-2xl justify-end gap-3">
+            <Skeleton className="h-10 w-20" />
+            <Skeleton className="h-10 w-16" />
           </div>
         </div>
       </div>
@@ -161,9 +202,12 @@ export function PreferencesPage() {
 
   if (error && !coffeeWeight && !ratio && !grindSize && !waterTemperature && !filterPaperId && pours.length === 0) {
     return (
-      <div className="p-4 sm:p-8">
-        <h1 className="text-2xl font-semibold">Preferences</h1>
-        <div className="mt-6 text-center">
+      <FormPageLayout
+        title="Preferences"
+        onBack={handleCancel}
+        actions={() => null}
+      >
+        <div className="text-center">
           <p className="text-sm text-error">{error}</p>
           <button
             onClick={loadData}
@@ -172,263 +216,241 @@ export function PreferencesPage() {
             Try Again
           </button>
         </div>
-      </div>
+      </FormPageLayout>
     )
   }
 
   return (
-    <div className="p-4 sm:p-8">
-      <h1 className="text-2xl font-semibold">Preferences</h1>
+    <FormPageLayout
+      title="Preferences"
+      description="These values are used when no reference brew exists for a coffee."
+      onBack={handleCancel}
+      actions={actionButtons}
+    >
+      <div className="space-y-6">
+        {/* Setup Defaults */}
+        <div>
+          <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Setup Defaults
+          </h3>
 
-      <div className="mt-6 max-w-2xl rounded-md border border-border">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
-          <div className="min-w-0">
-            <h2 className="text-lg font-medium">Brew Defaults</h2>
-            <p className="text-sm text-muted-foreground">
-              These values are used when no reference brew exists for a coffee.
-            </p>
-          </div>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex h-10 shrink-0 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save"
-            )}
-          </button>
-        </div>
-
-        <div className="space-y-6 px-4 py-6 sm:px-6">
-          {/* Setup Defaults */}
-          <div>
-            <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
-              Setup Defaults
-            </h3>
-
-            <div className="space-y-4">
-              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-                <label htmlFor="default-coffee-weight" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
-                  Coffee Weight
-                </label>
-                <div className="flex flex-1 items-center gap-2">
-                  <input
-                    id="default-coffee-weight"
-                    type="number"
-                    step="0.1"
-                    placeholder="e.g., 15"
-                    value={coffeeWeight}
-                    onChange={(e) => setCoffeeWeight(e.target.value)}
-                    className={inputClass}
-                  />
-                  <span className="shrink-0 text-sm text-muted-foreground">g</span>
-                  {coffeeWeight && (
-                    <button
-                      type="button"
-                      onClick={() => setCoffeeWeight("")}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                      aria-label="Clear coffee weight"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-                <label htmlFor="default-ratio" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
-                  Ratio
-                </label>
-                <div className="flex flex-1 items-center gap-2">
-                  <input
-                    id="default-ratio"
-                    type="number"
-                    step="0.1"
-                    placeholder="e.g., 15"
-                    value={ratio}
-                    onChange={(e) => setRatio(e.target.value)}
-                    className={inputClass}
-                  />
-                  {ratio && (
-                    <button
-                      type="button"
-                      onClick={() => setRatio("")}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                      aria-label="Clear ratio"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-                <label htmlFor="default-grind-size" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
-                  Grind Size
-                </label>
-                <div className="flex flex-1 items-center gap-2">
-                  <input
-                    id="default-grind-size"
-                    type="number"
-                    step="0.1"
-                    placeholder="e.g., 3.5"
-                    value={grindSize}
-                    onChange={(e) => setGrindSize(e.target.value)}
-                    className={inputClass}
-                  />
-                  {grindSize && (
-                    <button
-                      type="button"
-                      onClick={() => setGrindSize("")}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                      aria-label="Clear grind size"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-                <label htmlFor="default-temperature" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
-                  Temperature
-                </label>
-                <div className="flex flex-1 items-center gap-2">
-                  <input
-                    id="default-temperature"
-                    type="number"
-                    step="0.1"
-                    min={0}
-                    max={100}
-                    placeholder="e.g., 93"
-                    value={waterTemperature}
-                    onChange={(e) => setWaterTemperature(e.target.value)}
-                    className={inputClass}
-                  />
-                  <span className="shrink-0 text-sm text-muted-foreground">C</span>
-                  {waterTemperature && (
-                    <button
-                      type="button"
-                      onClick={() => setWaterTemperature("")}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                      aria-label="Clear temperature"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-                <label htmlFor="default-filter-paper" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
-                  Filter Paper
-                </label>
-                <div className="flex flex-1 items-center gap-2">
-                  <select
-                    id="default-filter-paper"
-                    value={filterPaperId}
-                    onChange={(e) => setFilterPaperId(e.target.value)}
-                    className={inputClass}
-                  >
-                    <option value="">Select filter...</option>
-                    {filterPapers.map((fp) => (
-                      <option key={fp.id} value={fp.id}>
-                        {fp.name}
-                        {fp.brand ? ` (${fp.brand})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {filterPaperId && (
-                    <button
-                      type="button"
-                      onClick={() => setFilterPaperId("")}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                      aria-label="Clear filter paper"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Pour Defaults */}
-          <div>
-            <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
-              Pour Defaults
-            </h3>
-
-            <div className="space-y-3">
-              {pours.map((pour, index) => (
-                <div
-                  key={index}
-                  className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center sm:gap-3"
-                >
-                  <span className="shrink-0 text-xs font-medium text-muted-foreground">
-                    #{index + 1}
-                    {index === 0 && " (Bloom)"}
-                  </span>
-                  <input
-                    type="number"
-                    step="0.1"
-                    placeholder="grams"
-                    value={pour.water_amount}
-                    onChange={(e) => updatePour(index, "water_amount", e.target.value)}
-                    className={`${inputClass} sm:w-24`}
-                    aria-label={`Pour ${index + 1} water amount`}
-                  />
-                  <span className="hidden text-sm text-muted-foreground sm:inline">g</span>
-                  <select
-                    value={pour.pour_style}
-                    onChange={(e) => updatePour(index, "pour_style", e.target.value)}
-                    className={`${inputClass} sm:w-28`}
-                    aria-label={`Pour ${index + 1} style`}
-                  >
-                    <option value="">Style</option>
-                    <option value="circular">Circular</option>
-                    <option value="center">Center</option>
-                  </select>
-                  <div className="flex items-center gap-1">
-                    <span className="hidden text-sm text-muted-foreground sm:inline">wait</span>
-                    <input
-                      type="number"
-                      placeholder="seconds"
-                      value={pour.wait_time}
-                      onChange={(e) => updatePour(index, "wait_time", e.target.value)}
-                      className={`${inputClass} sm:w-24`}
-                      aria-label={`Pour ${index + 1} wait time`}
-                    />
-                    <span className="hidden text-sm text-muted-foreground sm:inline">s</span>
-                  </div>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+              <label htmlFor="default-coffee-weight" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
+                Coffee Weight
+              </label>
+              <div className="flex flex-1 items-center gap-2">
+                <input
+                  id="default-coffee-weight"
+                  type="number"
+                  step="0.1"
+                  placeholder="e.g., 15"
+                  value={coffeeWeight}
+                  onChange={(e) => setCoffeeWeight(e.target.value)}
+                  className={inputClass}
+                />
+                <span className="shrink-0 text-sm text-muted-foreground">g</span>
+                {coffeeWeight && (
                   <button
                     type="button"
-                    onClick={() => removePour(index)}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-error"
-                    aria-label={`Remove pour ${index + 1}`}
+                    onClick={() => setCoffeeWeight("")}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Clear coffee weight"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
-                </div>
-              ))}
-
-              <button
-                type="button"
-                onClick={addPour}
-                className="flex items-center gap-1 text-sm font-medium text-primary hover:text-primary-hover"
-              >
-                <Plus className="h-4 w-4" />
-                Add Pour
-              </button>
+                )}
+              </div>
             </div>
+
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+              <label htmlFor="default-ratio" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
+                Ratio
+              </label>
+              <div className="flex flex-1 items-center gap-2">
+                <input
+                  id="default-ratio"
+                  type="number"
+                  step="0.1"
+                  placeholder="e.g., 15"
+                  value={ratio}
+                  onChange={(e) => setRatio(e.target.value)}
+                  className={inputClass}
+                />
+                {ratio && (
+                  <button
+                    type="button"
+                    onClick={() => setRatio("")}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Clear ratio"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+              <label htmlFor="default-grind-size" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
+                Grind Size
+              </label>
+              <div className="flex flex-1 items-center gap-2">
+                <input
+                  id="default-grind-size"
+                  type="number"
+                  step="0.1"
+                  placeholder="e.g., 3.5"
+                  value={grindSize}
+                  onChange={(e) => setGrindSize(e.target.value)}
+                  className={inputClass}
+                />
+                {grindSize && (
+                  <button
+                    type="button"
+                    onClick={() => setGrindSize("")}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Clear grind size"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+              <label htmlFor="default-temperature" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
+                Temperature
+              </label>
+              <div className="flex flex-1 items-center gap-2">
+                <input
+                  id="default-temperature"
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  max={100}
+                  placeholder="e.g., 93"
+                  value={waterTemperature}
+                  onChange={(e) => setWaterTemperature(e.target.value)}
+                  className={inputClass}
+                />
+                <span className="shrink-0 text-sm text-muted-foreground">C</span>
+                {waterTemperature && (
+                  <button
+                    type="button"
+                    onClick={() => setWaterTemperature("")}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Clear temperature"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+              <label htmlFor="default-filter-paper" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
+                Filter Paper
+              </label>
+              <div className="flex flex-1 items-center gap-2">
+                <select
+                  id="default-filter-paper"
+                  value={filterPaperId}
+                  onChange={(e) => setFilterPaperId(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Select filter...</option>
+                  {filterPapers.map((fp) => (
+                    <option key={fp.id} value={fp.id}>
+                      {fp.name}
+                      {fp.brand ? ` (${fp.brand})` : ""}
+                    </option>
+                  ))}
+                </select>
+                {filterPaperId && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterPaperId("")}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Clear filter paper"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Pour Defaults */}
+        <div>
+          <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Pour Defaults
+          </h3>
+
+          <div className="space-y-3">
+            {pours.map((pour, index) => (
+              <div
+                key={index}
+                className="flex flex-col gap-2 rounded-md border border-border p-3 sm:flex-row sm:items-center sm:gap-3"
+              >
+                <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                  #{index + 1}
+                  {index === 0 && " (Bloom)"}
+                </span>
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="grams"
+                  value={pour.water_amount}
+                  onChange={(e) => updatePour(index, "water_amount", e.target.value)}
+                  className={`${inputClass} sm:w-24`}
+                  aria-label={`Pour ${index + 1} water amount`}
+                />
+                <span className="hidden text-sm text-muted-foreground sm:inline">g</span>
+                <select
+                  value={pour.pour_style}
+                  onChange={(e) => updatePour(index, "pour_style", e.target.value)}
+                  className={`${inputClass} sm:w-28`}
+                  aria-label={`Pour ${index + 1} style`}
+                >
+                  <option value="">Style</option>
+                  <option value="circular">Circular</option>
+                  <option value="center">Center</option>
+                </select>
+                <div className="flex items-center gap-1">
+                  <span className="hidden text-sm text-muted-foreground sm:inline">wait</span>
+                  <input
+                    type="number"
+                    placeholder="seconds"
+                    value={pour.wait_time}
+                    onChange={(e) => updatePour(index, "wait_time", e.target.value)}
+                    className={`${inputClass} sm:w-24`}
+                    aria-label={`Pour ${index + 1} wait time`}
+                  />
+                  <span className="hidden text-sm text-muted-foreground sm:inline">s</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removePour(index)}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-error"
+                  aria-label={`Remove pour ${index + 1}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={addPour}
+              className="flex items-center gap-1 text-sm font-medium text-primary hover:text-primary-hover"
+            >
+              <Plus className="h-4 w-4" />
+              Add Pour
+            </button>
           </div>
         </div>
       </div>
-    </div>
+    </FormPageLayout>
   )
 }

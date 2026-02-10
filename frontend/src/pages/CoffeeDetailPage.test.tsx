@@ -6,12 +6,10 @@ import { CoffeeDetailPage } from "./CoffeeDetailPage"
 
 vi.mock("@/api/coffees", () => ({
   getCoffee: vi.fn(),
-  updateCoffee: vi.fn(),
   deleteCoffee: vi.fn(),
   archiveCoffee: vi.fn(),
   unarchiveCoffee: vi.fn(),
   setReferenceBrew: vi.fn(),
-  getSuggestions: vi.fn(),
 }))
 
 vi.mock("@/api/brews", () => ({
@@ -23,7 +21,6 @@ vi.mock("@/api/brews", () => ({
 
 import {
   getCoffee,
-  updateCoffee,
   deleteCoffee,
   archiveCoffee,
   unarchiveCoffee,
@@ -38,7 +35,6 @@ import {
 } from "@/api/brews"
 
 const mockedGet = vi.mocked(getCoffee)
-const mockedUpdate = vi.mocked(updateCoffee)
 const mockedDelete = vi.mocked(deleteCoffee)
 const mockedArchive = vi.mocked(archiveCoffee)
 const mockedUnarchive = vi.mocked(unarchiveCoffee)
@@ -139,10 +135,15 @@ function BrewNewCapture() {
   return <div data-testid="brew-new">Brew New</div>
 }
 
+function CoffeeEditCapture() {
+  return <div data-testid="coffee-edit">Coffee Edit</div>
+}
+
 function renderWithRouter(id = "c-1") {
   return render(
     <MemoryRouter initialEntries={[`/coffees/${id}`]}>
       <Routes>
+        <Route path="/coffees/:id/edit" element={<CoffeeEditCapture />} />
         <Route path="/coffees/:id" element={<CoffeeDetailPage />} />
         <Route path="/coffees" element={<CaptureNavigate />} />
         <Route path="/brews/:id/edit" element={<BrewEditCapture />} />
@@ -242,7 +243,7 @@ describe("CoffeeDetailPage", () => {
     expect(screen.getByText("Delete")).toBeInTheDocument()
   })
 
-  it("opens edit form with pre-filled values", async () => {
+  it("navigates to edit page when clicking Edit", async () => {
     mockedGet.mockResolvedValueOnce(mockCoffee)
     const user = userEvent.setup()
 
@@ -254,42 +255,8 @@ describe("CoffeeDetailPage", () => {
 
     await user.click(screen.getByText("Edit"))
 
-    const dialog = screen.getByRole("dialog", { name: "Edit Coffee" })
-    expect(dialog).toBeInTheDocument()
-    expect(screen.getByLabelText(/Roaster/)).toHaveValue("Cata Coffee")
-    expect(screen.getByLabelText(/^Name/)).toHaveValue("Kiamaina")
-  })
-
-  it("updates coffee via edit form", async () => {
-    mockedGet
-      .mockResolvedValueOnce(mockCoffee)
-      .mockResolvedValueOnce({ ...mockCoffee, name: "Kiamaina AA" })
-    mockedUpdate.mockResolvedValueOnce({ ...mockCoffee, name: "Kiamaina AA" })
-
-    const user = userEvent.setup()
-    renderWithRouter()
-
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText("Edit"))
-
-    const nameInput = screen.getByLabelText(/^Name/)
-    await user.clear(nameInput)
-    await user.type(nameInput, "Kiamaina AA")
-    await user.click(screen.getByText("Save Coffee"))
-
-    await waitFor(() => {
-      expect(mockedUpdate).toHaveBeenCalledWith("c-1", expect.objectContaining({
-        roaster: "Cata Coffee",
-        name: "Kiamaina AA",
-      }))
-    })
-
-    // Dialog should close
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+      expect(screen.getByTestId("coffee-edit")).toBeInTheDocument()
     })
   })
 

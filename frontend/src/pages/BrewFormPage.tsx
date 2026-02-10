@@ -4,16 +4,16 @@ import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import {
-  Loader2,
-  ArrowLeft,
   ChevronDown,
-  ChevronRight,
+  Loader2,
   Plus,
   Trash2,
   X,
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { toast } from "sonner"
+import { FormPageLayout } from "@/components/layout/FormPageLayout"
+import { CollapsibleSection, type SectionFill } from "@/components/ui/CollapsibleSection"
 import { listCoffees, type Coffee } from "@/api/coffees"
 import { listFilterPapers, type FilterPaper } from "@/api/filterPapers"
 import {
@@ -178,24 +178,6 @@ function computeExtractionYield(
   if (coffeeMl == null || tds == null || coffeeWeight == null || coffeeWeight === 0)
     return null
   return Math.round(((coffeeMl * tds) / coffeeWeight) * 100) / 100
-}
-
-type SectionFill = "empty" | "partial" | "full"
-
-function SectionFillDot({ fill }: { fill: SectionFill }) {
-  if (fill === "full")
-    return (
-      <span className="inline-block h-2.5 w-2.5 rounded-full bg-primary" />
-    )
-  if (fill === "partial")
-    return (
-      <span className="relative inline-block h-2.5 w-2.5 rounded-full border border-primary">
-        <span className="absolute bottom-0 left-0 h-full w-1/2 rounded-l-full bg-primary" />
-      </span>
-    )
-  return (
-    <span className="inline-block h-2.5 w-2.5 rounded-full border border-muted-foreground" />
-  )
 }
 
 // --- Coffee Selector ---
@@ -838,61 +820,52 @@ export function BrewFormPage() {
     )
   }
 
+  const actionButtons = () => (
+    <>
+      {watchedCoffeeId && (
+        <button
+          type="button"
+          onClick={() => setShowReference(true)}
+          className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+        >
+          Reference
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={handleCancel}
+        className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        onClick={handleSubmit(onSubmit)}
+        disabled={isSubmitting}
+        className="flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          "Save Brew"
+        )}
+      </button>
+    </>
+  )
+
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="mx-auto max-w-2xl">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
-
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <h1 className="text-2xl font-semibold">
-              {isEditing ? "Edit Brew" : "New Brew"}
-            </h1>
-            <div className="hidden items-center gap-3 lg:flex">
-              {watchedCoffeeId && (
-                <button
-                  type="button"
-                  onClick={() => setShowReference(true)}
-                  className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-                >
-                  Reference
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit(onSubmit)}
-                disabled={isSubmitting}
-                className="flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Brew"
-                )}
-              </button>
-            </div>
-          </div>
-
+    <>
+      <FormPageLayout
+        title={isEditing ? "Edit Brew" : "New Brew"}
+        onBack={handleCancel}
+        actions={actionButtons}
+      >
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="mt-6 space-y-6"
+          className="space-y-6"
         >
           {serverError && (
             <div className="rounded-md bg-error-muted p-3 text-sm text-error">
@@ -930,24 +903,7 @@ export function BrewFormPage() {
           )}
 
           {/* --- Section 1: Setup --- */}
-          <div className="rounded-md border border-border">
-            <button
-              type="button"
-              onClick={() => setSetupOpen(!setupOpen)}
-              className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/50"
-            >
-              <div className="flex items-center gap-2">
-                {setupOpen ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-                Setup
-              </div>
-              <SectionFillDot fill={setupFill} />
-            </button>
-            {setupOpen && (
-              <div className="space-y-4 border-t border-border px-4 py-4">
+          <CollapsibleSection title="Setup" fill={setupFill} open={setupOpen} onToggle={() => setSetupOpen(!setupOpen)}>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <label htmlFor="coffee-weight" className="text-sm font-medium text-foreground">
@@ -1050,29 +1006,10 @@ export function BrewFormPage() {
                     ))}
                   </select>
                 </div>
-              </div>
-            )}
-          </div>
+          </CollapsibleSection>
 
           {/* --- Section 2: Brewing --- */}
-          <div className="rounded-md border border-border">
-            <button
-              type="button"
-              onClick={() => setBrewingOpen(!brewingOpen)}
-              className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/50"
-            >
-              <div className="flex items-center gap-2">
-                {brewingOpen ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-                Brewing
-              </div>
-              <SectionFillDot fill={brewingFill} />
-            </button>
-            {brewingOpen && (
-              <div className="space-y-4 border-t border-border px-4 py-4">
+          <CollapsibleSection title="Brewing" fill={brewingFill} open={brewingOpen} onToggle={() => setBrewingOpen(!brewingOpen)}>
                 <div className="space-y-3">
                   <label className="text-sm font-medium text-foreground">Pours</label>
                   {pourFields.map((field, index) => (
@@ -1161,29 +1098,10 @@ export function BrewFormPage() {
                     {...register("technique_notes")}
                   />
                 </div>
-              </div>
-            )}
-          </div>
+          </CollapsibleSection>
 
           {/* --- Section 3: Tasting --- */}
-          <div className="rounded-md border border-border">
-            <button
-              type="button"
-              onClick={() => setTastingOpen(!tastingOpen)}
-              className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/50"
-            >
-              <div className="flex items-center gap-2">
-                {tastingOpen ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-                Tasting
-              </div>
-              <SectionFillDot fill={tastingFill} />
-            </button>
-            {tastingOpen && (
-              <div className="space-y-4 border-t border-border px-4 py-4">
+          <CollapsibleSection title="Tasting" fill={tastingFill} open={tastingOpen} onToggle={() => setTastingOpen(!tastingOpen)}>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <label htmlFor="coffee-ml" className="text-sm font-medium text-foreground">
@@ -1321,49 +1239,10 @@ export function BrewFormPage() {
                     {...register("improvement_notes")}
                   />
                 </div>
-              </div>
-            )}
-          </div>
+          </CollapsibleSection>
 
         </form>
-        </div>
-      </div>
-
-      <div className="border-t border-border px-8 py-3 lg:hidden">
-        <div className="mx-auto flex max-w-2xl items-center justify-end gap-3">
-          {watchedCoffeeId && (
-            <button
-              type="button"
-              onClick={() => setShowReference(true)}
-              className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              Reference
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-            className="flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Brew"
-            )}
-          </button>
-        </div>
-      </div>
+      </FormPageLayout>
 
       {showReference && reference?.brew && (
         <BrewDetailModal
@@ -1411,6 +1290,6 @@ export function BrewFormPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

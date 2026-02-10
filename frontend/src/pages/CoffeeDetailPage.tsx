@@ -13,7 +13,6 @@ import { Skeleton } from "@/components/ui/Skeleton"
 import { toast } from "sonner"
 import {
   getCoffee,
-  updateCoffee,
   deleteCoffee,
   archiveCoffee,
   unarchiveCoffee,
@@ -26,7 +25,6 @@ import {
   type Brew,
   type ReferenceResponse,
 } from "@/api/brews"
-import { CoffeeForm, type CoffeeFormData } from "@/components/coffees/CoffeeForm"
 import { ReferenceBrewSection } from "@/components/coffees/ReferenceBrewSection"
 import { BrewHistoryTable } from "@/components/coffees/BrewHistoryTable"
 import { ChangeReferenceDialog } from "@/components/coffees/ChangeReferenceDialog"
@@ -39,11 +37,6 @@ export function CoffeeDetailPage() {
   const [coffee, setCoffee] = useState<Coffee | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-
-  // Edit form state
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
 
   // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -92,38 +85,6 @@ export function CoffeeDetailPage() {
     fetchCoffee()
     fetchReference()
   }, [fetchCoffee, fetchReference])
-
-  const handleEdit = async (data: CoffeeFormData) => {
-    if (!id) return
-    setServerError(null)
-    setIsSubmitting(true)
-
-    const payload = {
-      roaster: data.roaster,
-      name: data.name,
-      country: data.country || null,
-      region: data.region || null,
-      farm: data.farm || null,
-      varietal: data.varietal || null,
-      elevation: data.elevation || null,
-      process: data.process || null,
-      roast_level: data.roast_level || null,
-      tasting_notes: data.tasting_notes || null,
-      roast_date: data.roast_date || null,
-      notes: data.notes || null,
-    }
-
-    try {
-      await updateCoffee(id, payload)
-      toast.success("Coffee updated")
-      setIsFormOpen(false)
-      await fetchCoffee()
-    } catch {
-      setServerError("Something went wrong. Please try again.")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   const handleArchiveToggle = async () => {
     if (!coffee || !id) return
@@ -329,10 +290,7 @@ export function CoffeeDetailPage() {
             <span className="sm:hidden">Brew</span>
           </button>
           <button
-            onClick={() => {
-              setServerError(null)
-              setIsFormOpen(true)
-            }}
+            onClick={() => navigate(`/coffees/${id}/edit`)}
             className="flex h-10 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
             aria-label="Edit coffee"
           >
@@ -437,19 +395,6 @@ export function CoffeeDetailPage() {
         onStarBrew={(brewId) => handleToggleStar(brewId)}
         onRowClick={(brewId) => setDetailBrewId(brewId)}
         isStarring={isStarring}
-      />
-
-      {/* Edit form */}
-      <CoffeeForm
-        coffee={coffee}
-        isOpen={isFormOpen}
-        isSubmitting={isSubmitting}
-        serverError={serverError}
-        onSubmit={handleEdit}
-        onClose={() => {
-          setIsFormOpen(false)
-          setServerError(null)
-        }}
       />
 
       {/* Delete confirmation */}

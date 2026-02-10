@@ -4,6 +4,11 @@ import { vi, describe, it, expect, beforeEach } from "vitest"
 import { toast } from "sonner"
 import { PreferencesPage } from "./PreferencesPage"
 
+const mockNavigate = vi.fn()
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => mockNavigate,
+}))
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -89,7 +94,7 @@ describe("PreferencesPage", () => {
       expect(screen.getByText("Preferences")).toBeInTheDocument()
     })
 
-    expect(screen.getByText("Brew Defaults")).toBeInTheDocument()
+    expect(screen.getByText("Setup Defaults")).toBeInTheDocument()
     expect(
       screen.getByText("These values are used when no reference brew exists for a coffee.")
     ).toBeInTheDocument()
@@ -128,7 +133,7 @@ describe("PreferencesPage", () => {
     await user.click(screen.getByText("Try Again"))
 
     await waitFor(() => {
-      expect(screen.getByText("Brew Defaults")).toBeInTheDocument()
+      expect(screen.getByText("Setup Defaults")).toBeInTheDocument()
     })
 
     expect(mockedGetDefaults).toHaveBeenCalledTimes(2)
@@ -181,7 +186,7 @@ describe("PreferencesPage", () => {
     render(<PreferencesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Brew Defaults")).toBeInTheDocument()
+      expect(screen.getByText("Preferences")).toBeInTheDocument()
     })
 
     await user.click(screen.getByText("Add Pour"))
@@ -247,11 +252,11 @@ describe("PreferencesPage", () => {
     render(<PreferencesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Brew Defaults")).toBeInTheDocument()
+      expect(screen.getByText("Preferences")).toBeInTheDocument()
     })
 
     await user.type(screen.getByLabelText("Coffee Weight"), "18")
-    await user.click(screen.getByText("Save"))
+    await user.click(screen.getAllByText("Save")[0])
 
     await waitFor(() => {
       expect(mockedUpdateDefaults).toHaveBeenCalledWith(
@@ -273,11 +278,11 @@ describe("PreferencesPage", () => {
     render(<PreferencesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Brew Defaults")).toBeInTheDocument()
+      expect(screen.getByText("Preferences")).toBeInTheDocument()
     })
 
     await user.type(screen.getByLabelText("Coffee Weight"), "18")
-    await user.click(screen.getByText("Save"))
+    await user.click(screen.getAllByText("Save")[0])
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
@@ -294,7 +299,7 @@ describe("PreferencesPage", () => {
     render(<PreferencesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Brew Defaults")).toBeInTheDocument()
+      expect(screen.getByText("Preferences")).toBeInTheDocument()
     })
 
     const select = screen.getByLabelText("Filter Paper")
@@ -322,14 +327,14 @@ describe("PreferencesPage", () => {
     render(<PreferencesPage />)
 
     await waitFor(() => {
-      expect(screen.getByText("Brew Defaults")).toBeInTheDocument()
+      expect(screen.getByText("Preferences")).toBeInTheDocument()
     })
 
     // Add a pour and fill in water amount
     await user.click(screen.getByText("Add Pour"))
     await user.type(screen.getByLabelText("Pour 1 water amount"), "50")
 
-    await user.click(screen.getByText("Save"))
+    await user.click(screen.getAllByText("Save")[0])
 
     await waitFor(() => {
       expect(mockedUpdateDefaults).toHaveBeenCalledWith(
@@ -385,5 +390,21 @@ describe("PreferencesPage", () => {
     await user.click(screen.getByLabelText("Clear filter paper"))
 
     expect(screen.getByLabelText("Filter Paper")).toHaveValue("")
+  })
+
+  it("navigates back when Cancel is clicked", async () => {
+    mockedGetDefaults.mockResolvedValueOnce(emptyDefaults)
+    mockedListFilterPapers.mockResolvedValueOnce(mockFilterPapers)
+    const user = userEvent.setup()
+
+    render(<PreferencesPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Preferences")).toBeInTheDocument()
+    })
+
+    await user.click(screen.getAllByText("Cancel")[0])
+
+    expect(mockNavigate).toHaveBeenCalledWith(-1)
   })
 })

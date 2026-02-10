@@ -1,23 +1,16 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { vi, describe, it, expect, beforeEach } from "vitest"
-import { MemoryRouter } from "react-router-dom"
+import { MemoryRouter, Routes, Route } from "react-router-dom"
 import { CoffeesPage } from "./CoffeesPage"
 
 vi.mock("@/api/coffees", () => ({
   listCoffees: vi.fn(),
-  createCoffee: vi.fn(),
-  updateCoffee: vi.fn(),
-  getSuggestions: vi.fn().mockResolvedValue([]),
 }))
 
-import {
-  listCoffees,
-  createCoffee,
-} from "@/api/coffees"
+import { listCoffees } from "@/api/coffees"
 
 const mockedList = vi.mocked(listCoffees)
-const mockedCreate = vi.mocked(createCoffee)
 
 const mockCoffees = [
   {
@@ -71,10 +64,17 @@ function mockPaginatedResponse(items: typeof mockCoffees) {
   }
 }
 
+function CoffeeFormCapture() {
+  return <div data-testid="coffee-form-new">New Coffee Form</div>
+}
+
 function renderWithRouter() {
   return render(
-    <MemoryRouter>
-      <CoffeesPage />
+    <MemoryRouter initialEntries={["/coffees"]}>
+      <Routes>
+        <Route path="/coffees" element={<CoffeesPage />} />
+        <Route path="/coffees/new" element={<CoffeeFormCapture />} />
+      </Routes>
     </MemoryRouter>
   )
 }
@@ -153,7 +153,7 @@ describe("CoffeesPage", () => {
     expect(mockedList).toHaveBeenCalledTimes(2)
   })
 
-  it("opens add form dialog when clicking Add Coffee", async () => {
+  it("navigates to /coffees/new when clicking Add Coffee", async () => {
     mockedList.mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
     const user = userEvent.setup()
 
@@ -165,108 +165,26 @@ describe("CoffeesPage", () => {
 
     await user.click(screen.getByText("Add Coffee"))
 
-    expect(
-      screen.getByRole("dialog", { name: "Add Coffee" })
-    ).toBeInTheDocument()
-    expect(screen.getByLabelText(/Roaster/)).toHaveValue("")
-    expect(screen.getByLabelText(/^Name/)).toHaveValue("")
+    await waitFor(() => {
+      expect(screen.getByTestId("coffee-form-new")).toBeInTheDocument()
+    })
   })
 
-  it("creates a new coffee via the form", async () => {
-    mockedList
-      .mockResolvedValueOnce(mockPaginatedResponse([]))
-      .mockResolvedValueOnce(
-        mockPaginatedResponse([
-          {
-            ...mockCoffees[0],
-            id: "c-new",
-            roaster: "Square Mile",
-            name: "Red Brick",
-          },
-        ])
-      )
-    mockedCreate.mockResolvedValueOnce({
-      ...mockCoffees[0],
-      id: "c-new",
-      roaster: "Square Mile",
-      name: "Red Brick",
-    })
-
+  it("navigates to /coffees/new when clicking Add Your First Coffee", async () => {
+    mockedList.mockResolvedValueOnce(mockPaginatedResponse([]))
     const user = userEvent.setup()
+
     renderWithRouter()
 
     await waitFor(() => {
-      expect(
-        screen.getByText("No coffees in your library yet")
-      ).toBeInTheDocument()
+      expect(screen.getByText("No coffees in your library yet")).toBeInTheDocument()
     })
 
     await user.click(screen.getByText("Add Your First Coffee"))
 
-    await user.type(screen.getByLabelText(/Roaster/), "Square Mile")
-    await user.type(screen.getByLabelText(/^Name/), "Red Brick")
-
-    await user.click(screen.getByText("Save Coffee"))
-
     await waitFor(() => {
-      expect(mockedCreate).toHaveBeenCalledWith({
-        roaster: "Square Mile",
-        name: "Red Brick",
-        country: null,
-        region: null,
-        farm: null,
-        varietal: null,
-        elevation: null,
-        process: null,
-        roast_level: null,
-        tasting_notes: null,
-        roast_date: null,
-        notes: null,
-      })
+      expect(screen.getByTestId("coffee-form-new")).toBeInTheDocument()
     })
-
-    // Dialog should close
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
-    })
-  })
-
-  it("shows validation errors for empty required fields", async () => {
-    mockedList.mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
-    const user = userEvent.setup()
-
-    renderWithRouter()
-
-    await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText("Add Coffee"))
-    await user.click(screen.getByText("Save Coffee"))
-
-    await waitFor(() => {
-      expect(screen.getByText("Roaster is required")).toBeInTheDocument()
-    })
-    expect(screen.getByText("Name is required")).toBeInTheDocument()
-    expect(mockedCreate).not.toHaveBeenCalled()
-  })
-
-  it("closes form dialog when pressing Escape", async () => {
-    mockedList.mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
-    const user = userEvent.setup()
-
-    renderWithRouter()
-
-    await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText("Add Coffee"))
-    expect(screen.getByRole("dialog")).toBeInTheDocument()
-
-    await user.keyboard("{Escape}")
-
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
   it("passes search parameter to API", async () => {
@@ -360,31 +278,5 @@ describe("CoffeesPage", () => {
     // Cards should be clickable articles
     const cards = screen.getAllByRole("article")
     expect(cards).toHaveLength(2)
-  })
-
-  it("handles server error on form submission", async () => {
-    mockedList.mockResolvedValueOnce(mockPaginatedResponse(mockCoffees))
-    mockedCreate.mockRejectedValueOnce(new Error("Server error"))
-
-    const user = userEvent.setup()
-    renderWithRouter()
-
-    await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByText("Add Coffee"))
-    await user.type(screen.getByLabelText(/Roaster/), "Test")
-    await user.type(screen.getByLabelText(/^Name/), "Test")
-    await user.click(screen.getByText("Save Coffee"))
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Something went wrong. Please try again.")
-      ).toBeInTheDocument()
-    })
-
-    // Dialog should remain open
-    expect(screen.getByRole("dialog")).toBeInTheDocument()
   })
 })

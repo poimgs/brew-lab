@@ -141,7 +141,11 @@ describe("Skeleton loaders", () => {
   it("PreferencesPage shows skeleton while loading", () => {
     mockedGetDefaults.mockReturnValue(new Promise(() => {}))
     mockedListFilterPapers.mockReturnValue(new Promise(() => {}))
-    render(<PreferencesPage />)
+    render(
+      <MemoryRouter>
+        <PreferencesPage />
+      </MemoryRouter>
+    )
     expect(screen.getByTestId("preferences-skeleton")).toBeInTheDocument()
     // Should show form field skeletons (5 setup fields)
     const fieldRows = screen.getByTestId("preferences-skeleton").querySelectorAll(".flex.items-center.gap-3")

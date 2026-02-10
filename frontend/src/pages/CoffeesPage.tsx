@@ -1,27 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Plus, Search } from "lucide-react"
 import { Skeleton } from "@/components/ui/Skeleton"
-import { toast } from "sonner"
 import {
   listCoffees,
-  createCoffee,
   type Coffee,
 } from "@/api/coffees"
 import { CoffeeCard } from "@/components/coffees/CoffeeCard"
-import { CoffeeForm, type CoffeeFormData } from "@/components/coffees/CoffeeForm"
 
 export function CoffeesPage() {
+  const navigate = useNavigate()
   const [coffees, setCoffees] = useState<Coffee[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [archivedOnly, setArchivedOnly] = useState(false)
   const hasFetched = useRef(false)
-
-  // Form dialog state
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [serverError, setServerError] = useState<string | null>(null)
 
   const fetchCoffees = useCallback(async () => {
     try {
@@ -47,47 +41,6 @@ export function CoffeesPage() {
     }
     fetchCoffees()
   }, [fetchCoffees])
-
-  const openAddForm = () => {
-    setServerError(null)
-    setIsFormOpen(true)
-  }
-
-  const closeForm = () => {
-    setIsFormOpen(false)
-    setServerError(null)
-  }
-
-  const handleSubmit = async (data: CoffeeFormData) => {
-    setServerError(null)
-    setIsSubmitting(true)
-
-    const payload = {
-      roaster: data.roaster,
-      name: data.name,
-      country: data.country || null,
-      region: data.region || null,
-      farm: data.farm || null,
-      varietal: data.varietal || null,
-      elevation: data.elevation || null,
-      process: data.process || null,
-      roast_level: data.roast_level || null,
-      tasting_notes: data.tasting_notes || null,
-      roast_date: data.roast_date || null,
-      notes: data.notes || null,
-    }
-
-    try {
-      await createCoffee(payload)
-      toast.success("Coffee added")
-      closeForm()
-      await fetchCoffees()
-    } catch {
-      setServerError("Something went wrong. Please try again.")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   if (isLoading) {
     return (
@@ -143,7 +96,7 @@ export function CoffeesPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-semibold">Coffees</h1>
         <button
-          onClick={openAddForm}
+          onClick={() => navigate("/coffees/new")}
           className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
         >
           <Plus className="h-4 w-4" />
@@ -185,7 +138,7 @@ export function CoffeesPage() {
             </p>
             {!archivedOnly && (
               <button
-                onClick={openAddForm}
+                onClick={() => navigate("/coffees/new")}
                 className="mt-2 text-sm font-medium text-primary transition-colors hover:text-primary-hover"
               >
                 Add Your First Coffee
@@ -200,14 +153,6 @@ export function CoffeesPage() {
           </div>
         )}
       </div>
-
-      <CoffeeForm
-        isOpen={isFormOpen}
-        isSubmitting={isSubmitting}
-        serverError={serverError}
-        onSubmit={handleSubmit}
-        onClose={closeForm}
-      />
     </div>
   )
 }
