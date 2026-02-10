@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Plus,
   Trash2,
+  X,
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { toast } from "sonner"
@@ -792,35 +793,45 @@ export function BrewFormPage() {
 
   if (isPageLoading) {
     return (
-      <div className="h-full overflow-y-auto p-8" data-testid="brew-form-skeleton">
-        <div className="mx-auto max-w-2xl">
-          <Skeleton className="h-5 w-16" />
-          <Skeleton className="mt-4 h-8 w-32" />
-          <div className="mt-6 space-y-6">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-20 w-full" />
-            </div>
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="rounded-md border border-border">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <Skeleton className="h-5 w-20" />
-                  <Skeleton className="h-3 w-3 rounded-full" />
-                </div>
+      <div className="flex h-full flex-col" data-testid="brew-form-skeleton">
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="mx-auto max-w-2xl">
+            <Skeleton className="h-5 w-16" />
+            <div className="mt-4 flex items-center justify-between">
+              <Skeleton className="h-8 w-32" />
+              <div className="hidden items-center gap-3 lg:flex">
+                <Skeleton className="h-10 w-20" />
+                <Skeleton className="h-10 w-24" />
               </div>
-            ))}
-            <div className="flex justify-end gap-3">
-              <Skeleton className="h-10 w-20" />
-              <Skeleton className="h-10 w-24" />
             </div>
+            <div className="mt-6 space-y-6">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-md border border-border">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <Skeleton className="h-5 w-20" />
+                    <Skeleton className="h-3 w-3 rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-border px-8 py-3 lg:hidden">
+          <div className="mx-auto flex max-w-2xl justify-end gap-3">
+            <Skeleton className="h-10 w-20" />
+            <Skeleton className="h-10 w-24" />
           </div>
         </div>
       </div>
@@ -828,55 +839,56 @@ export function BrewFormPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto p-8">
-      <div className="mx-auto max-w-2xl">
-        <button
-          type="button"
-          onClick={handleCancel}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </button>
+    <div className="flex h-full flex-col">
+      <div className="flex-1 overflow-y-auto p-8">
+        <div className="mx-auto max-w-2xl">
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </button>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">
-            {isEditing ? "Edit Brew" : "New Brew"}
-          </h1>
-          <div className="flex items-center gap-3">
-            {watchedCoffeeId && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-2xl font-semibold">
+              {isEditing ? "Edit Brew" : "New Brew"}
+            </h1>
+            <div className="hidden items-center gap-3 lg:flex">
+              {watchedCoffeeId && (
+                <button
+                  type="button"
+                  onClick={() => setShowReference(true)}
+                  className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  Reference
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => setShowReference(true)}
+                onClick={handleCancel}
                 className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
               >
-                Reference
+                Cancel
               </button>
-            )}
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit(onSubmit)}
-              disabled={isSubmitting}
-              className="flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Brew"
-              )}
-            </button>
+              <button
+                type="button"
+                onClick={handleSubmit(onSubmit)}
+                disabled={isSubmitting}
+                className="flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Brew"
+                )}
+              </button>
+            </div>
           </div>
-        </div>
 
         <form
           onSubmit={handleSubmit(onSubmit)}
@@ -1314,6 +1326,43 @@ export function BrewFormPage() {
           </div>
 
         </form>
+        </div>
+      </div>
+
+      <div className="border-t border-border px-8 py-3 lg:hidden">
+        <div className="mx-auto flex max-w-2xl items-center justify-end gap-3">
+          {watchedCoffeeId && (
+            <button
+              type="button"
+              onClick={() => setShowReference(true)}
+              className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              Reference
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit(onSubmit)}
+            disabled={isSubmitting}
+            className="flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Brew"
+            )}
+          </button>
+        </div>
       </div>
 
       {showReference && reference?.brew && (
@@ -1321,6 +1370,46 @@ export function BrewFormPage() {
           brew={reference.brew}
           onClose={() => setShowReference(false)}
         />
+      )}
+
+      {showReference && !reference?.brew && selectedCoffee && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 sm:px-4 sm:py-8"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowReference(false)
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Reference"
+        >
+          <div className="flex min-h-screen w-full flex-col bg-card sm:min-h-0 sm:max-w-lg sm:rounded-lg sm:shadow-lg">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <h2 className="text-lg font-semibold text-card-foreground">
+                Reference
+              </h2>
+              <button
+                onClick={() => setShowReference(false)}
+                className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 px-6 py-4">
+              <p className="font-medium">
+                {selectedCoffee.name} — {selectedCoffee.roaster}
+              </p>
+              {selectedCoffee.tasting_notes && (
+                <p className="mt-1 text-sm italic text-muted-foreground">
+                  {selectedCoffee.tasting_notes}
+                </p>
+              )}
+              <p className="mt-4 text-sm text-muted-foreground">
+                No reference brew found. Log your first brew!
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

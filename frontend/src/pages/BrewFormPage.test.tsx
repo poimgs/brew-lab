@@ -216,8 +216,9 @@ describe("BrewFormPage", () => {
 
     expect(screen.getByText("Coffee")).toBeInTheDocument()
     expect(screen.getByLabelText("Brew Date")).toBeInTheDocument()
-    expect(screen.getByText("Save Brew")).toBeInTheDocument()
-    expect(screen.getByText("Cancel")).toBeInTheDocument()
+    // Desktop header + mobile footer both render buttons
+    expect(screen.getAllByText("Save Brew")).toHaveLength(2)
+    expect(screen.getAllByText("Cancel")).toHaveLength(2)
   })
 
   it("renders 3 collapsible sections, all collapsed by default", async () => {
@@ -420,7 +421,7 @@ describe("BrewFormPage", () => {
       expect(screen.getByText("New Brew")).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText("Save Brew"))
+    await user.click(screen.getAllByText("Save Brew")[0])
 
     await waitFor(() => {
       expect(screen.getByText("Coffee is required")).toBeInTheDocument()
@@ -441,7 +442,7 @@ describe("BrewFormPage", () => {
     await user.click(screen.getByText("Select coffee..."))
     await user.click(screen.getByText("Kiamaina"))
 
-    await user.click(screen.getByText("Save Brew"))
+    await user.click(screen.getAllByText("Save Brew")[0])
 
     await waitFor(() => {
       expect(mockedCreateBrew).toHaveBeenCalledTimes(1)
@@ -509,7 +510,7 @@ describe("BrewFormPage", () => {
     // Select coffee and save
     await user.click(screen.getByText("Select coffee..."))
     await user.click(screen.getByText("Kiamaina"))
-    await user.click(screen.getByText("Save Brew"))
+    await user.click(screen.getAllByText("Save Brew")[0])
 
     await waitFor(() => {
       expect(
@@ -540,7 +541,7 @@ describe("BrewFormPage", () => {
       expect(screen.getByText("New Brew")).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText("Save Brew"))
+    await user.click(screen.getAllByText("Save Brew")[0])
 
     await waitFor(() => {
       expect(mockedCreateBrew).toHaveBeenCalled()
@@ -569,9 +570,9 @@ describe("BrewFormPage", () => {
     await user.click(screen.getByText("Select coffee..."))
     await user.click(screen.getByText("Kiamaina"))
 
-    // Reference button should appear in header
+    // Reference buttons should appear (desktop header + mobile footer)
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Reference" })).toBeInTheDocument()
+      expect(screen.getAllByRole("button", { name: "Reference" })).toHaveLength(2)
     })
   })
 
