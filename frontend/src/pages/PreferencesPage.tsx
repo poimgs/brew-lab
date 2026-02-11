@@ -139,14 +139,14 @@ export function PreferencesPage() {
       <button
         type="button"
         onClick={handleCancel}
-        className="flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+        className="flex flex-1 sm:flex-initial h-12 sm:h-10 items-center justify-center rounded-md border border-border px-4 text-base sm:text-sm font-medium text-foreground transition-colors hover:bg-muted"
       >
         Cancel
       </button>
       <button
         onClick={handleSave}
         disabled={isSaving}
-        className="flex h-10 shrink-0 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
+        className="flex flex-1 sm:flex-initial h-12 sm:h-10 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-base sm:text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
       >
         {isSaving ? (
           <>
@@ -163,7 +163,7 @@ export function PreferencesPage() {
   if (isLoading) {
     return (
       <div className="flex h-full flex-col" data-testid="preferences-skeleton">
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8">
           <div className="mx-auto max-w-2xl">
             <Skeleton className="h-5 w-16" />
             <div className="mt-4 flex items-center justify-between">
@@ -190,7 +190,7 @@ export function PreferencesPage() {
             </div>
           </div>
         </div>
-        <div className="border-t border-border px-8 py-3 lg:hidden">
+        <div className="border-t border-border bg-card px-4 sm:px-8 py-4 lg:hidden">
           <div className="mx-auto flex max-w-2xl justify-end gap-3">
             <Skeleton className="h-10 w-20" />
             <Skeleton className="h-10 w-16" />

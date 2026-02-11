@@ -126,12 +126,12 @@ export function BrewsPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8" data-testid="brews-skeleton">
+      <div className="p-4 sm:p-8" data-testid="brews-skeleton">
         <div className="flex items-center justify-between">
           <Skeleton className="h-9 w-20" />
           <button
             onClick={() => navigate("/brews/new")}
-            className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+            className="flex h-11 sm:h-10 items-center gap-2 rounded-md bg-primary px-4 text-base sm:text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
           >
             <Plus className="h-4 w-4" />
             Log a Brew
@@ -159,7 +159,23 @@ export function BrewsPage() {
             <Skeleton className="h-10 w-20" />
           </div>
         </div>
-        <div className="mt-6">
+        {/* Mobile skeleton cards */}
+        <div className="mt-6 divide-y divide-border rounded-lg border border-border sm:hidden">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-1 px-3 py-2.5">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-3 w-14" />
+                <Skeleton className="h-3 w-10" />
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Desktop skeleton table */}
+        <div className="mt-6 hidden sm:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
@@ -191,12 +207,12 @@ export function BrewsPage() {
 
   if (loadError) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-semibold">Brews</h1>
           <button
             onClick={() => navigate("/brews/new")}
-            className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+            className="flex h-11 sm:h-10 items-center gap-2 rounded-md bg-primary px-4 text-base sm:text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
           >
             <Plus className="h-4 w-4" />
             Log a Brew
@@ -220,12 +236,12 @@ export function BrewsPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold">Brews</h1>
         <button
           onClick={() => navigate("/brews/new")}
-          className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          className="flex h-11 sm:h-10 items-center gap-2 rounded-md bg-primary px-4 text-base sm:text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
         >
           <Plus className="h-4 w-4" />
           Log a Brew
@@ -334,7 +350,52 @@ export function BrewsPage() {
         </div>
       ) : (
         <>
-          <div className="mt-6 overflow-x-auto">
+          {/* Mobile card list */}
+          <div className="mt-6 divide-y divide-border rounded-lg border border-border sm:hidden">
+            {brews.map((brew) => (
+              <div
+                key={brew.id}
+                className="flex flex-col gap-1 px-3 py-2.5 cursor-pointer transition-colors hover:bg-muted/50"
+                onClick={() => setSelectedBrewId(brew.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    setSelectedBrewId(brew.id)
+                  }
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate text-sm font-medium">
+                    {brew.coffee_name}
+                    <span className="text-muted-foreground font-normal">
+                      {" "}({brew.coffee_roaster})
+                    </span>
+                  </span>
+                  {brew.overall_score != null ? (
+                    <span
+                      className={`text-sm font-medium tabular-nums whitespace-nowrap ${scoreColor(brew.overall_score)}`}
+                    >
+                      {brew.overall_score}/10
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">—</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="tabular-nums">{formatBrewDateShort(brew.brew_date)}</span>
+                  <span className="tabular-nums">{formatRatio(brew.ratio)}</span>
+                  {brew.grind_size != null && (
+                    <span className="tabular-nums">Grind {brew.grind_size}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="mt-6 hidden overflow-x-auto sm:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-muted-foreground">
@@ -366,7 +427,7 @@ export function BrewsPage() {
                     <td className="py-2 font-medium tabular-nums">
                       {formatBrewDateShort(brew.brew_date)}
                     </td>
-                    <td className="py-2">
+                    <td className="max-w-[200px] lg:max-w-xs truncate py-2">
                       <span className="font-medium">{brew.coffee_name}</span>
                       <span className="ml-1 text-muted-foreground">
                         ({brew.coffee_roaster})

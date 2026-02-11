@@ -40,12 +40,12 @@ export function HomePage() {
 
   if (isLoading) {
     return (
-      <div className="p-8" data-testid="home-skeleton">
+      <div className="p-4 sm:p-8" data-testid="home-skeleton">
         <div className="flex items-center justify-between">
           <Skeleton className="h-9 w-24" />
           <button
             onClick={() => navigate("/brews/new")}
-            className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+            className="flex h-11 sm:h-10 items-center gap-2 rounded-md bg-primary px-4 text-base sm:text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
           >
             <Plus className="h-4 w-4" />
             Log a Brew
@@ -58,13 +58,29 @@ export function HomePage() {
           </div>
           <div className="mt-3 divide-y divide-border rounded-lg border border-border">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
+              <div key={i} className="flex flex-col gap-1 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3">
+                {/* Mobile skeleton */}
+                <div className="flex items-center justify-between sm:hidden">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-4 w-12" />
+                </div>
+                <div className="flex items-center justify-between sm:hidden">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-3 w-14" />
+                    <Skeleton className="h-3 w-10" />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                  </div>
+                </div>
+                {/* Desktop skeleton */}
+                <div className="hidden sm:flex items-center gap-3">
                   <Skeleton className="h-4 w-16" />
                   <Skeleton className="h-4 w-40" />
                   <Skeleton className="h-4 w-12" />
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="hidden sm:flex items-center gap-1">
                   <Skeleton className="h-7 w-7 rounded-md" />
                   <Skeleton className="h-7 w-7 rounded-md" />
                 </div>
@@ -78,12 +94,12 @@ export function HomePage() {
 
   if (loadError) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-semibold">Home</h1>
           <button
             onClick={() => navigate("/brews/new")}
-            className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+            className="flex h-11 sm:h-10 items-center gap-2 rounded-md bg-primary px-4 text-base sm:text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
           >
             <Plus className="h-4 w-4" />
             Log a Brew
@@ -108,12 +124,12 @@ export function HomePage() {
   // Empty state — no brews at all
   if (brews.length === 0) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-semibold">Home</h1>
           <button
             onClick={() => navigate("/brews/new")}
-            className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+            className="flex h-11 sm:h-10 items-center gap-2 rounded-md bg-primary px-4 text-base sm:text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
           >
             <Plus className="h-4 w-4" />
             Log a Brew
@@ -135,13 +151,13 @@ export function HomePage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold">Home</h1>
         <button
           onClick={() => navigate("/brews/new")}
-          className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          className="flex h-11 sm:h-10 items-center gap-2 rounded-md bg-primary px-4 text-base sm:text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
         >
           <Plus className="h-4 w-4" />
           Log a Brew
@@ -164,7 +180,7 @@ export function HomePage() {
           {brews.map((brew) => (
             <div
               key={brew.id}
-              className="flex items-center justify-between px-4 py-3 cursor-pointer transition-colors hover:bg-muted/50"
+              className="flex flex-col gap-1 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3 cursor-pointer transition-colors hover:bg-muted/50"
               onClick={() => setSelectedBrewId(brew.id)}
               role="button"
               tabIndex={0}
@@ -175,12 +191,63 @@ export function HomePage() {
                 }
               }}
             >
-              {/* Row content */}
-              <div className="flex items-center gap-3 min-w-0">
+              {/* Mobile line 1: Coffee name + Score */}
+              <div className="flex items-center justify-between gap-2 sm:hidden">
+                <span className="min-w-0 truncate text-sm font-medium">
+                  {brew.coffee_name}
+                  <span className="text-muted-foreground font-normal">
+                    {" "}({brew.coffee_roaster})
+                  </span>
+                </span>
+                {brew.overall_score != null && (
+                  <span
+                    className={`text-sm font-medium tabular-nums whitespace-nowrap ${scoreColor(brew.overall_score)}`}
+                  >
+                    {brew.overall_score}/10
+                  </span>
+                )}
+              </div>
+
+              {/* Mobile line 2: Date + Ratio + Actions */}
+              <div className="flex items-center justify-between gap-2 sm:hidden">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="tabular-nums">{formatBrewDateShort(brew.brew_date)}</span>
+                  {brew.ratio != null && (
+                    <span className="tabular-nums">{formatRatio(brew.ratio)}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/brews/${brew.id}/edit`)
+                    }}
+                    className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label={`Edit brew from ${formatBrewDateShort(brew.brew_date)}`}
+                    title="Edit"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      navigate(`/brews/new?from=${brew.id}`)
+                    }}
+                    className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label={`Brew again from ${formatBrewDateShort(brew.brew_date)}`}
+                    title="Brew Again"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Desktop: single row */}
+              <div className="hidden sm:flex sm:items-center sm:gap-3 sm:min-w-0">
                 <span className="text-sm font-medium tabular-nums text-muted-foreground whitespace-nowrap">
                   {formatBrewDateShort(brew.brew_date)}
                 </span>
-                <span className="text-sm truncate">
+                <span className="min-w-0 text-sm truncate">
                   <span className="font-medium">{brew.coffee_name}</span>
                   <span className="text-muted-foreground">
                     {" "}({brew.coffee_roaster})
@@ -200,8 +267,8 @@ export function HomePage() {
                 )}
               </div>
 
-              {/* Row actions */}
-              <div className="flex items-center gap-1 ml-2 shrink-0">
+              {/* Desktop: row actions */}
+              <div className="hidden sm:flex items-center gap-1 ml-2 shrink-0">
                 <button
                   onClick={(e) => {
                     e.stopPropagation()

@@ -125,8 +125,9 @@ describe("HomePage", () => {
     })
 
     expect(screen.getByText("Recent Brews")).toBeInTheDocument()
-    expect(screen.getByText("Kiamaina")).toBeInTheDocument()
-    expect(screen.getByText("El Diamante")).toBeInTheDocument()
+    // Elements appear twice (mobile + desktop layouts)
+    expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("El Diamante").length).toBeGreaterThanOrEqual(1)
   })
 
   it("shows empty state when no brews exist", async () => {
@@ -160,7 +161,7 @@ describe("HomePage", () => {
     await user.click(screen.getByText("Try Again"))
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     expect(mockedGetRecentBrews).toHaveBeenCalledTimes(2)
@@ -185,10 +186,10 @@ describe("HomePage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("8/10")).toBeInTheDocument()
+      expect(screen.getAllByText("8/10").length).toBeGreaterThanOrEqual(1)
     })
 
-    const scoreEl = screen.getByText("8/10")
+    const scoreEl = screen.getAllByText("8/10")[0]
     expect(scoreEl.className).toContain("teal")
   })
 
@@ -197,11 +198,11 @@ describe("HomePage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
-    expect(screen.getByText("1:15")).toBeInTheDocument()
-    expect(screen.getByText("1:16")).toBeInTheDocument()
+    expect(screen.getAllByText("1:15").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("1:16").length).toBeGreaterThanOrEqual(1)
   })
 
   it("shows View all brews link", async () => {
@@ -209,7 +210,7 @@ describe("HomePage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     const link = screen.getByText(/View all brews/)
@@ -224,7 +225,7 @@ describe("HomePage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     const editButtons = screen.getAllByTitle("Edit")
@@ -240,7 +241,7 @@ describe("HomePage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     const brewAgainButtons = screen.getAllByTitle("Brew Again")
@@ -257,12 +258,11 @@ describe("HomePage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
-    // Click the first brew row
+    // Click the first brew row (the outer container with role="button" and no title)
     const rows = screen.getAllByRole("button")
-    // Find the row button (not the Edit/Brew Again action buttons)
     const brewRow = rows.find(
       (el) => el.textContent?.includes("Kiamaina") && el.getAttribute("title") === null
     )
@@ -283,7 +283,7 @@ describe("HomePage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     const editButtons = screen.getAllByTitle("Edit")
@@ -338,7 +338,7 @@ describe("HomePage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     expect(mockedGetRecentBrews).toHaveBeenCalledWith(5)
@@ -352,7 +352,7 @@ describe("HomePage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     const callCountBefore = mockedGetRecentBrews.mock.calls.length

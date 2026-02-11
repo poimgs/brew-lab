@@ -177,7 +177,7 @@ export function CoffeeDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8" data-testid="coffee-detail-skeleton">
+      <div className="p-4 sm:p-8" data-testid="coffee-detail-skeleton">
         <Skeleton className="h-5 w-32" />
         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
@@ -220,7 +220,7 @@ export function CoffeeDetailPage() {
 
   if (loadError || !coffee) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <Link
           to="/coffees"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -253,7 +253,7 @@ export function CoffeeDetailPage() {
     .join(" \u2022 ")
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <Link
         to="/coffees"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -282,7 +282,7 @@ export function CoffeeDetailPage() {
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <button
             onClick={() => navigate(`/brews/new?coffee_id=${coffee.id}`)}
-            className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+            className="flex h-11 sm:h-10 items-center gap-2 rounded-md bg-primary px-4 text-base sm:text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
             aria-label="New brew"
           >
             <Plus className="h-4 w-4" />

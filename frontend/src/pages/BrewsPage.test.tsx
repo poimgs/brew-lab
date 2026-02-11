@@ -181,8 +181,9 @@ describe("BrewsPage", () => {
       expect(screen.getByText("Brews")).toBeInTheDocument()
     })
 
-    expect(screen.getByText("Kiamaina")).toBeInTheDocument()
-    expect(screen.getByText("El Diamante")).toBeInTheDocument()
+    // Elements appear twice (mobile card + desktop table)
+    expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("El Diamante").length).toBeGreaterThanOrEqual(1)
   })
 
   it("shows empty state when no brews exist", async () => {
@@ -212,7 +213,7 @@ describe("BrewsPage", () => {
     await user.click(screen.getByText("Try Again"))
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     expect(mockedListBrews).toHaveBeenCalledTimes(2)
@@ -224,11 +225,11 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("8/10")).toBeInTheDocument()
+      expect(screen.getAllByText("8/10").length).toBeGreaterThanOrEqual(1)
     })
 
     // Score 8 should use teal color class (7-8 range)
-    const scoreEl = screen.getByText("8/10")
+    const scoreEl = screen.getAllByText("8/10")[0]
     expect(scoreEl.className).toContain("teal")
   })
 
@@ -238,10 +239,10 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
-    // b-2 has no score — should show "—"
+    // b-2 has no score — should show "—" in the desktop table
     const rows = screen.getAllByRole("row")
     const secondDataRow = rows[2] // [0] = header, [1] = first brew, [2] = second brew
     expect(within(secondDataRow).getByText("—")).toBeInTheDocument()
@@ -253,11 +254,11 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
-    expect(screen.getByText("1:15")).toBeInTheDocument()
-    expect(screen.getByText("1:16")).toBeInTheDocument()
+    expect(screen.getAllByText("1:15").length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText("1:16").length).toBeGreaterThanOrEqual(1)
   })
 
   it("populates coffee dropdown filter from API", async () => {
@@ -266,7 +267,7 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     const select = screen.getByLabelText("Coffee")
@@ -285,7 +286,7 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     await user.selectOptions(screen.getByLabelText("Coffee"), "c-1")
@@ -306,7 +307,7 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     const fromInput = screen.getByLabelText("From")
@@ -328,7 +329,7 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     const minScore = screen.getByLabelText("Min Score")
@@ -352,7 +353,7 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     await user.selectOptions(screen.getByLabelText("Coffee"), "c-1")
@@ -371,7 +372,7 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     // Set a filter to make Clear appear
@@ -399,7 +400,7 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     // Default sort is -brew_date (desc)
@@ -426,7 +427,7 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     // Click Score header to sort by score desc
@@ -449,10 +450,10 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
-    // Click the first brew row
+    // Click the first brew row in the desktop table
     const rows = screen.getAllByRole("row")
     await user.click(rows[1]) // [0] is header
 
@@ -508,7 +509,7 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     expect(screen.queryByText("Previous")).not.toBeInTheDocument()
@@ -523,7 +524,7 @@ describe("BrewsPage", () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText("Kiamaina")).toBeInTheDocument()
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
     const callCountBefore = mockedListBrews.mock.calls.length

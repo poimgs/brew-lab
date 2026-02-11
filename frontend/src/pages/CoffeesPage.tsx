@@ -44,7 +44,7 @@ export function CoffeesPage() {
 
   if (isLoading) {
     return (
-      <div className="p-8" data-testid="coffees-skeleton">
+      <div className="p-4 sm:p-8" data-testid="coffees-skeleton">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Skeleton className="h-9 w-28" />
           <Skeleton className="h-10 w-32" />
@@ -72,7 +72,7 @@ export function CoffeesPage() {
 
   if (loadError) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <h1 className="text-3xl font-semibold">Coffees</h1>
         <div className="mt-6 text-center">
           <p className="text-muted-foreground">{loadError}</p>
@@ -91,13 +91,13 @@ export function CoffeesPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       {/* Toolbar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-semibold">Coffees</h1>
         <button
           onClick={() => navigate("/coffees/new")}
-          className="flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+          className="flex h-11 sm:h-10 items-center gap-2 rounded-md bg-primary px-4 text-base sm:text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
         >
           <Plus className="h-4 w-4" />
           Add Coffee
