@@ -57,7 +57,6 @@ Conventions and patterns used across all features. Read these first.
 | [database-conventions.md](foundations/database-conventions.md) | Schema patterns, types, migrations                  |
 | [deployment.md](foundations/deployment.md)                     | VPS + Docker deployment setup                       |
 | [design-system.md](foundations/design-system.md)               | UI patterns, colors, typography, components         |
-| [e2e-testing.md](foundations/e2e-testing.md)                   | Playwright E2E tests, fixtures, patterns            |
 | [pwa.md](foundations/pwa.md)                                   | Progressive Web App setup, service worker, manifest |
 
 ---
@@ -72,6 +71,7 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | ----------------------------------------------- | ----------------------------- | ------------------------------------------------------ |
 | [authentication.md](features/authentication.md) | —                             | User entity, login/signup, JWT, session handling       |
 | [home.md](features/home.md)                     | authentication, brew-tracking | Home page with recent brews + "Log a Brew" quick-start |
+| [brews.md](features/brews.md)                   | authentication, coffees, brew-tracking | Global brew history with filters + pagination  |
 | [coffees.md](features/coffees.md)               | authentication                | Coffee beans + reference brew                          |
 | [setup.md](features/setup.md)                   | authentication                | Equipment management (filter papers)                   |
 | [brew-tracking.md](features/brew-tracking.md)   | authentication, coffees       | Brew entity + logging form + reference sidebar         |
@@ -88,6 +88,8 @@ authentication (core)
     |               |
     |               +-- home (recent brews + quick-start)
     |               |
+    |               +-- brews (global brew history + filters)
+    |               |
     |               +-- preferences (user defaults + Preferences page)
     |
     +-- setup (equipment — filter papers)
@@ -98,6 +100,7 @@ authentication (core)
 | Item      | Route        | Feature                                        |
 | --------- | ------------ | ---------------------------------------------- |
 | Home      | `/`          | home (recent brews, "Log a Brew" button)       |
+| Brews     | `/brews`     | brews (global brew history, filters, sorting)  |
 | Coffees   | `/coffees`   | coffees (coffee grid, add/edit/archive/detail) |
 | Equipment | `/equipment` | setup (filter papers)                          |
 
