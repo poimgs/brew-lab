@@ -29,6 +29,7 @@ function makeBrew(overrides: Partial<Brew> = {}): Brew {
     coffee_name: "Kiamaina",
     coffee_roaster: "Cata Coffee",
     coffee_tasting_notes: "Blackberry, lime",
+    coffee_reference_brew_id: null,
     brew_date: "2026-01-19",
     days_off_roast: 61,
     coffee_weight: 15,

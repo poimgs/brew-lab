@@ -28,6 +28,7 @@ function makeBrew(overrides: Record<string, unknown> = {}) {
     coffee_name: "Kiamaina",
     coffee_roaster: "Cata",
     coffee_tasting_notes: null,
+    coffee_reference_brew_id: null,
     brew_date: "2026-01-19",
     days_off_roast: 61,
     coffee_weight: 15,
