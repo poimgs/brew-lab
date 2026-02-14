@@ -24,6 +24,7 @@ vi.mock("@/api/coffees", () => ({
 }))
 
 import { listBrews, getBrew } from "@/api/brews"
+import type { Brew } from "@/api/brews"
 import { listCoffees } from "@/api/coffees"
 
 const mockedListBrews = vi.mocked(listBrews)
@@ -148,7 +149,7 @@ const mockCoffees = [
 ]
 
 function mockPaginatedBrews(
-  items: typeof mockBrews,
+  items: Brew[],
   page = 1,
   totalPages = 1
 ) {

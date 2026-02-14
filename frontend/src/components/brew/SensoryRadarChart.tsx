@@ -9,8 +9,6 @@ const ATTRIBUTES = [
   { key: "aroma_intensity", label: "Aroma" },
 ] as const
 
-type AttrKey = (typeof ATTRIBUTES)[number]["key"]
-
 export interface SensoryRadarChartProps {
   aroma_intensity?: number | null
   body_intensity?: number | null

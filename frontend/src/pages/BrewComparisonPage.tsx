@@ -181,7 +181,7 @@ const SECTION_LABELS: Record<string, string> = {
 // --- Helpers ---
 
 function getNumericValue(brew: Brew, field: string): number | null {
-  const val = (brew as Record<string, unknown>)[field]
+  const val = (brew as unknown as Record<string, unknown>)[field]
   return typeof val === "number" ? val : null
 }
 
