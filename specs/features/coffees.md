@@ -442,6 +442,7 @@ Delete uses a confirmation dialog: "Are you sure you want to delete {name} by {r
 - Date of the brew
 - Key parameters: grind, ratio, temperature, pours, total time
 - Key outcomes: TDS, extraction yield, overall score
+- Sensory radar chart (see [design-system.md](../foundations/design-system.md#10-sensory-radar-chart)) — shows the reference brew's sensory profile as a hexagonal chart, placed below key outcomes (TDS, extraction yield, overall score). Only shown when at least one sensory attribute has a value.
 - Improvement notes from the reference brew
 - Star icon on the section header — filled if this is the starred reference, outline if showing latest
 - If no brews exist, shows empty state: "No brews yet. Log your first brew to see reference data here."
@@ -456,11 +457,19 @@ Delete uses a confirmation dialog: "Are you sure you want to delete {name} by {r
 
 **Display:**
 - Table of brews for this coffee (most recent first by default)
-- Columns: Date, Score, Ratio, Temp, Filter Paper
+- Columns: Checkbox, Date, Score, Ratio, Temp, Filter Paper
 - Sort toggle: Date or Score (click column header to toggle, newest/highest first)
 - Star icon on rows to mark/unmark as starred reference (one click)
 - Infinite scroll — loads more brews as the user scrolls down
 - Click row -> opens brew detail modal (see [brew-tracking.md](brew-tracking.md))
+
+**Comparison Selection:**
+- Checkbox column on the left of each brew row
+- Checkboxes don't interfere with row click (clicking the checkbox toggles selection; clicking elsewhere on the row opens the brew detail modal)
+- When 2-4 brews are checked, a "Compare" floating bar appears above the table with text "{N} brews selected" and a "Compare" button
+- Clicking "Compare" navigates to `/coffees/:id/compare?brews=id1,id2,...` (see [brew-comparison.md](brew-comparison.md))
+- Max 4 selection enforced — checkbox disabled on the 5th brew with tooltip "Maximum 4 brews can be compared"
+- Selection state resets on page navigation
 
 **Deleting a reference brew:**
 - Warning before deletion: "This is your starred reference brew for {Coffee}. Deleting it will clear the reference. Continue?"

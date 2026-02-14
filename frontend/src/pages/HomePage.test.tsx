@@ -34,6 +34,7 @@ const mockBrews = [
     coffee_name: "Kiamaina",
     coffee_roaster: "Cata Coffee",
     coffee_tasting_notes: "Blackberry, lime, brown sugar",
+    coffee_reference_brew_id: "b-1",
     brew_date: "2026-01-19",
     days_off_roast: 61,
     coffee_weight: 15,
@@ -69,6 +70,7 @@ const mockBrews = [
     coffee_name: "El Diamante",
     coffee_roaster: "April",
     coffee_tasting_notes: null,
+    coffee_reference_brew_id: null,
     brew_date: "2026-01-18",
     days_off_roast: null,
     coffee_weight: 16,
@@ -379,5 +381,67 @@ describe("HomePage", () => {
     expect(mockedGetRecentBrews.mock.calls.length).toBeGreaterThanOrEqual(
       callCountBefore
     )
+  })
+
+  it("shows star icon for reference brew and not for non-reference brew", async () => {
+    mockedGetRecentBrews.mockResolvedValueOnce({ items: mockBrews })
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
+    })
+
+    // b-1 is the reference brew (id === coffee_reference_brew_id)
+    const starIcons = screen.getAllByLabelText("Reference brew")
+    // Should appear in both mobile and desktop layouts for b-1
+    expect(starIcons.length).toBe(2)
+
+    // Each star should be an SVG (lucide icon renders as <svg>)
+    starIcons.forEach((icon) => {
+      expect(icon.tagName.toLowerCase()).toBe("svg")
+    })
+  })
+
+  it("does not show star icon when no brew is a reference", async () => {
+    const nonRefBrews = mockBrews.map((b) => ({
+      ...b,
+      coffee_reference_brew_id: null,
+    }))
+    mockedGetRecentBrews.mockResolvedValueOnce({ items: nonRefBrews })
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
+    })
+
+    expect(screen.queryByLabelText("Reference brew")).not.toBeInTheDocument()
+  })
+
+  it("passes coffee_reference_brew_id to BrewDetailModal", async () => {
+    mockedGetRecentBrews.mockResolvedValueOnce({ items: mockBrews })
+    // The modal will fetch brew details — mock it with the reference brew
+    mockedGetBrew.mockResolvedValueOnce(mockBrews[0])
+
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
+    })
+
+    // Click the reference brew row to open modal
+    const rows = screen.getAllByRole("button")
+    const brewRow = rows.find(
+      (el) => el.textContent?.includes("Kiamaina") && el.getAttribute("title") === null
+    )
+    await user.click(brewRow!)
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument()
+    })
+
+    // The modal should show "Unstar Reference" since b-1 is the reference
+    // (referenceBrewId === brewId means it's starred)
+    expect(screen.getByText("Unstar Reference")).toBeInTheDocument()
   })
 })

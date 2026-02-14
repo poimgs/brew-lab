@@ -37,6 +37,7 @@ Shows the last 5 brews across all coffees, fetched from `GET /api/v1/brews/recen
 
 **Row content:**
 - Date (formatted short, e.g., "Jan 19")
+- Star icon (filled amber, `h-3 w-3`) shown inline before coffee name when the brew is the starred reference for its coffee (`brew.id === brew.coffee_reference_brew_id`)
 - Coffee name (roaster)
 - Overall score — color-coded per design-system.md score gradient (emerald 9-10, teal 7-8, zinc 5-6, amber 3-4, red 1-2)
 - One key recipe param: ratio (displayed as "1:X")
@@ -47,7 +48,7 @@ Shows the last 5 brews across all coffees, fetched from `GET /api/v1/brews/recen
 - Action buttons stop click propagation (row click still opens detail modal)
 
 **Row behavior:**
-- Click row → opens brew detail modal (see [brew-tracking.md](brew-tracking.md))
+- Click row → opens brew detail modal (see [brew-tracking.md](brew-tracking.md)). The modal receives `referenceBrewId` from `brew.coffee_reference_brew_id`, enabling the "Star as Reference" action to show correct state.
 
 **Navigation:**
 - "View all brews" link above the widget navigates to `/brews` (global brew history page)

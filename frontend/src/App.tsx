@@ -13,6 +13,7 @@ import { BrewFormPage } from "@/pages/BrewFormPage"
 import { BrewsPage } from "@/pages/BrewsPage"
 import { PreferencesPage } from "@/pages/PreferencesPage"
 import { CoffeeFormPage } from "@/pages/CoffeeFormPage"
+import { BrewComparisonPage } from "@/pages/BrewComparisonPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 
 function AppToaster() {
@@ -42,6 +43,7 @@ export default function App() {
                 <Route path="/coffees" element={<CoffeesPage />} />
                 <Route path="/coffees/new" element={<CoffeeFormPage />} />
                 <Route path="/coffees/:id/edit" element={<CoffeeFormPage />} />
+                <Route path="/coffees/:id/compare" element={<BrewComparisonPage />} />
                 <Route path="/coffees/:id" element={<CoffeeDetailPage />} />
                 <Route path="/equipment" element={<EquipmentPage />} />
                 <Route path="/brews" element={<BrewsPage />} />

@@ -182,6 +182,7 @@ Returns the most recent brews across all coffees for the authenticated user. Use
       "coffee_id": "uuid",
       "coffee_name": "Kiamaina",
       "coffee_roaster": "Cata Coffee",
+      "coffee_reference_brew_id": "uuid-or-null",
       "brew_date": "2026-01-19",
       "days_off_roast": 61,
       "ratio": 15.0,
@@ -199,7 +200,7 @@ Returns the most recent brews across all coffees for the authenticated user. Use
 
 **Sorting:** `brew_date DESC` (most recent first, not configurable).
 
-**Note:** All brew list/detail responses include `coffee_name` and `coffee_roaster` fields, as well as a nested `filter_paper` object (`{ id, name, brand }`) instead of just `filter_paper_id`. Soft-deleted filter papers are still included in responses for historical accuracy.
+**Note:** All brew list/detail responses include `coffee_name`, `coffee_roaster`, and `coffee_reference_brew_id` fields, as well as a nested `filter_paper` object (`{ id, name, brand }`) instead of just `filter_paper_id`. Soft-deleted filter papers are still included in responses for historical accuracy.
 
 ### Create Brew
 ```
@@ -260,6 +261,7 @@ GET /api/v1/brews/:id
   "coffee_id": "uuid",
   "coffee_name": "Kiamaina",
   "coffee_roaster": "Cata Coffee",
+  "coffee_reference_brew_id": "uuid-or-null",
   "brew_date": "2026-01-15",
   "days_off_roast": 57,
   "coffee_weight": 15.0,
@@ -347,8 +349,16 @@ Brew details are displayed in a **modal dialog** (not a dedicated page). The mod
 | Coffee: 180ml  TDS: 1.38  Extraction: 20.1%         |
 | Overall: 8/10                                        |
 |                                                      |
-| Aroma: 7  Body: 7  Sweetness: 8                     |
-| Brightness: 7  Complexity: 6  Aftertaste: 7          |
+|       Sweetness                                      |
+|          8                                           |
+|    Aroma / \ Brightness                              |
+|      7  /   \  7                                     |
+|        /     \                                       |
+|  Body 7 ----- 6 Complexity                           |
+|        \     /                                       |
+|         \   /                                        |
+|     Aftertaste 7                                     |
+|   (Sensory Radar Chart — see design-system.md)       |
 |                                                      |
 | Notes: "Bright acidity, lemon notes..."              |
 | Improvement: "Try finer grind to boost sweetness"    |
@@ -357,11 +367,19 @@ Brew details are displayed in a **modal dialog** (not a dedicated page). The mod
 +-----------------------------------------------------+
 ```
 
+**Sensory Radar Chart:**
+- A hexagonal radar chart (see [design-system.md](../foundations/design-system.md#10-sensory-radar-chart)) visualizes the 6 sensory attribute intensities
+- Displayed within the Tasting section, below TDS/extraction/overall score, above notes
+- Size: ~180px on desktop, ~140px on mobile
+- Only shown when at least one sensory attribute has a value; otherwise omitted
+
 **Actions:**
 - **[Edit]**: Navigate to `/brews/:id/edit` (closes modal)
 - **[Brew Again]**: Navigate to `/brews/new?from=:id`. The form fetches `GET /api/v1/brews/:id` and pre-fills Setup + Brewing fields. Outcomes, notes, and sensory scores are NOT pre-filled (must be fresh). No server-side copy endpoint — no record created until user saves.
 - **[Star as Reference]**: Stars/unstars this brew as reference for its coffee
 - **[Delete]**: Hard-deletes the brew with confirmation dialog
+
+**Note:** The modal receives `referenceBrewId` from `coffee_reference_brew_id` in the brew response, enabling the "Star as Reference" action to show correct state on all pages (Home, Brews, Coffee detail).
 
 ---
 
@@ -398,6 +416,8 @@ User defaults (entity, schema, API, and Preferences page UI) are defined in [pre
 | Brew Date     [2026-01-19  📅]        |
 | Days Off Roast: 61                    |
 |                                       |
+| [★] Set as reference brew             |
+|                                       |
 | Overall Notes                         |
 | [                                 ]   |
 | [                                 ]   |
@@ -420,6 +440,7 @@ User defaults (entity, schema, API, and Preferences page UI) are defined in [pre
 - Coffee selector (required)
 - Brew date (calendar date picker, defaults to today)
 - Days off roast (computed live from coffee's roast_date minus brew_date, display only)
+- "Set as reference brew" checkbox (shown when coffee selected, pre-checked when editing the current reference)
 - Overall notes
 - Overall score
 - Improvement notes
@@ -587,6 +608,11 @@ Auto-fill applies to Setup and Brewing section fields only (not tasting/sensory 
 - Entry from Coffee detail (`/coffees/:id`) -> save -> return to Coffee detail
 - Direct navigation -> save -> return to Home
 
+**Post-save reference setting:**
+- If "Set as reference" is checked, calls `POST /api/v1/coffees/:id/reference-brew` after successful save
+- If unchecked on edit (was previously reference), clears the reference via the same endpoint with `null`
+- Reference API failure shows warning toast but doesn't block navigation
+
 **Unsaved changes:**
 - Browser `beforeunload` warning when form has changes and user navigates away
 - Cancel button navigates back without saving (with beforeunload warning if dirty)
@@ -677,6 +703,7 @@ Sidebar becomes a **Sheet overlay**:
 2. **Outcomes**
    - Overall score
    - TDS, extraction yield
+   - Sensory radar chart (see [design-system.md](../foundations/design-system.md#10-sensory-radar-chart)) — shows the reference brew's sensory profile as a hexagonal chart. Sized to fit sidebar width. Only shown when at least one sensory attribute has a value.
 
 3. **Improvement Notes**
    - Shows the reference brew's `improvement_notes`

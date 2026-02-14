@@ -51,7 +51,7 @@ Displayed as a horizontal row above the table (stacked vertically on mobile).
 | Column | Field | Sortable | Responsive |
 |--------|-------|----------|------------|
 | Date | `brew_date` (formatted "Jan 19") | Yes | Always visible |
-| Coffee | `coffee_name (coffee_roaster)` | No | Always visible (truncated with ellipsis) |
+| Coffee | `coffee_name (coffee_roaster)` | No | Always visible (truncated with ellipsis). Inline star icon (filled amber, `h-3 w-3`) shown before coffee name when the brew is the starred reference (`brew.id === brew.coffee_reference_brew_id`). |
 | Score | `overall_score/10` (color-coded) | Yes | Always visible |
 | Ratio | `ratio` (formatted "1:X") | No | Always visible |
 | Grind | `grind_size` | No | Hidden below `sm` breakpoint |
@@ -76,9 +76,20 @@ Null values display as "—".
 
 ### Row Behavior
 
-- Click row → opens brew detail modal (see [brew-tracking.md](brew-tracking.md))
+- Click row → opens brew detail modal (see [brew-tracking.md](brew-tracking.md)). The modal receives `referenceBrewId` from `brew.coffee_reference_brew_id`, enabling the "Star as Reference" action to show correct state.
 - Modal includes actions: Edit, Star, Brew Again, Delete
 - After modal mutation (delete, star), the page refreshes
+
+### Comparison Selection
+
+- Checkbox column on the left of each brew row
+- Checkboxes don't interfere with row click (clicking the checkbox toggles selection; clicking elsewhere on the row opens the brew detail modal)
+- When 2-4 brews are checked, a "Compare" floating bar appears above the table with text "{N} brews selected" and a "Compare" button
+- **Same-coffee validation:** If selected brews span multiple coffees, the Compare button is disabled with message "Select brews from the same coffee to compare"
+- When all selected brews share the same `coffee_id`, clicking "Compare" navigates to `/coffees/:id/compare?brews=id1,id2,...` using the common coffee ID (see [brew-comparison.md](brew-comparison.md))
+- Max 4 selection enforced — checkbox disabled on the 5th brew with tooltip "Maximum 4 brews can be compared"
+- Selection state resets on page navigation or when filters change
+- On mobile card layout: checkbox appears as a small circle in the top-left corner of each card
 
 ### Pagination
 
@@ -93,7 +104,7 @@ Below `sm` breakpoint, the table switches to a **card list**:
 
 ```
 +------------------------------------------+
-| Kiamaina (Cata)                    7/10  |
+| ★ Kiamaina (Cata)                  7/10  |
 | Jan 19 · 1:15 · 8.2                     |
 +------------------------------------------+
 | El Calagual (Cata)                 8/10  |
@@ -101,6 +112,7 @@ Below `sm` breakpoint, the table switches to a **card list**:
 +------------------------------------------+
 ```
 
+- Star icon (filled amber) shown before coffee name on first line when brew is the starred reference
 - Coffee name + roaster on first line (truncated), score right-aligned
 - Date + ratio + grind on second line (smaller text)
 - Larger touch targets (`h-11` buttons)
@@ -152,6 +164,7 @@ Below `sm` breakpoint, the table switches to a **card list**:
       "coffee_id": "uuid",
       "coffee_name": "Kiamaina",
       "coffee_roaster": "Cata",
+      "coffee_reference_brew_id": "uuid-or-null",
       "brew_date": "2025-01-19",
       "overall_score": 7,
       "ratio": 15.0,

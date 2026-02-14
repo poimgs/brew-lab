@@ -151,13 +151,14 @@ func (m *mockRepo) Create(_ context.Context, userID string, req CreateRequest) (
 	}
 
 	b := &Brew{
-		ID:                  id,
-		UserID:              userID,
-		CoffeeID:            req.CoffeeID,
-		CoffeeName:          c.Name,
-		CoffeeRoaster:       c.Roaster,
-		CoffeeTastingNotes:  c.TastingNotes,
-		BrewDate:            brewDate,
+		ID:                    id,
+		UserID:                userID,
+		CoffeeID:              req.CoffeeID,
+		CoffeeName:            c.Name,
+		CoffeeRoaster:         c.Roaster,
+		CoffeeTastingNotes:    c.TastingNotes,
+		CoffeeReferenceBrewID: c.ReferenceBrewID,
+		BrewDate:              brewDate,
 		DaysOffRoast:        daysOffRoast,
 		CoffeeWeight:        req.CoffeeWeight,
 		Ratio:               req.Ratio,
@@ -1557,5 +1558,131 @@ func TestGetByID_NoFilterPaper(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &resp)
 	if resp.FilterPaper != nil {
 		t.Errorf("expected nil filter_paper, got %+v", resp.FilterPaper)
+	}
+}
+
+// --- CoffeeReferenceBrewID Tests ---
+
+func TestGetByID_IncludesCoffeeReferenceBrewID(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Kiamaina", "Cata", nil)
+	repo.coffees["c-1"].ReferenceBrewID = strPtr("b-1")
+	b := seedBrew(repo, "b-1", "user-123", "c-1", "2026-01-15", intPtr(8))
+	b.CoffeeReferenceBrewID = strPtr("b-1")
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/brews/b-1", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	refID, ok := resp["coffee_reference_brew_id"]
+	if !ok {
+		t.Fatal("expected coffee_reference_brew_id field in response")
+	}
+	if refID != "b-1" {
+		t.Errorf("expected coffee_reference_brew_id 'b-1', got %v", refID)
+	}
+}
+
+func TestGetByID_CoffeeReferenceBrewIDNull(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Kiamaina", "Cata", nil)
+	seedBrew(repo, "b-1", "user-123", "c-1", "2026-01-15", nil)
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/brews/b-1", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	refID, ok := resp["coffee_reference_brew_id"]
+	if !ok {
+		t.Fatal("expected coffee_reference_brew_id field in response")
+	}
+	if refID != nil {
+		t.Errorf("expected null coffee_reference_brew_id, got %v", refID)
+	}
+}
+
+func TestList_IncludesCoffeeReferenceBrewID(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Coffee", "Roaster", nil)
+	repo.coffees["c-1"].ReferenceBrewID = strPtr("b-2")
+	b1 := seedBrew(repo, "b-1", "user-123", "c-1", "2026-01-15", intPtr(7))
+	b1.CoffeeReferenceBrewID = strPtr("b-2")
+	b2 := seedBrew(repo, "b-2", "user-123", "c-1", "2026-01-16", intPtr(8))
+	b2.CoffeeReferenceBrewID = strPtr("b-2")
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/brews", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		Items []map[string]interface{} `json:"items"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if len(resp.Items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(resp.Items))
+	}
+	for _, item := range resp.Items {
+		refID, ok := item["coffee_reference_brew_id"]
+		if !ok {
+			t.Error("expected coffee_reference_brew_id field in list item")
+		}
+		if refID != "b-2" {
+			t.Errorf("expected coffee_reference_brew_id 'b-2', got %v", refID)
+		}
+	}
+}
+
+func TestRecent_IncludesCoffeeReferenceBrewID(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Coffee", "Roaster", nil)
+	repo.coffees["c-1"].ReferenceBrewID = strPtr("b-1")
+	b := seedBrew(repo, "b-1", "user-123", "c-1", "2026-01-15", intPtr(8))
+	b.CoffeeReferenceBrewID = strPtr("b-1")
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/brews/recent", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		Items []map[string]interface{} `json:"items"`
+	}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if len(resp.Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(resp.Items))
+	}
+	refID, ok := resp.Items[0]["coffee_reference_brew_id"]
+	if !ok {
+		t.Fatal("expected coffee_reference_brew_id field in recent brew")
+	}
+	if refID != "b-1" {
+		t.Errorf("expected coffee_reference_brew_id 'b-1', got %v", refID)
 	}
 }

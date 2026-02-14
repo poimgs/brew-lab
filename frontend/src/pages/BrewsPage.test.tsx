@@ -4,6 +4,15 @@ import { vi, describe, it, expect, beforeEach } from "vitest"
 import { MemoryRouter } from "react-router-dom"
 import { BrewsPage } from "./BrewsPage"
 
+const mockNavigate = vi.fn()
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom")
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  }
+})
+
 vi.mock("@/api/brews", () => ({
   listBrews: vi.fn(),
   getBrew: vi.fn(),
@@ -28,6 +37,7 @@ const mockBrews = [
     coffee_name: "Kiamaina",
     coffee_roaster: "Cata Coffee",
     coffee_tasting_notes: "Blackberry, lime, brown sugar",
+    coffee_reference_brew_id: "b-1",
     brew_date: "2026-01-19",
     days_off_roast: 61,
     coffee_weight: 15,
@@ -63,6 +73,7 @@ const mockBrews = [
     coffee_name: "El Diamante",
     coffee_roaster: "April",
     coffee_tasting_notes: null,
+    coffee_reference_brew_id: null,
     brew_date: "2026-01-18",
     days_off_roast: null,
     coffee_weight: 16,
@@ -548,5 +559,316 @@ describe("BrewsPage", () => {
 
     // The list should have been called at least once (initial load)
     expect(mockedListBrews.mock.calls.length).toBeGreaterThanOrEqual(callCountBefore)
+  })
+})
+
+describe("BrewsPage — comparison selection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockedListCoffees.mockResolvedValue(mockPaginatedCoffees(mockCoffees))
+  })
+
+  it("renders a checkbox on each brew row in the desktop table", async () => {
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
+    })
+
+    const checkboxes = screen.getAllByRole("checkbox")
+    // 2 brews × 2 (mobile + desktop) = 4 checkboxes
+    expect(checkboxes.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it("does not show compare bar when no brews are selected", async () => {
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
+    })
+
+    expect(screen.queryByText("Compare")).not.toBeInTheDocument()
+    expect(screen.queryByText(/selected/)).not.toBeInTheDocument()
+  })
+
+  it("shows compare bar with selection count when a brew is selected", async () => {
+    const user = userEvent.setup()
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("checkbox").length).toBeGreaterThanOrEqual(2)
+    })
+
+    await user.click(screen.getAllByRole("checkbox")[0])
+
+    expect(screen.getByText("1 selected")).toBeInTheDocument()
+    expect(screen.getByText("Compare")).toBeInTheDocument()
+  })
+
+  it("disables Compare button when fewer than 2 brews selected", async () => {
+    const user = userEvent.setup()
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("checkbox").length).toBeGreaterThanOrEqual(2)
+    })
+
+    await user.click(screen.getAllByRole("checkbox")[0])
+    const compareBtn = screen.getByText("Compare").closest("button")!
+    expect(compareBtn).toBeDisabled()
+  })
+
+  it("enables Compare button when 2 same-coffee brews are selected", async () => {
+    const user = userEvent.setup()
+    const sameCoffeeBrews = [
+      mockBrews[0],
+      { ...mockBrews[1], id: "b-3", coffee_id: "c-1", coffee_name: "Kiamaina", coffee_roaster: "Cata Coffee" },
+    ]
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(sameCoffeeBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("checkbox").length).toBeGreaterThanOrEqual(2)
+    })
+
+    const checkboxes = screen.getAllByRole("checkbox")
+    await user.click(checkboxes[0])
+    await user.click(checkboxes[1])
+
+    const compareBtn = screen.getByText("Compare").closest("button")!
+    expect(compareBtn).not.toBeDisabled()
+  })
+
+  it("disables Compare button and shows message when selected brews span multiple coffees", async () => {
+    const user = userEvent.setup()
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("checkbox").length).toBeGreaterThanOrEqual(2)
+    })
+
+    // Select brews from two different coffees (c-1 and c-2)
+    const checkboxes = screen.getAllByRole("checkbox")
+    await user.click(checkboxes[0])
+    await user.click(checkboxes[1])
+
+    const compareBtn = screen.getByText("Compare").closest("button")!
+    expect(compareBtn).toBeDisabled()
+    expect(screen.getByText("Select brews from the same coffee to compare")).toBeInTheDocument()
+  })
+
+  it("navigates to comparison page with correct coffee ID and brew IDs", async () => {
+    const user = userEvent.setup()
+    const sameCoffeeBrews = [
+      mockBrews[0],
+      { ...mockBrews[1], id: "b-3", coffee_id: "c-1", coffee_name: "Kiamaina", coffee_roaster: "Cata Coffee", brew_date: "2026-01-15" },
+    ]
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(sameCoffeeBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("checkbox").length).toBeGreaterThanOrEqual(2)
+    })
+
+    const checkboxes = screen.getAllByRole("checkbox")
+    await user.click(checkboxes[0])
+    await user.click(checkboxes[1])
+    await user.click(screen.getByText("Compare").closest("button")!)
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/coffees/c-1/compare?brews=b-1,b-3&from=brews"
+    )
+  })
+
+  it("disables 5th checkbox when 4 are already selected", async () => {
+    const user = userEvent.setup()
+    const fiveBrews = [
+      mockBrews[0],
+      { ...mockBrews[0], id: "b-2", brew_date: "2026-01-18" },
+      { ...mockBrews[0], id: "b-3", brew_date: "2026-01-17" },
+      { ...mockBrews[0], id: "b-4", brew_date: "2026-01-16" },
+      { ...mockBrews[0], id: "b-5", brew_date: "2026-01-15" },
+    ]
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(fiveBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("checkbox").length).toBeGreaterThanOrEqual(5)
+    })
+
+    const checkboxes = screen.getAllByRole("checkbox")
+    await user.click(checkboxes[0])
+    await user.click(checkboxes[1])
+    await user.click(checkboxes[2])
+    await user.click(checkboxes[3])
+
+    expect(screen.getByText("4 selected")).toBeInTheDocument()
+    // The 5th checkbox (index 4) in the desktop table should be disabled
+    // Find the desktop table's 5th checkbox
+    const allCheckboxes = screen.getAllByRole("checkbox")
+    const disabledCheckboxes = allCheckboxes.filter((cb) => cb.hasAttribute("disabled"))
+    expect(disabledCheckboxes.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it("checkbox click does not open the brew detail modal", async () => {
+    const user = userEvent.setup()
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("checkbox").length).toBeGreaterThanOrEqual(2)
+    })
+
+    await user.click(screen.getAllByRole("checkbox")[0])
+
+    // Modal should NOT open
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    // But selection should have happened
+    expect(screen.getByText("1 selected")).toBeInTheDocument()
+  })
+
+  it("Clear button in compare bar resets all selections", async () => {
+    const user = userEvent.setup()
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("checkbox").length).toBeGreaterThanOrEqual(2)
+    })
+
+    await user.click(screen.getAllByRole("checkbox")[0])
+    expect(screen.getByText("1 selected")).toBeInTheDocument()
+
+    // Click the Clear button in the compare bar
+    await user.click(screen.getByText("Clear"))
+
+    expect(screen.queryByText("Compare")).not.toBeInTheDocument()
+    expect(screen.queryByText(/selected/)).not.toBeInTheDocument()
+  })
+
+  it("resets selection when coffee filter changes", async () => {
+    const user = userEvent.setup()
+    mockedListBrews.mockResolvedValue(mockPaginatedBrews(mockBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("checkbox").length).toBeGreaterThanOrEqual(2)
+    })
+
+    // Select a brew
+    await user.click(screen.getAllByRole("checkbox")[0])
+    expect(screen.getByText("1 selected")).toBeInTheDocument()
+
+    // Change coffee filter
+    await user.selectOptions(screen.getByLabelText("Coffee"), "c-1")
+
+    // Selection should be cleared
+    await waitFor(() => {
+      expect(screen.queryByText(/selected/)).not.toBeInTheDocument()
+    })
+  })
+
+  it("deselects a brew when its checkbox is clicked again", async () => {
+    const user = userEvent.setup()
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("checkbox").length).toBeGreaterThanOrEqual(2)
+    })
+
+    const firstCheckbox = screen.getAllByRole("checkbox")[0]
+    await user.click(firstCheckbox)
+    expect(screen.getByText("1 selected")).toBeInTheDocument()
+
+    await user.click(firstCheckbox)
+    expect(screen.queryByText("1 selected")).not.toBeInTheDocument()
+    expect(screen.queryByText("Compare")).not.toBeInTheDocument()
+  })
+})
+
+describe("BrewsPage — reference indicator", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockedListCoffees.mockResolvedValue(mockPaginatedCoffees(mockCoffees))
+  })
+
+  it("shows star icon for reference brew and not for non-reference brew", async () => {
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
+    })
+
+    // b-1 is the reference brew (id === coffee_reference_brew_id)
+    const starIcons = screen.getAllByLabelText("Reference brew")
+    // Should appear in both mobile card and desktop table for b-1
+    expect(starIcons.length).toBe(2)
+
+    starIcons.forEach((icon) => {
+      expect(icon.tagName.toLowerCase()).toBe("svg")
+    })
+  })
+
+  it("does not show star icon when no brew is a reference", async () => {
+    const nonRefBrews = mockBrews.map((b) => ({
+      ...b,
+      coffee_reference_brew_id: null,
+    }))
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(nonRefBrews))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
+    })
+
+    expect(screen.queryByLabelText("Reference brew")).not.toBeInTheDocument()
+  })
+
+  it("does not show star for brew that is not the reference even if coffee has a reference", async () => {
+    // b-2 belongs to c-2 which has reference brew "b-99" (not b-2)
+    const brewsWithOtherRef = [
+      mockBrews[0],
+      { ...mockBrews[1], coffee_reference_brew_id: "b-99" },
+    ]
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(brewsWithOtherRef))
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText("El Diamante").length).toBeGreaterThanOrEqual(1)
+    })
+
+    // Only b-1 should have stars (2 for mobile+desktop), b-2 should not
+    const starIcons = screen.getAllByLabelText("Reference brew")
+    expect(starIcons.length).toBe(2)
+  })
+
+  it("passes coffee_reference_brew_id to BrewDetailModal", async () => {
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
+    mockedGetBrew.mockResolvedValueOnce(mockBrews[0])
+
+    const user = userEvent.setup()
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
+    })
+
+    // Click the first brew row in the desktop table
+    const rows = screen.getAllByRole("row")
+    await user.click(rows[1]) // [0] is header
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument()
+    })
+
+    // The modal should show "Unstar Reference" since b-1 is the reference
+    expect(screen.getByText("Unstar Reference")).toBeInTheDocument()
   })
 })

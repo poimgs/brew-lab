@@ -72,6 +72,7 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | [authentication.md](features/authentication.md) | —                             | User entity, login/signup, JWT, session handling       |
 | [home.md](features/home.md)                     | authentication, brew-tracking | Home page with recent brews + "Log a Brew" quick-start |
 | [brews.md](features/brews.md)                   | authentication, coffees, brew-tracking | Global brew history with filters + pagination  |
+| [brew-comparison.md](features/brew-comparison.md) | authentication, coffees, brew-tracking | Side-by-side brew comparison (same coffee, up to 4) |
 | [coffees.md](features/coffees.md)               | authentication                | Coffee beans + reference brew                          |
 | [setup.md](features/setup.md)                   | authentication                | Equipment management (filter papers)                   |
 | [brew-tracking.md](features/brew-tracking.md)   | authentication, coffees       | Brew entity + logging form + reference sidebar         |
@@ -89,6 +90,8 @@ authentication (core)
     |               +-- home (recent brews + quick-start)
     |               |
     |               +-- brews (global brew history + filters)
+    |               |
+    |               +-- brew-comparison (side-by-side brew diff)
     |               |
     |               +-- preferences (user defaults + Preferences page)
     |

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowDown, ArrowUp, Plus, X } from "lucide-react"
+import { ArrowDown, ArrowUp, Plus, X, GitCompareArrows, Star } from "lucide-react"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { listBrews, type Brew, type BrewListParams } from "@/api/brews"
 import { listCoffees, type Coffee } from "@/api/coffees"
@@ -10,6 +10,8 @@ import {
   formatRatio,
   scoreColor,
 } from "@/lib/brew-utils"
+
+const MAX_COMPARE = 4
 
 type SortField = "date" | "score"
 type SortDir = "desc" | "asc"
@@ -33,6 +35,11 @@ export function BrewsPage() {
 
   // Coffee list for filter dropdown
   const [coffees, setCoffees] = useState<Coffee[]>([])
+
+  // Comparison selection: map of brewId → coffeeId
+  const [selectedBrews, setSelectedBrews] = useState<Map<string, string>>(
+    new Map()
+  )
 
   // Detail modal
   const [selectedBrewId, setSelectedBrewId] = useState<string | null>(null)
@@ -118,6 +125,36 @@ export function BrewsPage() {
     setDateTo("")
     setScoreGte("")
     setScoreLte("")
+  }
+
+  // Reset selection when filters change
+  useEffect(() => {
+    setSelectedBrews(new Map())
+  }, [coffeeId, dateFrom, dateTo, scoreGte, scoreLte])
+
+  const toggleSelection = (brewId: string, brewCoffeeId: string) => {
+    setSelectedBrews((prev) => {
+      const next = new Map(prev)
+      if (next.has(brewId)) {
+        next.delete(brewId)
+      } else if (next.size < MAX_COMPARE) {
+        next.set(brewId, brewCoffeeId)
+      }
+      return next
+    })
+  }
+
+  const selectedCoffeeIds = new Set(selectedBrews.values())
+  const allSameCoffee = selectedCoffeeIds.size === 1
+  const commonCoffeeId = allSameCoffee
+    ? [...selectedCoffeeIds][0]
+    : null
+
+  const handleCompare = () => {
+    if (selectedBrews.size < 2 || !allSameCoffee || !commonCoffeeId) return
+    navigate(
+      `/coffees/${commonCoffeeId}/compare?brews=${[...selectedBrews.keys()].join(",")}&from=brews`
+    )
   }
 
   const handleModalMutate = () => {
@@ -339,6 +376,34 @@ export function BrewsPage() {
         )}
       </div>
 
+      {/* Compare bar */}
+      {selectedBrews.size > 0 && (
+        <div className="mt-4 flex items-center gap-3 rounded-md border border-border bg-muted/50 px-3 py-2">
+          <span className="text-sm text-muted-foreground">
+            {selectedBrews.size} selected
+          </span>
+          <button
+            onClick={handleCompare}
+            disabled={selectedBrews.size < 2 || !allSameCoffee}
+            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <GitCompareArrows className="h-3.5 w-3.5" />
+            Compare
+          </button>
+          {selectedBrews.size >= 2 && !allSameCoffee && (
+            <span className="text-sm text-muted-foreground">
+              Select brews from the same coffee to compare
+            </span>
+          )}
+          <button
+            onClick={() => setSelectedBrews(new Map())}
+            className="ml-auto text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       {brews.length === 0 ? (
         <div className="mt-6 rounded-lg border border-dashed border-border py-12 text-center">
@@ -352,46 +417,67 @@ export function BrewsPage() {
         <>
           {/* Mobile card list */}
           <div className="mt-6 divide-y divide-border rounded-lg border border-border sm:hidden">
-            {brews.map((brew) => (
-              <div
-                key={brew.id}
-                className="flex flex-col gap-1 px-3 py-2.5 cursor-pointer transition-colors hover:bg-muted/50"
-                onClick={() => setSelectedBrewId(brew.id)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    setSelectedBrewId(brew.id)
-                  }
-                }}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate text-sm font-medium">
-                    {brew.coffee_name}
-                    <span className="text-muted-foreground font-normal">
-                      {" "}({brew.coffee_roaster})
-                    </span>
-                  </span>
-                  {brew.overall_score != null ? (
-                    <span
-                      className={`text-sm font-medium tabular-nums whitespace-nowrap ${scoreColor(brew.overall_score)}`}
-                    >
-                      {brew.overall_score}/10
-                    </span>
-                  ) : (
-                    <span className="text-sm text-muted-foreground whitespace-nowrap">—</span>
-                  )}
+            {brews.map((brew) => {
+              const isSelected = selectedBrews.has(brew.id)
+              const atMax = selectedBrews.size >= MAX_COMPARE && !isSelected
+              return (
+                <div
+                  key={brew.id}
+                  className="flex gap-2 px-3 py-2.5 cursor-pointer transition-colors hover:bg-muted/50"
+                  onClick={() => setSelectedBrewId(brew.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      setSelectedBrewId(brew.id)
+                    }
+                  }}
+                >
+                  <div className="flex items-start pt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      disabled={atMax}
+                      title={atMax ? "Maximum 4 brews can be compared" : undefined}
+                      onChange={() => toggleSelection(brew.id, brew.coffee_id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 shrink-0 cursor-pointer appearance-none rounded border border-input bg-background checked:border-primary checked:bg-primary disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      aria-label={`Select brew from ${formatBrewDateShort(brew.brew_date)} for comparison`}
+                    />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-sm font-medium">
+                        {brew.id === brew.coffee_reference_brew_id && (
+                          <Star className="inline h-3 w-3 fill-amber-500 text-amber-500 mr-1 -mt-0.5" aria-label="Reference brew" />
+                        )}
+                        {brew.coffee_name}
+                        <span className="text-muted-foreground font-normal">
+                          {" "}({brew.coffee_roaster})
+                        </span>
+                      </span>
+                      {brew.overall_score != null ? (
+                        <span
+                          className={`text-sm font-medium tabular-nums whitespace-nowrap ${scoreColor(brew.overall_score)}`}
+                        >
+                          {brew.overall_score}/10
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground whitespace-nowrap">—</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="tabular-nums">{formatBrewDateShort(brew.brew_date)}</span>
+                      <span className="tabular-nums">{formatRatio(brew.ratio)}</span>
+                      {brew.grind_size != null && (
+                        <span className="tabular-nums">Grind {brew.grind_size}</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="tabular-nums">{formatBrewDateShort(brew.brew_date)}</span>
-                  <span className="tabular-nums">{formatRatio(brew.ratio)}</span>
-                  {brew.grind_size != null && (
-                    <span className="tabular-nums">Grind {brew.grind_size}</span>
-                  )}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* Desktop table */}
@@ -399,6 +485,7 @@ export function BrewsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-muted-foreground">
+                  <th className="w-8 pb-2" aria-label="Select for comparison" />
                   <th
                     className="cursor-pointer pb-2 font-medium select-none"
                     onClick={() => toggleSort("date")}
@@ -418,43 +505,62 @@ export function BrewsPage() {
                 </tr>
               </thead>
               <tbody>
-                {brews.map((brew) => (
-                  <tr
-                    key={brew.id}
-                    className="cursor-pointer border-b border-border/50 transition-colors hover:bg-muted/50"
-                    onClick={() => setSelectedBrewId(brew.id)}
-                  >
-                    <td className="py-2 font-medium tabular-nums">
-                      {formatBrewDateShort(brew.brew_date)}
-                    </td>
-                    <td className="max-w-[200px] lg:max-w-xs truncate py-2">
-                      <span className="font-medium">{brew.coffee_name}</span>
-                      <span className="ml-1 text-muted-foreground">
-                        ({brew.coffee_roaster})
-                      </span>
-                    </td>
-                    <td className="py-2 tabular-nums">
-                      {brew.overall_score != null ? (
-                        <span className={scoreColor(brew.overall_score)}>
-                          {brew.overall_score}/10
+                {brews.map((brew) => {
+                  const isSelected = selectedBrews.has(brew.id)
+                  const atMax = selectedBrews.size >= MAX_COMPARE && !isSelected
+                  return (
+                    <tr
+                      key={brew.id}
+                      className="cursor-pointer border-b border-border/50 transition-colors hover:bg-muted/50"
+                      onClick={() => setSelectedBrewId(brew.id)}
+                    >
+                      <td className="py-2 pr-1">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={atMax}
+                          title={atMax ? "Maximum 4 brews can be compared" : undefined}
+                          onChange={() => toggleSelection(brew.id, brew.coffee_id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-4 w-4 shrink-0 cursor-pointer appearance-none rounded border border-input bg-background checked:border-primary checked:bg-primary disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                          aria-label={`Select brew from ${formatBrewDateShort(brew.brew_date)} for comparison`}
+                        />
+                      </td>
+                      <td className="py-2 font-medium tabular-nums">
+                        {formatBrewDateShort(brew.brew_date)}
+                      </td>
+                      <td className="max-w-[200px] lg:max-w-xs truncate py-2">
+                        {brew.id === brew.coffee_reference_brew_id && (
+                          <Star className="inline h-3 w-3 fill-amber-500 text-amber-500 mr-1 -mt-0.5" aria-label="Reference brew" />
+                        )}
+                        <span className="font-medium">{brew.coffee_name}</span>
+                        <span className="ml-1 text-muted-foreground">
+                          ({brew.coffee_roaster})
                         </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="py-2 tabular-nums">
-                      {formatRatio(brew.ratio)}
-                    </td>
-                    <td className="hidden py-2 tabular-nums sm:table-cell">
-                      {brew.grind_size != null ? brew.grind_size : "—"}
-                    </td>
-                    <td className="hidden py-2 tabular-nums md:table-cell">
-                      {brew.water_temperature != null
-                        ? `${brew.water_temperature}°C`
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-2 tabular-nums">
+                        {brew.overall_score != null ? (
+                          <span className={scoreColor(brew.overall_score)}>
+                            {brew.overall_score}/10
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="py-2 tabular-nums">
+                        {formatRatio(brew.ratio)}
+                      </td>
+                      <td className="hidden py-2 tabular-nums sm:table-cell">
+                        {brew.grind_size != null ? brew.grind_size : "—"}
+                      </td>
+                      <td className="hidden py-2 tabular-nums md:table-cell">
+                        {brew.water_temperature != null
+                          ? `${brew.water_temperature}°C`
+                          : "—"}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -488,7 +594,7 @@ export function BrewsPage() {
       {selectedBrewId && (
         <BrewDetailModal
           brewId={selectedBrewId}
-          referenceBrewId={null}
+          referenceBrewId={brews.find((b) => b.id === selectedBrewId)?.coffee_reference_brew_id ?? null}
           onClose={() => setSelectedBrewId(null)}
           onMutate={handleModalMutate}
         />

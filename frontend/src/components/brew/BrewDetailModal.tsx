@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { Loader2, X, Pencil, Star, Trash2, Copy } from "lucide-react"
 import { toast } from "sonner"
 import { getBrew, type Brew } from "@/api/brews"
+import { SensoryRadarChart } from "./SensoryRadarChart"
 import { setReferenceBrew } from "@/api/coffees"
 import { DeleteBrewDialog } from "./DeleteBrewDialog"
 import {
@@ -322,6 +323,15 @@ export function BrewDetailModal(props: BrewDetailModalProps) {
                         )}
                       </div>
                     )}
+                    <SensoryRadarChart
+                      aroma_intensity={brew.aroma_intensity}
+                      body_intensity={brew.body_intensity}
+                      sweetness_intensity={brew.sweetness_intensity}
+                      brightness_intensity={brew.brightness_intensity}
+                      complexity_intensity={brew.complexity_intensity}
+                      aftertaste_intensity={brew.aftertaste_intensity}
+                      className="mx-auto mt-2"
+                    />
                     {brew.overall_notes && (
                       <div className="pt-1">
                         <span className="text-muted-foreground">Notes:</span>{" "}

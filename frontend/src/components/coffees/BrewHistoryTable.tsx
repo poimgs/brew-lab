@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Loader2, Star, ArrowDown, ArrowUp } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Loader2, Star, ArrowDown, ArrowUp, GitCompareArrows } from "lucide-react"
 import { listBrewsByCoffee, type Brew } from "@/api/brews"
 import {
   formatBrewDateShort,
@@ -7,6 +8,8 @@ import {
   formatTemp,
   scoreColor,
 } from "@/lib/brew-utils"
+
+const MAX_COMPARE = 4
 
 type SortField = "date" | "score"
 type SortDir = "desc" | "asc"
@@ -29,6 +32,7 @@ export function BrewHistoryTable({
   onRowClick,
   isStarring,
 }: BrewHistoryTableProps) {
+  const navigate = useNavigate()
   const [brews, setBrews] = useState<Brew[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -36,7 +40,25 @@ export function BrewHistoryTable({
   const [page, setPage] = useState(1)
   const [sortField, setSortField] = useState<SortField>("date")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
+  const [selectedBrewIds, setSelectedBrewIds] = useState<string[]>([])
   const sentinelRef = useRef<HTMLDivElement>(null)
+
+  const toggleSelection = (brewId: string) => {
+    setSelectedBrewIds((prev) =>
+      prev.includes(brewId)
+        ? prev.filter((id) => id !== brewId)
+        : prev.length < MAX_COMPARE
+          ? [...prev, brewId]
+          : prev
+    )
+  }
+
+  const handleCompare = () => {
+    if (selectedBrewIds.length < 2) return
+    navigate(
+      `/coffees/${coffeeId}/compare?brews=${selectedBrewIds.join(",")}`
+    )
+  }
 
   const sortParam =
     sortField === "date"
@@ -138,10 +160,33 @@ export function BrewHistoryTable({
     <div className="mt-8 border-t border-border pt-6">
       <h2 className="text-lg font-semibold">Brew History</h2>
 
+      {selectedBrewIds.length > 0 && (
+        <div className="mt-3 flex items-center gap-3 rounded-md border border-border bg-muted/50 px-3 py-2">
+          <span className="text-sm text-muted-foreground">
+            {selectedBrewIds.length} selected
+          </span>
+          <button
+            onClick={handleCompare}
+            disabled={selectedBrewIds.length < 2}
+            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <GitCompareArrows className="h-3.5 w-3.5" />
+            Compare
+          </button>
+          <button
+            onClick={() => setSelectedBrewIds([])}
+            className="ml-auto text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-muted-foreground">
+              <th className="w-8 pb-2" aria-label="Select for comparison" />
               <th className="w-8 pb-2" />
               <th
                 className="cursor-pointer pb-2 font-medium select-none"
@@ -163,12 +208,27 @@ export function BrewHistoryTable({
           <tbody>
             {brews.map((brew) => {
               const isStar = referenceBrewId === brew.id
+              const isSelected = selectedBrewIds.includes(brew.id)
+              const atMax =
+                selectedBrewIds.length >= MAX_COMPARE && !isSelected
               return (
                 <tr
                   key={brew.id}
                   className="cursor-pointer border-b border-border/50 transition-colors hover:bg-muted/50"
                   onClick={() => onRowClick(brew.id)}
                 >
+                  <td className="py-2 pr-1">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      disabled={atMax}
+                      title={atMax ? "Maximum 4 brews can be compared" : undefined}
+                      onChange={() => toggleSelection(brew.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 shrink-0 cursor-pointer appearance-none rounded border border-input bg-background checked:border-primary checked:bg-primary disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      aria-label={`Select brew from ${formatBrewDateShort(brew.brew_date)} for comparison`}
+                    />
+                  </td>
                   <td className="py-2 pr-1">
                     <button
                       onClick={(e) => {

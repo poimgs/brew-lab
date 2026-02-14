@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Plus, Pencil, Copy } from "lucide-react"
+import { Plus, Pencil, Copy, Star } from "lucide-react"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { getRecentBrews, type Brew } from "@/api/brews"
 import { BrewDetailModal } from "@/components/brew/BrewDetailModal"
@@ -194,6 +194,9 @@ export function HomePage() {
               {/* Mobile line 1: Coffee name + Score */}
               <div className="flex items-center justify-between gap-2 sm:hidden">
                 <span className="min-w-0 truncate text-sm font-medium">
+                  {brew.id === brew.coffee_reference_brew_id && (
+                    <Star className="inline h-3 w-3 fill-amber-500 text-amber-500 mr-1 -mt-0.5" aria-label="Reference brew" />
+                  )}
                   {brew.coffee_name}
                   <span className="text-muted-foreground font-normal">
                     {" "}({brew.coffee_roaster})
@@ -248,6 +251,9 @@ export function HomePage() {
                   {formatBrewDateShort(brew.brew_date)}
                 </span>
                 <span className="min-w-0 text-sm truncate">
+                  {brew.id === brew.coffee_reference_brew_id && (
+                    <Star className="inline h-3 w-3 fill-amber-500 text-amber-500 mr-1 -mt-0.5" aria-label="Reference brew" />
+                  )}
                   <span className="font-medium">{brew.coffee_name}</span>
                   <span className="text-muted-foreground">
                     {" "}({brew.coffee_roaster})
@@ -301,7 +307,7 @@ export function HomePage() {
       {selectedBrewId && (
         <BrewDetailModal
           brewId={selectedBrewId}
-          referenceBrewId={null}
+          referenceBrewId={brews.find((b) => b.id === selectedBrewId)?.coffee_reference_brew_id ?? null}
           onClose={() => setSelectedBrewId(null)}
           onMutate={handleModalMutate}
         />

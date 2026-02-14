@@ -1,5 +1,6 @@
 import { Star } from "lucide-react"
 import type { Brew } from "@/api/brews"
+import { SensoryRadarChart } from "@/components/brew/SensoryRadarChart"
 import {
   formatBrewDate,
   formatTime,
@@ -130,6 +131,17 @@ export function ReferenceBrewSection({
             </div>
           )}
         </div>
+
+        <SensoryRadarChart
+          aroma_intensity={brew.aroma_intensity}
+          body_intensity={brew.body_intensity}
+          sweetness_intensity={brew.sweetness_intensity}
+          brightness_intensity={brew.brightness_intensity}
+          complexity_intensity={brew.complexity_intensity}
+          aftertaste_intensity={brew.aftertaste_intensity}
+          size={160}
+          className="mx-auto mt-2"
+        />
 
         {/* Improvement notes */}
         {brew.improvement_notes && (

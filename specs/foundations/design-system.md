@@ -457,3 +457,86 @@ A 3-state dot indicator on collapsible section headers communicates whether fiel
 **Logic:** Each section defines which fields count toward fill status. The indicator updates in real-time as the user fills or clears fields. The half-fill state uses either a CSS gradient (left half teal, right half gray) or an SVG half-circle.
 
 **Usage:** Applied to the brew form's 3 collapsible sections (Setup, Brewing, Tasting). Both new and edit forms show indicators.
+
+---
+
+## 10. Sensory Radar Chart
+
+A custom SVG component that visualizes the 6 sensory attributes (aroma, body, sweetness, brightness, complexity, aftertaste) on a 1-10 scale as a hexagonal radar chart.
+
+### Purpose
+
+Provides an at-a-glance sensory profile visualization for brews. Used in:
+- Brew detail modal (Tasting section)
+- Coffee detail reference brew section
+- Brew form reference sidebar (Outcomes section)
+
+### Implementation
+
+Custom SVG component (~100 LOC). No charting library dependency.
+
+### Dimensions
+
+- **Desktop:** ~180x180px
+- **Mobile:** ~140x140px
+- Responsive to container width (uses `viewBox` for scaling)
+
+### Visual Specification
+
+```
+         Sweetness (8)
+            /\
+           /  \
+          /    \
+   Aroma /  ****\ Brightness
+    (7) / **    **\ (7)
+       /**        **\
+      *              *
+ Body *--------------* Complexity
+  (7)  **          **   (6)
+         **      **
+           **  **
+         Aftertaste (7)
+```
+
+**Structure:**
+- **Hexagonal shape** with 6 vertices, one for each sensory attribute
+- **Concentric hexagonal gridlines** at scale levels 2, 4, 6, 8, 10 — drawn in `border` color, thin stroke (1px)
+- **Axis lines** from center to each vertex — drawn in `border` color, thin stroke (1px)
+- **Attribute labels** at each vertex — `muted-foreground` color, `text-xs` size
+- **Data polygon** connecting the 6 attribute values:
+  - Fill: `primary` at 20% opacity
+  - Stroke: `primary` at full opacity, 2px width
+- **Data points** at each vertex value position — small circles (4px radius) in `primary` color
+
+**Vertex order** (clockwise from top):
+1. Sweetness (top)
+2. Brightness (top-right)
+3. Complexity (bottom-right)
+4. Aftertaste (bottom)
+5. Body (bottom-left)
+6. Aroma (top-left)
+
+### Theming
+
+Uses CSS custom properties from the design system color tokens:
+- Gridlines and axes: `hsl(var(--border))`
+- Labels: `hsl(var(--muted-foreground))`
+- Data polygon fill: `hsl(var(--primary) / 0.2)`
+- Data polygon stroke: `hsl(var(--primary))`
+- Data points: `hsl(var(--primary))`
+
+Works correctly in both light and dark modes without any mode-specific overrides.
+
+### Accessibility
+
+- `role="img"` on the SVG element
+- `aria-label` describing the sensory profile, e.g., "Sensory profile: aroma 7, body 7, sweetness 8, brightness 7, complexity 6, aftertaste 7"
+- Tooltip on hover showing the numeric value for each attribute (uses the existing tooltip component)
+- Does not rely solely on visual representation — numeric values are also available in surrounding UI context
+
+### Conditional Rendering
+
+- Only rendered when **at least one** sensory attribute has a non-null value
+- Attributes with null values are plotted at 0 (center) on the chart
+- If all 6 attributes are null, the chart is not shown at all

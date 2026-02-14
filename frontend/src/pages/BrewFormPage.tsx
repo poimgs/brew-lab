@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
-import { useForm, useFieldArray } from "react-hook-form"
+import { useForm, useFieldArray, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import {
   ChevronDown,
   Loader2,
   Plus,
+  Star,
   Trash2,
   X,
 } from "lucide-react"
@@ -14,7 +15,7 @@ import { Skeleton } from "@/components/ui/Skeleton"
 import { toast } from "sonner"
 import { FormPageLayout } from "@/components/layout/FormPageLayout"
 import { CollapsibleSection, type SectionFill } from "@/components/ui/CollapsibleSection"
-import { listCoffees, type Coffee } from "@/api/coffees"
+import { listCoffees, setReferenceBrew, type Coffee } from "@/api/coffees"
 import { listFilterPapers, type FilterPaper } from "@/api/filterPapers"
 import {
   createBrew,
@@ -312,6 +313,8 @@ export function BrewFormPage() {
   const [showReference, setShowReference] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [setAsReference, setSetAsReference] = useState(false)
+  const [wasReferenceOnLoad, setWasReferenceOnLoad] = useState(false)
 
   const initialLoadDone = useRef(false)
 
@@ -358,6 +361,7 @@ export function BrewFormPage() {
   const watchedRatio = watch("ratio")
   const watchedCoffeeMl = watch("coffee_ml")
   const watchedTds = watch("tds")
+  const watchedPours = useWatch({ control, name: "pours" })
 
   // beforeunload
   useEffect(() => {
@@ -433,6 +437,11 @@ export function BrewFormPage() {
       }
 
       if (!isBrewAgain) {
+        // Editing: pre-check "Set as reference" if this brew is the current reference
+        const isRef = brew.coffee_reference_brew_id === brew.id
+        setSetAsReference(isRef)
+        setWasReferenceOnLoad(isRef)
+
         // Editing: also populate outcomes
         values.brew_date = brew.brew_date
         values.overall_notes = brew.overall_notes ?? ""
@@ -535,11 +544,17 @@ export function BrewFormPage() {
   const fetchReference = useCallback(async (coffeeId: string) => {
     if (!coffeeId) {
       setReference(null)
+      setSetAsReference(false)
       return
     }
     try {
       const ref = await getReference(coffeeId)
       setReference(ref)
+
+      // Reset reference checkbox on coffee change for new brews
+      if (!id && initialLoadDone.current) {
+        setSetAsReference(false)
+      }
 
       // Auto-fill on coffee change for new brews (not editing or brew-again)
       if (!id && !fromBrewId && initialLoadDone.current) {
@@ -649,14 +664,14 @@ export function BrewFormPage() {
   ])
 
   const brewingFill: SectionFill = useMemo(() => {
-    const hasPours = (watchAll.pours?.length ?? 0) > 0
+    const hasPours = (watchedPours?.length ?? 0) > 0
     const hasTime = !!watchAll.total_brew_time_display
     const hasTechnique = !!watchAll.technique_notes
     const filled = [hasPours, hasTime, hasTechnique].filter(Boolean).length
     if (filled === 0) return "empty"
     if (filled === 3) return "full"
     return "partial"
-  }, [watchAll.pours, watchAll.total_brew_time_display, watchAll.technique_notes])
+  }, [watchedPours, watchAll.total_brew_time_display, watchAll.technique_notes])
 
   const tastingFill: SectionFill = useMemo(() => {
     const fields = [
@@ -690,14 +705,14 @@ export function BrewFormPage() {
 
   // Pour total warning
   const pourTotal = useMemo(() => {
-    if (!watchAll.pours?.length) return null
+    if (!watchedPours?.length) return null
     let sum = 0
-    for (const p of watchAll.pours) {
+    for (const p of watchedPours) {
       const amt = typeof p.water_amount === "number" ? p.water_amount : Number(p.water_amount)
       if (!isNaN(amt) && amt > 0) sum += amt
     }
     return sum > 0 ? sum : null
-  }, [watchAll.pours])
+  }, [watchedPours])
 
   const waterWeightMismatch =
     waterWeight != null &&
@@ -751,12 +766,29 @@ export function BrewFormPage() {
     }
 
     try {
+      let savedBrew: Brew
       if (isEditing && id) {
-        await updateBrew(id, payload)
+        savedBrew = await updateBrew(id, payload)
         toast.success("Brew updated")
       } else {
-        await createBrew(payload)
+        savedBrew = await createBrew(payload)
         toast.success("Brew saved")
+      }
+
+      // Post-save reference setting
+      if (setAsReference) {
+        try {
+          await setReferenceBrew(data.coffee_id, savedBrew.id)
+        } catch {
+          toast.warning("Brew saved, but failed to set as reference")
+        }
+      } else if (wasReferenceOnLoad && !setAsReference) {
+        // Was reference on load but user unchecked it — clear
+        try {
+          await setReferenceBrew(data.coffee_id, null)
+        } catch {
+          toast.warning("Brew saved, but failed to clear reference")
+        }
       }
 
       // Post-save navigation
@@ -910,6 +942,24 @@ export function BrewFormPage() {
             <p className="text-sm text-muted-foreground">
               Days Off Roast: <span className="font-medium text-foreground">{daysOffRoast}</span>
             </p>
+          )}
+
+          {/* Set as reference checkbox */}
+          {watchedCoffeeId && (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={setAsReference}
+                onChange={(e) => setSetAsReference(e.target.checked)}
+                className="sr-only"
+              />
+              <Star
+                className={`h-4 w-4 ${setAsReference ? "fill-amber-500 text-amber-500" : "text-muted-foreground"}`}
+              />
+              <span className="text-sm font-medium text-foreground">
+                Set as reference brew
+              </span>
+            </label>
           )}
 
           {/* --- Section 1: Setup --- */}

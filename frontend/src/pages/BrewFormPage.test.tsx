@@ -6,6 +6,7 @@ import { BrewFormPage } from "./BrewFormPage"
 
 vi.mock("@/api/coffees", () => ({
   listCoffees: vi.fn(),
+  setReferenceBrew: vi.fn(),
 }))
 
 vi.mock("@/api/filterPapers", () => ({
@@ -23,17 +24,19 @@ vi.mock("@/api/defaults", () => ({
   getDefaults: vi.fn(),
 }))
 
-import { listCoffees } from "@/api/coffees"
+import { listCoffees, setReferenceBrew } from "@/api/coffees"
 import { listFilterPapers } from "@/api/filterPapers"
-import { createBrew, getBrew, getReference } from "@/api/brews"
+import { createBrew, updateBrew, getBrew, getReference } from "@/api/brews"
 import { getDefaults } from "@/api/defaults"
 
 const mockedListCoffees = vi.mocked(listCoffees)
 const mockedListFilterPapers = vi.mocked(listFilterPapers)
 const mockedCreateBrew = vi.mocked(createBrew)
+const mockedUpdateBrew = vi.mocked(updateBrew)
 const mockedGetBrew = vi.mocked(getBrew)
 const mockedGetReference = vi.mocked(getReference)
 const mockedGetDefaults = vi.mocked(getDefaults)
+const mockedSetReferenceBrew = vi.mocked(setReferenceBrew)
 
 const mockCoffees = [
   {
@@ -118,6 +121,7 @@ const mockExistingBrew = {
   coffee_name: "Kiamaina",
   coffee_roaster: "Cata Coffee",
   coffee_tasting_notes: "Blackberry, lime, brown sugar",
+  coffee_reference_brew_id: null as string | null,
   brew_date: "2026-01-15",
   days_off_roast: 57,
   coffee_weight: 15,
@@ -619,5 +623,211 @@ describe("BrewFormPage", () => {
     // Expand Brewing section — no pours should exist
     await user.click(screen.getByText("Brewing"))
     expect(screen.queryByText("#1 (Bloom)")).not.toBeInTheDocument()
+  })
+
+  describe("Set as reference brew checkbox", () => {
+    it("shows checkbox when coffee is selected, hides when not", async () => {
+      setupMocks()
+      const user = userEvent.setup()
+      renderNewBrew()
+
+      await waitFor(() => {
+        expect(screen.getByText("New Brew")).toBeInTheDocument()
+      })
+
+      // No checkbox before coffee selection
+      expect(screen.queryByText("Set as reference brew")).not.toBeInTheDocument()
+
+      // Select a coffee
+      await user.click(screen.getByText("Select coffee..."))
+      await user.click(screen.getByText("Kiamaina"))
+
+      // Checkbox should appear
+      await waitFor(() => {
+        expect(screen.getByText("Set as reference brew")).toBeInTheDocument()
+      })
+    })
+
+    it("is unchecked by default for new brews", async () => {
+      setupMocks()
+      const user = userEvent.setup()
+      renderNewBrew()
+
+      await waitFor(() => {
+        expect(screen.getByText("New Brew")).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByText("Select coffee..."))
+      await user.click(screen.getByText("Kiamaina"))
+
+      await waitFor(() => {
+        expect(screen.getByText("Set as reference brew")).toBeInTheDocument()
+      })
+
+      const checkbox = screen.getByRole("checkbox")
+      expect(checkbox).not.toBeChecked()
+    })
+
+    it("is pre-checked when editing a brew that IS the reference", async () => {
+      setupMocks()
+      const brewAsReference = { ...mockExistingBrew, coffee_reference_brew_id: "b-1" }
+      mockedGetBrew.mockResolvedValue(brewAsReference)
+      renderEditBrew()
+
+      await waitFor(() => {
+        expect(screen.getByText("Edit Brew")).toBeInTheDocument()
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText("Set as reference brew")).toBeInTheDocument()
+      })
+
+      const checkbox = screen.getByRole("checkbox")
+      expect(checkbox).toBeChecked()
+    })
+
+    it("is unchecked when editing a brew that is NOT the reference", async () => {
+      setupMocks()
+      const brewNotReference = { ...mockExistingBrew, coffee_reference_brew_id: "b-other" }
+      mockedGetBrew.mockResolvedValue(brewNotReference)
+      renderEditBrew()
+
+      await waitFor(() => {
+        expect(screen.getByText("Edit Brew")).toBeInTheDocument()
+      })
+
+      await waitFor(() => {
+        expect(screen.getByText("Set as reference brew")).toBeInTheDocument()
+      })
+
+      const checkbox = screen.getByRole("checkbox")
+      expect(checkbox).not.toBeChecked()
+    })
+
+    it("calls setReferenceBrew after creating a new brew when checked", async () => {
+      setupMocks()
+      const savedBrew = { ...mockExistingBrew, id: "b-new" }
+      mockedCreateBrew.mockResolvedValue(savedBrew)
+      mockedSetReferenceBrew.mockResolvedValue({} as any)
+      const user = userEvent.setup()
+      renderNewBrew()
+
+      await waitFor(() => {
+        expect(screen.getByText("New Brew")).toBeInTheDocument()
+      })
+
+      // Select coffee
+      await user.click(screen.getByText("Select coffee..."))
+      await user.click(screen.getByText("Kiamaina"))
+
+      // Check the reference checkbox
+      await waitFor(() => {
+        expect(screen.getByText("Set as reference brew")).toBeInTheDocument()
+      })
+      await user.click(screen.getByRole("checkbox"))
+
+      // Save
+      await user.click(screen.getAllByText("Save Brew")[0])
+
+      await waitFor(() => {
+        expect(mockedCreateBrew).toHaveBeenCalledTimes(1)
+      })
+
+      await waitFor(() => {
+        expect(mockedSetReferenceBrew).toHaveBeenCalledWith("c-1", "b-new")
+      })
+    })
+
+    it("calls setReferenceBrew with null when unchecked on edit (was reference)", async () => {
+      setupMocks()
+      const brewAsReference = { ...mockExistingBrew, coffee_reference_brew_id: "b-1" }
+      mockedGetBrew.mockResolvedValue(brewAsReference)
+      mockedUpdateBrew.mockResolvedValue(brewAsReference)
+      mockedSetReferenceBrew.mockResolvedValue({} as any)
+      const user = userEvent.setup()
+      renderEditBrew()
+
+      await waitFor(() => {
+        expect(screen.getByText("Edit Brew")).toBeInTheDocument()
+      })
+
+      await waitFor(() => {
+        expect(screen.getByRole("checkbox")).toBeChecked()
+      })
+
+      // Uncheck the reference checkbox
+      await user.click(screen.getByRole("checkbox"))
+      expect(screen.getByRole("checkbox")).not.toBeChecked()
+
+      // Save
+      await user.click(screen.getAllByText("Save Brew")[0])
+
+      await waitFor(() => {
+        expect(mockedUpdateBrew).toHaveBeenCalledTimes(1)
+      })
+
+      await waitFor(() => {
+        expect(mockedSetReferenceBrew).toHaveBeenCalledWith("c-1", null)
+      })
+    })
+
+    it("does not call setReferenceBrew when checkbox is unchecked and was not reference", async () => {
+      setupMocks()
+      mockedCreateBrew.mockResolvedValue(mockExistingBrew)
+      const user = userEvent.setup()
+      renderNewBrew()
+
+      await waitFor(() => {
+        expect(screen.getByText("New Brew")).toBeInTheDocument()
+      })
+
+      // Select coffee and save without checking the box
+      await user.click(screen.getByText("Select coffee..."))
+      await user.click(screen.getByText("Kiamaina"))
+      await user.click(screen.getAllByText("Save Brew")[0])
+
+      await waitFor(() => {
+        expect(mockedCreateBrew).toHaveBeenCalledTimes(1)
+      })
+
+      // Navigate happens — setReferenceBrew should NOT be called
+      await waitFor(() => {
+        expect(screen.getByText("Home Page")).toBeInTheDocument()
+      })
+      expect(mockedSetReferenceBrew).not.toHaveBeenCalled()
+    })
+
+    it("shows warning toast but navigates when setReferenceBrew fails", async () => {
+      setupMocks()
+      const savedBrew = { ...mockExistingBrew, id: "b-new" }
+      mockedCreateBrew.mockResolvedValue(savedBrew)
+      mockedSetReferenceBrew.mockRejectedValue(new Error("Reference API error"))
+      const user = userEvent.setup()
+      renderNewBrew()
+
+      await waitFor(() => {
+        expect(screen.getByText("New Brew")).toBeInTheDocument()
+      })
+
+      // Select coffee and check reference
+      await user.click(screen.getByText("Select coffee..."))
+      await user.click(screen.getByText("Kiamaina"))
+
+      await waitFor(() => {
+        expect(screen.getByText("Set as reference brew")).toBeInTheDocument()
+      })
+      await user.click(screen.getByRole("checkbox"))
+
+      // Save
+      await user.click(screen.getAllByText("Save Brew")[0])
+
+      // Should still navigate despite reference API failure
+      await waitFor(() => {
+        expect(screen.getByText("Home Page")).toBeInTheDocument()
+      })
+
+      // setReferenceBrew was called but failed
+      expect(mockedSetReferenceBrew).toHaveBeenCalledWith("c-1", "b-new")
+    })
   })
 })
