@@ -350,7 +350,7 @@ export function BrewFormPage() {
     },
   })
 
-  const { fields: pourFields, append: appendPour, remove: removePour } =
+  const { fields: pourFields, append: appendPour, remove: removePour, replace: replacePours } =
     useFieldArray({ control, name: "pours" })
 
   const watchedCoffeeId = watch("coffee_id")
@@ -550,6 +550,11 @@ export function BrewFormPage() {
           setValue("grind_size", ref.brew.grind_size ?? "")
           setValue("water_temperature", ref.brew.water_temperature ?? "")
           setValue("filter_paper_id", ref.brew.filter_paper?.id ?? "")
+          replacePours(ref.brew.pours.map((p) => ({
+            water_amount: p.water_amount ?? "",
+            pour_style: p.pour_style ?? "",
+            wait_time: p.wait_time ?? "",
+          })))
         } else if (userDefaults) {
           // Fall back to user defaults
           setValue("coffee_weight", userDefaults.coffee_weight ?? "")
@@ -557,12 +562,17 @@ export function BrewFormPage() {
           setValue("grind_size", userDefaults.grind_size ?? "")
           setValue("water_temperature", userDefaults.water_temperature ?? "")
           setValue("filter_paper_id", userDefaults.filter_paper_id ?? "")
+          replacePours(userDefaults.pour_defaults.map((p) => ({
+            water_amount: p.water_amount ?? "",
+            pour_style: p.pour_style ?? "",
+            wait_time: p.wait_time ?? "",
+          })))
         }
       }
     } catch {
       setReference(null)
     }
-  }, [id, fromBrewId, userDefaults, setValue])
+  }, [id, fromBrewId, userDefaults, setValue, replacePours])
 
   useEffect(() => {
     if (!initialLoadDone.current) return
