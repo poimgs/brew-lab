@@ -31,6 +31,13 @@ vi.mock("@/api/filterPapers", () => ({
   deleteFilterPaper: vi.fn(),
 }))
 
+vi.mock("@/api/drippers", () => ({
+  listDrippers: vi.fn(),
+  createDripper: vi.fn(),
+  updateDripper: vi.fn(),
+  deleteDripper: vi.fn(),
+}))
+
 vi.mock("@/api/coffees", () => ({
   listCoffees: vi.fn(),
   createCoffee: vi.fn(),
@@ -65,12 +72,15 @@ import {
   updateFilterPaper,
   deleteFilterPaper,
 } from "@/api/filterPapers"
+import { listDrippers } from "@/api/drippers"
 import { createCoffee } from "@/api/coffees"
 
+import { MemoryRouter } from "react-router-dom"
 import { EquipmentPage } from "@/pages/EquipmentPage"
 import { CoffeeFormPage } from "@/pages/CoffeeFormPage"
 
 const mockedListFilterPapers = vi.mocked(listFilterPapers)
+const mockedListDrippers = vi.mocked(listDrippers)
 const mockedCreateFilterPaper = vi.mocked(createFilterPaper)
 const mockedUpdateFilterPaper = vi.mocked(updateFilterPaper)
 const mockedDeleteFilterPaper = vi.mocked(deleteFilterPaper)
@@ -115,6 +125,10 @@ describe("Toast notifications", () => {
   })
 
   describe("EquipmentPage", () => {
+    beforeEach(() => {
+      mockedListDrippers.mockResolvedValue(emptyPaginated)
+    })
+
     it("shows success toast when creating a filter paper", async () => {
       mockedListFilterPapers
         .mockResolvedValueOnce(emptyPaginated)
@@ -125,7 +139,7 @@ describe("Toast notifications", () => {
       mockedCreateFilterPaper.mockResolvedValueOnce(mockFilterPaper)
 
       const user = userEvent.setup()
-      render(<EquipmentPage />)
+      render(<MemoryRouter><EquipmentPage /></MemoryRouter>)
 
       await waitFor(() => {
         expect(screen.getByText("Add Filter Paper")).toBeInTheDocument()
@@ -161,7 +175,7 @@ describe("Toast notifications", () => {
       })
 
       const user = userEvent.setup()
-      render(<EquipmentPage />)
+      render(<MemoryRouter><EquipmentPage /></MemoryRouter>)
 
       await waitFor(() => {
         expect(screen.getByText("V60 01")).toBeInTheDocument()
@@ -192,7 +206,7 @@ describe("Toast notifications", () => {
       mockedDeleteFilterPaper.mockResolvedValueOnce(undefined)
 
       const user = userEvent.setup()
-      render(<EquipmentPage />)
+      render(<MemoryRouter><EquipmentPage /></MemoryRouter>)
 
       await waitFor(() => {
         expect(screen.getByText("V60 01")).toBeInTheDocument()
@@ -219,7 +233,7 @@ describe("Toast notifications", () => {
       mockedDeleteFilterPaper.mockRejectedValueOnce(new Error("Network error"))
 
       const user = userEvent.setup()
-      render(<EquipmentPage />)
+      render(<MemoryRouter><EquipmentPage /></MemoryRouter>)
 
       await waitFor(() => {
         expect(screen.getByText("V60 01")).toBeInTheDocument()

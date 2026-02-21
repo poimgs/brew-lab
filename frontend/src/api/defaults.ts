@@ -13,6 +13,7 @@ export interface DefaultsResponse {
   grind_size: number | null
   water_temperature: number | null
   filter_paper_id: string | null
+  dripper_id: string | null
   pour_defaults: PourDefault[]
 }
 
@@ -29,6 +30,7 @@ export interface UpdateDefaultsRequest {
   grind_size?: number | null
   water_temperature?: number | null
   filter_paper_id?: string | null
+  dripper_id?: string | null
   pour_defaults?: PourDefaultRequest[]
 }
 

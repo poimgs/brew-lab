@@ -13,6 +13,10 @@ vi.mock("@/api/filterPapers", () => ({
   listFilterPapers: vi.fn(),
 }))
 
+vi.mock("@/api/drippers", () => ({
+  listDrippers: vi.fn(),
+}))
+
 vi.mock("@/api/brews", () => ({
   createBrew: vi.fn(),
   updateBrew: vi.fn(),
@@ -26,11 +30,13 @@ vi.mock("@/api/defaults", () => ({
 
 import { listCoffees, setReferenceBrew } from "@/api/coffees"
 import { listFilterPapers } from "@/api/filterPapers"
+import { listDrippers } from "@/api/drippers"
 import { createBrew, updateBrew, getBrew, getReference } from "@/api/brews"
 import { getDefaults } from "@/api/defaults"
 
 const mockedListCoffees = vi.mocked(listCoffees)
 const mockedListFilterPapers = vi.mocked(listFilterPapers)
+const mockedListDrippers = vi.mocked(listDrippers)
 const mockedCreateBrew = vi.mocked(createBrew)
 const mockedUpdateBrew = vi.mocked(updateBrew)
 const mockedGetBrew = vi.mocked(getBrew)
@@ -115,6 +121,25 @@ const mockFilterPapers = [
   },
 ]
 
+const mockDrippers = [
+  {
+    id: "d-1",
+    name: "V60 02",
+    brand: "Hario",
+    notes: null,
+    created_at: "2025-11-22T15:00:00Z",
+    updated_at: "2025-11-22T15:00:00Z",
+  },
+  {
+    id: "d-2",
+    name: "Kalita Wave 185",
+    brand: null,
+    notes: null,
+    created_at: "2025-12-01T10:00:00Z",
+    updated_at: "2025-12-01T10:00:00Z",
+  },
+]
+
 const mockExistingBrew = {
   id: "b-1",
   coffee_id: "c-1",
@@ -130,6 +155,7 @@ const mockExistingBrew = {
   grind_size: 3.5,
   water_temperature: 96,
   filter_paper: { id: "fp-1", name: "Abaca", brand: "Cafec" },
+  dripper: { id: "d-1", name: "V60 02", brand: "Hario" },
   pours: [
     { pour_number: 1, water_amount: 45, pour_style: "center", wait_time: 30 },
     { pour_number: 2, water_amount: 90, pour_style: "circular", wait_time: null },
@@ -169,6 +195,9 @@ function setupMocks() {
   mockedListFilterPapers.mockResolvedValue(
     mockPaginatedResponse(mockFilterPapers)
   )
+  mockedListDrippers.mockResolvedValue(
+    mockPaginatedResponse(mockDrippers)
+  )
   mockedGetDefaults.mockRejectedValue(new Error("No defaults"))
   mockedGetReference.mockResolvedValue({ brew: null, source: "latest" })
 }
@@ -205,6 +234,7 @@ describe("BrewFormPage", () => {
   it("shows skeleton while data loads", () => {
     mockedListCoffees.mockReturnValue(new Promise(() => {}))
     mockedListFilterPapers.mockReturnValue(new Promise(() => {}))
+    mockedListDrippers.mockReturnValue(new Promise(() => {}))
     mockedGetDefaults.mockReturnValue(new Promise(() => {}))
     renderNewBrew()
     expect(screen.getByTestId("brew-form-skeleton")).toBeInTheDocument()
@@ -526,6 +556,7 @@ describe("BrewFormPage", () => {
   it("shows error state when initial data fails to load", async () => {
     mockedListCoffees.mockRejectedValue(new Error("Network error"))
     mockedListFilterPapers.mockRejectedValue(new Error("Network error"))
+    mockedListDrippers.mockRejectedValue(new Error("Network error"))
     renderNewBrew()
 
     await waitFor(() => {
@@ -587,6 +618,7 @@ describe("BrewFormPage", () => {
       grind_size: 3.5,
       water_temperature: 93,
       filter_paper_id: "fp-1",
+      dripper_id: "d-1",
       pour_defaults: [
         { pour_number: 1, water_amount: 45, pour_style: "center", wait_time: 30 },
       ],
@@ -595,6 +627,9 @@ describe("BrewFormPage", () => {
     mockedListCoffees.mockResolvedValue(mockPaginatedResponse(mockCoffees))
     mockedListFilterPapers.mockResolvedValue(
       mockPaginatedResponse(mockFilterPapers)
+    )
+    mockedListDrippers.mockResolvedValue(
+      mockPaginatedResponse(mockDrippers)
     )
     mockedGetDefaults.mockResolvedValue(mockDefaults)
     mockedGetReference.mockResolvedValue({ brew: null, source: "latest" })
@@ -828,6 +863,140 @@ describe("BrewFormPage", () => {
 
       // setReferenceBrew was called but failed
       expect(mockedSetReferenceBrew).toHaveBeenCalledWith("c-1", "b-new")
+    })
+  })
+
+  describe("Dripper dropdown", () => {
+    it("shows dripper options in setup section", async () => {
+      setupMocks()
+      const user = userEvent.setup()
+      renderNewBrew()
+
+      await waitFor(() => {
+        expect(screen.getByText("New Brew")).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByText("Setup"))
+
+      const select = screen.getByLabelText("Dripper")
+      const options = within(select as HTMLElement).getAllByRole("option")
+      expect(options).toHaveLength(3) // "Select dripper..." + 2 drippers
+      expect(options[1].textContent).toBe("V60 02 (Hario)")
+      expect(options[2].textContent).toBe("Kalita Wave 185")
+    })
+
+    it("pre-fills dripper when editing a brew with dripper", async () => {
+      setupMocks()
+      mockedGetBrew.mockResolvedValue(mockExistingBrew)
+      const user = userEvent.setup()
+      renderEditBrew()
+
+      await waitFor(() => {
+        expect(screen.getByText("Edit Brew")).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByText("Setup"))
+
+      const dripperSelect = screen.getByLabelText("Dripper") as HTMLSelectElement
+      expect(dripperSelect.value).toBe("d-1")
+    })
+
+    it("pre-fills dripper from brew-again source", async () => {
+      setupMocks()
+      mockedGetBrew.mockResolvedValue(mockExistingBrew)
+      const user = userEvent.setup()
+      renderNewBrew("/brews/new?from=b-1")
+
+      await waitFor(() => {
+        expect(screen.getByText("New Brew")).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByText("Setup"))
+
+      const dripperSelect = screen.getByLabelText("Dripper") as HTMLSelectElement
+      expect(dripperSelect.value).toBe("d-1")
+    })
+
+    it("includes dripper_id in create payload", async () => {
+      setupMocks()
+      mockedCreateBrew.mockResolvedValue(mockExistingBrew)
+      const user = userEvent.setup()
+      renderNewBrew()
+
+      await waitFor(() => {
+        expect(screen.getByText("New Brew")).toBeInTheDocument()
+      })
+
+      // Select coffee
+      await user.click(screen.getByText("Select coffee..."))
+      await user.click(screen.getByText("Kiamaina"))
+
+      // Select dripper
+      await user.click(screen.getByText("Setup"))
+      await user.selectOptions(screen.getByLabelText("Dripper"), "d-1")
+
+      await user.click(screen.getAllByText("Save Brew")[0])
+
+      await waitFor(() => {
+        expect(mockedCreateBrew).toHaveBeenCalledTimes(1)
+      })
+
+      const payload = mockedCreateBrew.mock.calls[0][0]
+      expect(payload.dripper_id).toBe("d-1")
+    })
+
+    it("sends null dripper_id when no dripper selected", async () => {
+      setupMocks()
+      mockedCreateBrew.mockResolvedValue({ ...mockExistingBrew, dripper: null })
+      const user = userEvent.setup()
+      renderNewBrew()
+
+      await waitFor(() => {
+        expect(screen.getByText("New Brew")).toBeInTheDocument()
+      })
+
+      // Select coffee but don't select a dripper
+      await user.click(screen.getByText("Select coffee..."))
+      await user.click(screen.getByText("Kiamaina"))
+
+      await user.click(screen.getAllByText("Save Brew")[0])
+
+      await waitFor(() => {
+        expect(mockedCreateBrew).toHaveBeenCalledTimes(1)
+      })
+
+      const payload = mockedCreateBrew.mock.calls[0][0]
+      expect(payload.dripper_id).toBeNull()
+    })
+
+    it("pre-fills dripper from defaults when no reference brew", async () => {
+      const mockDefaults = {
+        coffee_weight: 15,
+        ratio: 15,
+        grind_size: 3.5,
+        water_temperature: 93,
+        filter_paper_id: "fp-1",
+        dripper_id: "d-2",
+        pour_defaults: [],
+      }
+
+      mockedListCoffees.mockResolvedValue(mockPaginatedResponse(mockCoffees))
+      mockedListFilterPapers.mockResolvedValue(mockPaginatedResponse(mockFilterPapers))
+      mockedListDrippers.mockResolvedValue(mockPaginatedResponse(mockDrippers))
+      mockedGetDefaults.mockResolvedValue(mockDefaults)
+      mockedGetReference.mockResolvedValue({ brew: null, source: "latest" })
+
+      const user = userEvent.setup()
+      renderNewBrew("/brews/new?coffee_id=c-1")
+
+      await waitFor(() => {
+        expect(screen.getByText("New Brew")).toBeInTheDocument()
+      })
+
+      await user.click(screen.getByText("Setup"))
+
+      const dripperSelect = screen.getByLabelText("Dripper") as HTMLSelectElement
+      expect(dripperSelect.value).toBe("d-2")
     })
   })
 })

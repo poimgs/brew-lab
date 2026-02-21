@@ -8,6 +8,7 @@ type DefaultsResponse struct {
 	GrindSize        *float64       `json:"grind_size"`
 	WaterTemperature *float64       `json:"water_temperature"`
 	FilterPaperID    *string        `json:"filter_paper_id"`
+	DripperID        *string        `json:"dripper_id"`
 	PourDefaults     []PourDefault  `json:"pour_defaults"`
 }
 
@@ -26,6 +27,7 @@ type UpdateRequest struct {
 	GrindSize        *float64             `json:"grind_size"`
 	WaterTemperature *float64             `json:"water_temperature"`
 	FilterPaperID    *string              `json:"filter_paper_id"`
+	DripperID        *string              `json:"dripper_id"`
 	PourDefaults     []PourDefaultRequest `json:"pour_defaults"`
 }
 
@@ -44,6 +46,7 @@ var validFieldNames = map[string]bool{
 	"grind_size":        true,
 	"water_temperature": true,
 	"filter_paper_id":   true,
+	"dripper_id":        true,
 }
 
 // IsValidFieldName checks if a field name is a valid default field.

@@ -77,6 +77,7 @@ Self-contained feature specifications. Each includes entity definitions, API end
 | [setup.md](features/setup.md)                   | authentication                | Equipment management (filter papers)                   |
 | [brew-tracking.md](features/brew-tracking.md)   | authentication, coffees       | Brew entity + logging form + reference sidebar         |
 | [preferences.md](features/preferences.md)       | authentication, brew-tracking | User defaults entity + API + Preferences page UI       |
+| [share-link.md](features/share-link.md)         | authentication, coffees, brew-tracking | Share coffee collection via public token URL |
 
 ### Dependency Graph
 
@@ -94,6 +95,8 @@ authentication (core)
     |               +-- brew-comparison (side-by-side brew diff)
     |               |
     |               +-- preferences (user defaults + Preferences page)
+    |               |
+    |               +-- share-link (public coffee collection sharing)
     |
     +-- setup (equipment — filter papers)
 ```

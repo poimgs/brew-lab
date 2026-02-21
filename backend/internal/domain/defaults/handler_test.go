@@ -175,6 +175,7 @@ func TestGet_WithDefaults(t *testing.T) {
 	repo.defaults["grind_size"] = "3.5"
 	repo.defaults["water_temperature"] = "93"
 	repo.defaults["filter_paper_id"] = "fp-uuid-123"
+	repo.defaults["dripper_id"] = "d-uuid-456"
 	repo.pourDefaults = []PourDefault{
 		{PourNumber: 1, WaterAmount: float64Ptr(45), PourStyle: strPtr("center"), WaitTime: intPtr(30)},
 		{PourNumber: 2, WaterAmount: float64Ptr(90), PourStyle: strPtr("circular")},
@@ -207,6 +208,9 @@ func TestGet_WithDefaults(t *testing.T) {
 	}
 	if resp.FilterPaperID == nil || *resp.FilterPaperID != "fp-uuid-123" {
 		t.Errorf("expected filter_paper_id fp-uuid-123, got %v", resp.FilterPaperID)
+	}
+	if resp.DripperID == nil || *resp.DripperID != "d-uuid-456" {
+		t.Errorf("expected dripper_id d-uuid-456, got %v", resp.DripperID)
 	}
 	if len(resp.PourDefaults) != 2 {
 		t.Fatalf("expected 2 pour defaults, got %d", len(resp.PourDefaults))
@@ -265,6 +269,7 @@ func TestPut_SetAllDefaults(t *testing.T) {
 		"grind_size": 3.5,
 		"water_temperature": 93,
 		"filter_paper_id": "fp-uuid-123",
+		"dripper_id": "d-uuid-456",
 		"pour_defaults": [
 			{"pour_number": 1, "water_amount": 45, "pour_style": "center", "wait_time": 30},
 			{"pour_number": 2, "water_amount": 90, "pour_style": "circular"}
@@ -323,6 +328,9 @@ func TestPut_PartialDefaults(t *testing.T) {
 	}
 	if resp.FilterPaperID != nil {
 		t.Errorf("expected filter_paper_id nil, got %v", *resp.FilterPaperID)
+	}
+	if resp.DripperID != nil {
+		t.Errorf("expected dripper_id nil, got %v", *resp.DripperID)
 	}
 }
 
@@ -523,7 +531,7 @@ func TestDeleteField_Success(t *testing.T) {
 }
 
 func TestDeleteField_AllValidFields(t *testing.T) {
-	validFields := []string{"coffee_weight", "ratio", "grind_size", "water_temperature", "filter_paper_id"}
+	validFields := []string{"coffee_weight", "ratio", "grind_size", "water_temperature", "filter_paper_id", "dripper_id"}
 	for _, field := range validFields {
 		repo := newMockRepo()
 		repo.defaults[field] = "test"

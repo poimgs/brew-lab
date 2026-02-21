@@ -148,6 +148,9 @@ func buildFieldMap(req UpdateRequest) map[string]string {
 	if req.FilterPaperID != nil {
 		fields["filter_paper_id"] = *req.FilterPaperID
 	}
+	if req.DripperID != nil {
+		fields["dripper_id"] = *req.DripperID
+	}
 	return fields
 }
 
@@ -172,5 +175,7 @@ func applyFieldToResponse(resp *DefaultsResponse, fieldName, value string) {
 		}
 	case "filter_paper_id":
 		resp.FilterPaperID = &value
+	case "dripper_id":
+		resp.DripperID = &value
 	}
 }

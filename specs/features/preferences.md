@@ -23,6 +23,7 @@ These correspond to the fields marked **Defaultable: Yes** in [brew-tracking.md]
 | grind_size | decimal | — | Default grind setting (numeric) |
 | water_temperature | decimal | C | Default water temperature |
 | filter_paper_id | UUID | — | Default filter paper |
+| dripper_id | UUID | — | Default dripper |
 
 ### Database Schema
 
@@ -56,7 +57,8 @@ GET /api/v1/defaults
   "ratio": 15,
   "grind_size": 3.5,
   "water_temperature": 90,
-  "filter_paper_id": "uuid-string"
+  "filter_paper_id": "uuid-string",
+  "dripper_id": "uuid-string"
 }
 ```
 
@@ -75,6 +77,7 @@ PUT /api/v1/defaults
   "grind_size": 3.5,
   "water_temperature": 90,
   "filter_paper_id": "uuid-string",
+  "dripper_id": "uuid-string",
   "pour_defaults": [
     { "pour_number": 1, "water_amount": 45.0, "pour_style": "center", "wait_time": 30 },
     { "pour_number": 2, "water_amount": 90.0, "pour_style": "circular" }
@@ -155,6 +158,7 @@ CREATE INDEX idx_user_pour_defaults_user_id ON user_pour_defaults(user_id);
 | | Grind Size    [3.5   ]    [x]                                      ||
 | | Temperature   [93    ] C  [x]                                      ||
 | | Filter Paper  [Abaca (Cafec) v] [x]                                ||
+| | Dripper       [V60 02 (Hario) v] [x]                               ||
 | |                                                                    ||
 | | --- Pour Defaults ---                                              ||
 | | #1  [45   ] g  [center v]  wait [30] s  [x]                       ||
@@ -167,7 +171,7 @@ CREATE INDEX idx_user_pour_defaults_user_id ON user_pour_defaults(user_id);
 
 ### Section Organization
 
-- **Setup Defaults**: coffee_weight, ratio, grind_size, water_temperature, filter_paper_id
+- **Setup Defaults**: coffee_weight, ratio, grind_size, water_temperature, filter_paper_id, dripper_id
 - **Pour Defaults**: pour templates with pour_number, water_amount, pour_style, wait_time
 
 ### Explicit Note

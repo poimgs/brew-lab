@@ -203,6 +203,7 @@ export function BrewHistoryTable({
               <th className="pb-2 font-medium">Ratio</th>
               <th className="pb-2 font-medium">Temp</th>
               <th className="pb-2 font-medium">Filter</th>
+              <th className="pb-2 font-medium">Dripper</th>
             </tr>
           </thead>
           <tbody>
@@ -264,6 +265,9 @@ export function BrewHistoryTable({
                   </td>
                   <td className="py-2">
                     {brew.filter_paper?.name ?? "—"}
+                  </td>
+                  <td className="py-2">
+                    {brew.dripper?.name ?? "—"}
                   </td>
                 </tr>
               )

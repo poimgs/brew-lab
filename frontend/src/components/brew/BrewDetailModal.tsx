@@ -13,6 +13,7 @@ import {
   formatRatio,
   formatTemp,
   formatFilterPaper,
+  formatDripper,
   scoreColor,
 } from "@/lib/brew-utils"
 
@@ -211,6 +212,12 @@ export function BrewDetailModal(props: BrewDetailModalProps) {
                       <div>
                         <span className="text-muted-foreground">Filter:</span>{" "}
                         <span className="font-medium">{formatFilterPaper(brew)}</span>
+                      </div>
+                    )}
+                    {brew.dripper && (
+                      <div>
+                        <span className="text-muted-foreground">Dripper:</span>{" "}
+                        <span className="font-medium">{formatDripper(brew)}</span>
                       </div>
                     )}
                   </div>

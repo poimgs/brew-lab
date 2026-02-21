@@ -197,6 +197,9 @@ func (m *mockRepo) Create(_ context.Context, userID string, req CreateRequest) (
 	if req.FilterPaperID != nil {
 		b.FilterPaper = &FilterPaper{ID: *req.FilterPaperID, Name: "Test Filter"}
 	}
+	if req.DripperID != nil {
+		b.Dripper = &Dripper{ID: *req.DripperID, Name: "Test Dripper"}
+	}
 
 	m.brews[id] = b
 	return b, nil
@@ -251,6 +254,11 @@ func (m *mockRepo) Update(_ context.Context, userID, id string, req UpdateReques
 		b.FilterPaper = &FilterPaper{ID: *req.FilterPaperID, Name: "Test Filter"}
 	} else {
 		b.FilterPaper = nil
+	}
+	if req.DripperID != nil {
+		b.Dripper = &Dripper{ID: *req.DripperID, Name: "Test Dripper"}
+	} else {
+		b.Dripper = nil
 	}
 
 	return b, nil
@@ -1651,6 +1659,161 @@ func TestList_IncludesCoffeeReferenceBrewID(t *testing.T) {
 		if refID != "b-2" {
 			t.Errorf("expected coffee_reference_brew_id 'b-2', got %v", refID)
 		}
+	}
+}
+
+// --- Dripper ID Tests ---
+
+func TestCreate_DripperInResponse(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Kiamaina", "Cata", nil)
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{"coffee_id": "c-1", "dripper_id": "d-1"}`
+	req := authRequest(http.MethodPost, "/api/v1/brews", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Brew
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.Dripper == nil {
+		t.Fatal("expected dripper to be present in response")
+	}
+	if resp.Dripper.ID != "d-1" {
+		t.Errorf("expected dripper.id d-1, got %s", resp.Dripper.ID)
+	}
+}
+
+func TestGetByID_DripperCorrectID(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Kiamaina", "Cata", nil)
+	b := seedBrew(repo, "b-1", "user-123", "c-1", "2026-01-15", nil)
+	b.Dripper = &Dripper{
+		ID:    "d-42",
+		Name:  "V60 02",
+		Brand: strPtr("Hario"),
+	}
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/brews/b-1", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Brew
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.Dripper == nil {
+		t.Fatal("expected dripper to be present")
+	}
+	if resp.Dripper.ID != "d-42" {
+		t.Errorf("expected dripper.id d-42, got %s", resp.Dripper.ID)
+	}
+	if resp.Dripper.Name != "V60 02" {
+		t.Errorf("expected dripper.name V60 02, got %s", resp.Dripper.Name)
+	}
+	if resp.Dripper.Brand == nil || *resp.Dripper.Brand != "Hario" {
+		t.Errorf("expected dripper.brand Hario, got %v", resp.Dripper.Brand)
+	}
+}
+
+func TestGetByID_NoDripper(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Kiamaina", "Cata", nil)
+	seedBrew(repo, "b-1", "user-123", "c-1", "2026-01-15", nil) // no dripper
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	req := authRequest(http.MethodGet, "/api/v1/brews/b-1", "")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Brew
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.Dripper != nil {
+		t.Errorf("expected nil dripper, got %+v", resp.Dripper)
+	}
+}
+
+func TestUpdate_SetAndClearDripper(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Coffee", "Roaster", nil)
+	b := seedBrew(repo, "b-1", "user-123", "c-1", "2026-01-15", nil)
+	b.Dripper = &Dripper{ID: "d-1", Name: "V60 02"}
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	// Update with dripper
+	body := `{"coffee_id": "c-1", "dripper_id": "d-2"}`
+	req := authRequest(http.MethodPut, "/api/v1/brews/b-1", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Brew
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.Dripper == nil {
+		t.Fatal("expected dripper after update")
+	}
+	if resp.Dripper.ID != "d-2" {
+		t.Errorf("expected dripper.id d-2, got %s", resp.Dripper.ID)
+	}
+
+	// Update without dripper — should clear it
+	body = `{"coffee_id": "c-1"}`
+	req = authRequest(http.MethodPut, "/api/v1/brews/b-1", body)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.Dripper != nil {
+		t.Errorf("expected nil dripper after clearing, got %+v", resp.Dripper)
+	}
+}
+
+func TestCreate_BothFilterPaperAndDripper(t *testing.T) {
+	repo := newMockRepo()
+	repo.addCoffee("c-1", "user-123", "Kiamaina", "Cata", nil)
+	h := NewHandler(repo)
+	router := setupRouter(h)
+
+	body := `{"coffee_id": "c-1", "filter_paper_id": "fp-1", "dripper_id": "d-1"}`
+	req := authRequest(http.MethodPost, "/api/v1/brews", body)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp Brew
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	if resp.FilterPaper == nil {
+		t.Fatal("expected filter_paper to be present")
+	}
+	if resp.FilterPaper.ID != "fp-1" {
+		t.Errorf("expected filter_paper.id fp-1, got %s", resp.FilterPaper.ID)
+	}
+	if resp.Dripper == nil {
+		t.Fatal("expected dripper to be present")
+	}
+	if resp.Dripper.ID != "d-1" {
+		t.Errorf("expected dripper.id d-1, got %s", resp.Dripper.ID)
 	}
 }
 

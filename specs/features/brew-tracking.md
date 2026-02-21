@@ -41,6 +41,7 @@ These are set before brewing begins.
 | grind_size | decimal | — | Yes | Numeric grinder setting (e.g., 3.5 for Fellow Ode 2) |
 | water_temperature | decimal | C | Yes | Water temperature at pour |
 | filter_paper_id | UUID | — | Yes | Reference to filter paper (see [Equipment](setup.md)) |
+| dripper_id | UUID | — | Yes | Reference to dripper (see [Equipment](setup.md)) |
 
 ### Brewing Variables
 
@@ -109,6 +110,7 @@ CREATE TABLE brews (
     grind_size DECIMAL(4,1),
     water_temperature DECIMAL(4,1),
     filter_paper_id UUID REFERENCES filter_papers(id),
+    dripper_id UUID REFERENCES drippers(id),
 
     -- Brewing variables
     -- Pours stored in brew_pours table (pour #1 = bloom)
@@ -192,6 +194,11 @@ Returns the most recent brews across all coffees for the authenticated user. Use
         "id": "uuid",
         "name": "Abaca",
         "brand": "Cafec"
+      },
+      "dripper": {
+        "id": "uuid",
+        "name": "V60 02",
+        "brand": "Hario"
       }
     }
   ]
@@ -200,7 +207,7 @@ Returns the most recent brews across all coffees for the authenticated user. Use
 
 **Sorting:** `brew_date DESC` (most recent first, not configurable).
 
-**Note:** All brew list/detail responses include `coffee_name`, `coffee_roaster`, and `coffee_reference_brew_id` fields, as well as a nested `filter_paper` object (`{ id, name, brand }`) instead of just `filter_paper_id`. Soft-deleted filter papers are still included in responses for historical accuracy.
+**Note:** All brew list/detail responses include `coffee_name`, `coffee_roaster`, and `coffee_reference_brew_id` fields, as well as nested `filter_paper` and `dripper` objects (`{ id, name, brand }`) instead of just `filter_paper_id`/`dripper_id`. Soft-deleted filter papers and drippers are still included in responses for historical accuracy.
 
 ### Create Brew
 ```
@@ -217,6 +224,7 @@ POST /api/v1/brews
   "grind_size": 3.5,
   "water_temperature": 90.0,
   "filter_paper_id": "uuid",
+  "dripper_id": "uuid",
   "pours": [
     { "pour_number": 1, "water_amount": 45.0, "pour_style": "center", "wait_time": 30 },
     { "pour_number": 2, "water_amount": 90.0, "pour_style": "circular" },
@@ -253,7 +261,7 @@ POST /api/v1/brews
 GET /api/v1/brews/:id
 ```
 
-**Response:** Full brew object with coffee metadata, nested filter_paper, and computed properties
+**Response:** Full brew object with coffee metadata, nested filter_paper and dripper, and computed properties
 
 ```json
 {
@@ -273,6 +281,11 @@ GET /api/v1/brews/:id
     "id": "uuid",
     "name": "Abaca",
     "brand": "Cafec"
+  },
+  "dripper": {
+    "id": "uuid",
+    "name": "V60 02",
+    "brand": "Hario"
   },
   "pours": [
     { "pour_number": 1, "water_amount": 45.0, "pour_style": "center", "wait_time": 30 },
@@ -297,7 +310,7 @@ GET /api/v1/brews/:id
 }
 ```
 
-**Note:** `water_weight` and `extraction_yield` are computed fields (not stored). `coffee_name`, `coffee_roaster`, and `filter_paper` are joined/nested from related tables.
+**Note:** `water_weight` and `extraction_yield` are computed fields (not stored). `coffee_name`, `coffee_roaster`, `filter_paper`, and `dripper` are joined/nested from related tables.
 
 ### Update Brew
 ```
@@ -338,7 +351,8 @@ Brew details are displayed in a **modal dialog** (not a dedicated page). The mod
 |                                                      |
 | --- Setup ---                                        |
 | Coffee: 15g  Ratio: 1:15  Water: 225g (computed)     |
-| Grind: 3.5  Temp: 96C  Filter: Abaca (Cafec)        |
+| Grind: 3.5  Temp: 96C                                |
+| Filter: Abaca (Cafec)  Dripper: V60 02 (Hario)       |
 |                                                      |
 | --- Brewing ---                                      |
 | Pours: 45g center (30s bloom), 90g circular, 90g circular |
@@ -462,9 +476,10 @@ User defaults (entity, schema, API, and Preferences page UI) are defined in [pre
 | Grind Size       [3.5   ]            |
 | Temperature      [90    ] C          |
 | Filter           [Select filter... v] |
+| Dripper          [Select dripper..v] |
 ```
 
-Fields: coffee_weight, ratio, *water_weight (display only)*, grind_size, water_temperature, filter_paper_id
+Fields: coffee_weight, ratio, *water_weight (display only)*, grind_size, water_temperature, filter_paper_id, dripper_id
 
 **Section 2 — Brewing** (collapsible, collapsed by default):
 ```
@@ -519,6 +534,7 @@ Auto-fill applies to Setup and Brewing section fields only (not tasting/sensory 
 - Grind Size (numeric, e.g., 3.5 for Fellow Ode 2)
 - Water Temperature (C)
 - Filter Paper (dropdown, see [Equipment](setup.md)). Soft-deleted filter papers are excluded from the dropdown when creating/editing brews, but show normally in existing brew views (detail modal, history table).
+- Dripper (dropdown, see [Equipment](setup.md)). Soft-deleted drippers are excluded from the dropdown when creating/editing brews, but show normally in existing brew views (detail modal, history table).
 
 **Brewing:**
 - Pours (dynamic list):
@@ -663,6 +679,7 @@ Form and sidebar are shown side-by-side. Sidebar is **collapsed by default** —
 |                                   | - Grind: 3.5                    |
 | Overall Score  [  ]               | - Temp: 96C                     |
 |                                   | - Filter: Abaca (Cafec)         |
+|                                   | - Dripper: V60 02 (Hario)       |
 | Improvement Notes                 | - Bloom: 45g / 30s wait         |
 | [                             ]   | - Pours: 90g circ, 90g circ     |
 |                                   |                                 |
@@ -697,6 +714,7 @@ Sidebar becomes a **Sheet overlay**:
    - Coffee weight, ratio, water weight (computed)
    - Grind size, temperature
    - Filter paper name (soft-deleted filter papers show normally here)
+   - Dripper name (soft-deleted drippers show normally here)
    - Pours summary (amounts, styles, bloom wait time)
    - Total brew time (if recorded)
 

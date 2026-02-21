@@ -57,3 +57,11 @@ export function formatFilterPaper(brew: Brew): string {
   }
   return brew.filter_paper.name
 }
+
+export function formatDripper(brew: Brew): string {
+  if (!brew.dripper) return "—"
+  if (brew.dripper.brand) {
+    return `${brew.dripper.name} (${brew.dripper.brand})`
+  }
+  return brew.dripper.name
+}

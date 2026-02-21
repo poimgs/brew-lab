@@ -10,6 +10,7 @@ import {
   formatTemp,
   formatTime,
   formatFilterPaper,
+  formatDripper,
   scoreColor,
 } from "@/lib/brew-utils"
 
@@ -69,6 +70,12 @@ const ROWS: ComparisonRow[] = [
     field: "filter_paper",
     section: "setup",
     format: (b) => (b.filter_paper ? formatFilterPaper(b) : null),
+  },
+  {
+    label: "Dripper",
+    field: "dripper",
+    section: "setup",
+    format: (b) => (b.dripper ? formatDripper(b) : null),
   },
   // Brewing
   {

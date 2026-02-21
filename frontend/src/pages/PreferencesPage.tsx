@@ -10,7 +10,9 @@ import {
   type UpdateDefaultsRequest,
 } from "@/api/defaults"
 import { listFilterPapers, type FilterPaper } from "@/api/filterPapers"
+import { listDrippers, type Dripper } from "@/api/drippers"
 import { FormPageLayout } from "@/components/layout/FormPageLayout"
+import { ShareLinkManager } from "@/components/share/ShareLinkManager"
 
 interface PourFormData {
   water_amount: string
@@ -23,6 +25,7 @@ export function PreferencesPage() {
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [filterPapers, setFilterPapers] = useState<FilterPaper[]>([])
+  const [drippers, setDrippers] = useState<Dripper[]>([])
   const navigate = useNavigate()
 
   // Setup defaults
@@ -31,6 +34,7 @@ export function PreferencesPage() {
   const [grindSize, setGrindSize] = useState("")
   const [waterTemperature, setWaterTemperature] = useState("")
   const [filterPaperId, setFilterPaperId] = useState("")
+  const [dripperId, setDripperId] = useState("")
 
   // Pour defaults
   const [pours, setPours] = useState<PourFormData[]>([])
@@ -39,11 +43,13 @@ export function PreferencesPage() {
     setIsLoading(true)
     setError(null)
     try {
-      const [defaults, fpRes] = await Promise.all([
+      const [defaults, fpRes, dRes] = await Promise.all([
         getDefaults(),
         listFilterPapers(1, 100),
+        listDrippers(1, 100),
       ])
       setFilterPapers(fpRes.items)
+      setDrippers(dRes.items)
       populateForm(defaults)
     } catch {
       setError("Failed to load preferences. Please try again.")
@@ -58,6 +64,7 @@ export function PreferencesPage() {
     setGrindSize(defaults.grind_size != null ? String(defaults.grind_size) : "")
     setWaterTemperature(defaults.water_temperature != null ? String(defaults.water_temperature) : "")
     setFilterPaperId(defaults.filter_paper_id ?? "")
+    setDripperId(defaults.dripper_id ?? "")
     setPours(
       defaults.pour_defaults.map((p) => ({
         water_amount: p.water_amount != null ? String(p.water_amount) : "",
@@ -92,6 +99,7 @@ export function PreferencesPage() {
     if (grindSize.trim()) payload.grind_size = toNum(grindSize)
     if (waterTemperature.trim()) payload.water_temperature = toNum(waterTemperature)
     if (filterPaperId) payload.filter_paper_id = filterPaperId
+    if (dripperId) payload.dripper_id = dripperId
 
     if (pours.length > 0) {
       payload.pour_defaults = pours.map((p, i) => ({
@@ -200,7 +208,7 @@ export function PreferencesPage() {
     )
   }
 
-  if (error && !coffeeWeight && !ratio && !grindSize && !waterTemperature && !filterPaperId && pours.length === 0) {
+  if (error && !coffeeWeight && !ratio && !grindSize && !waterTemperature && !filterPaperId && !dripperId && pours.length === 0) {
     return (
       <FormPageLayout
         title="Preferences"
@@ -378,6 +386,38 @@ export function PreferencesPage() {
                 )}
               </div>
             </div>
+
+            <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+              <label htmlFor="default-dripper" className="text-sm font-medium text-foreground sm:w-32 sm:shrink-0">
+                Dripper
+              </label>
+              <div className="flex flex-1 items-center gap-2">
+                <select
+                  id="default-dripper"
+                  value={dripperId}
+                  onChange={(e) => setDripperId(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Select dripper...</option>
+                  {drippers.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                      {d.brand ? ` (${d.brand})` : ""}
+                    </option>
+                  ))}
+                </select>
+                {dripperId && (
+                  <button
+                    type="button"
+                    onClick={() => setDripperId("")}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Clear dripper"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -449,6 +489,14 @@ export function PreferencesPage() {
               Add Pour
             </button>
           </div>
+        </div>
+
+        {/* Share Link */}
+        <div>
+          <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            Share Link
+          </h3>
+          <ShareLinkManager />
         </div>
       </div>
     </FormPageLayout>

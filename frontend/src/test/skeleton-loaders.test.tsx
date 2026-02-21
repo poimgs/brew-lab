@@ -33,6 +33,13 @@ vi.mock("@/api/filterPapers", () => ({
   deleteFilterPaper: vi.fn(),
 }))
 
+vi.mock("@/api/drippers", () => ({
+  listDrippers: vi.fn(),
+  createDripper: vi.fn(),
+  updateDripper: vi.fn(),
+  deleteDripper: vi.fn(),
+}))
+
 vi.mock("@/api/defaults", () => ({
   getDefaults: vi.fn(),
   updateDefaults: vi.fn(),
@@ -42,6 +49,7 @@ vi.mock("@/api/defaults", () => ({
 import { getRecentBrews, listBrews } from "@/api/brews"
 import { listCoffees, getCoffee } from "@/api/coffees"
 import { listFilterPapers } from "@/api/filterPapers"
+import { listDrippers } from "@/api/drippers"
 import { getDefaults } from "@/api/defaults"
 
 import { HomePage } from "@/pages/HomePage"
@@ -56,6 +64,7 @@ const mockedListBrews = vi.mocked(listBrews)
 const mockedListCoffees = vi.mocked(listCoffees)
 const mockedGetCoffee = vi.mocked(getCoffee)
 const mockedListFilterPapers = vi.mocked(listFilterPapers)
+const mockedListDrippers = vi.mocked(listDrippers)
 const mockedGetDefaults = vi.mocked(getDefaults)
 
 describe("Skeleton loaders", () => {
@@ -131,7 +140,12 @@ describe("Skeleton loaders", () => {
 
   it("EquipmentPage shows skeleton while loading", () => {
     mockedListFilterPapers.mockReturnValue(new Promise(() => {}))
-    render(<EquipmentPage />)
+    mockedListDrippers.mockReturnValue(new Promise(() => {}))
+    render(
+      <MemoryRouter>
+        <EquipmentPage />
+      </MemoryRouter>
+    )
     expect(screen.getByTestId("equipment-skeleton")).toBeInTheDocument()
     // Should show 3 card skeletons
     const cards = screen.getByTestId("equipment-skeleton").querySelectorAll(".rounded-lg")

@@ -14,6 +14,12 @@ export interface BrewFilterPaper {
   brand: string | null
 }
 
+export interface BrewDripper {
+  id: string
+  name: string
+  brand: string | null
+}
+
 export interface Brew {
   id: string
   coffee_id: string
@@ -29,6 +35,7 @@ export interface Brew {
   grind_size: number | null
   water_temperature: number | null
   filter_paper: BrewFilterPaper | null
+  dripper: BrewDripper | null
   pours: BrewPour[]
   total_brew_time: number | null
   technique_notes: string | null
@@ -63,6 +70,7 @@ export interface BrewRequest {
   grind_size?: number | null
   water_temperature?: number | null
   filter_paper_id?: string | null
+  dripper_id?: string | null
   pours?: BrewPourRequest[]
   total_brew_time?: number | null
   technique_notes?: string | null

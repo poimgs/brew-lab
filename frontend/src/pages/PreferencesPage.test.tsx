@@ -26,12 +26,24 @@ vi.mock("@/api/filterPapers", () => ({
   listFilterPapers: vi.fn(),
 }))
 
+vi.mock("@/api/drippers", () => ({
+  listDrippers: vi.fn(),
+}))
+
+vi.mock("@/api/shareLink", () => ({
+  getShareLink: vi.fn().mockResolvedValue({ token: null, url: null, created_at: null }),
+  createShareLink: vi.fn(),
+  revokeShareLink: vi.fn(),
+}))
+
 import { getDefaults, updateDefaults } from "@/api/defaults"
 import { listFilterPapers } from "@/api/filterPapers"
+import { listDrippers } from "@/api/drippers"
 
 const mockedGetDefaults = vi.mocked(getDefaults)
 const mockedUpdateDefaults = vi.mocked(updateDefaults)
 const mockedListFilterPapers = vi.mocked(listFilterPapers)
+const mockedListDrippers = vi.mocked(listDrippers)
 
 const emptyDefaults = {
   coffee_weight: null,
@@ -39,6 +51,7 @@ const emptyDefaults = {
   grind_size: null,
   water_temperature: null,
   filter_paper_id: null,
+  dripper_id: null,
   pour_defaults: [],
 }
 
@@ -48,6 +61,7 @@ const populatedDefaults = {
   grind_size: 3.5,
   water_temperature: 93,
   filter_paper_id: "fp-1",
+  dripper_id: "d-1",
   pour_defaults: [
     { pour_number: 1, water_amount: 45, pour_style: "center", wait_time: 30 },
     { pour_number: 2, water_amount: 90, pour_style: "circular", wait_time: null },
@@ -76,9 +90,32 @@ const mockFilterPapers = {
   pagination: { page: 1, per_page: 100, total: 2, total_pages: 1 },
 }
 
+const mockDrippers = {
+  items: [
+    {
+      id: "d-1",
+      name: "V60",
+      brand: "Hario",
+      notes: null,
+      created_at: "2026-01-20T10:00:00Z",
+      updated_at: "2026-01-20T10:00:00Z",
+    },
+    {
+      id: "d-2",
+      name: "Origami",
+      brand: null,
+      notes: null,
+      created_at: "2026-01-19T10:00:00Z",
+      updated_at: "2026-01-19T10:00:00Z",
+    },
+  ],
+  pagination: { page: 1, per_page: 100, total: 2, total_pages: 1 },
+}
+
 describe("PreferencesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockedListDrippers.mockResolvedValue(mockDrippers)
   })
 
   it("shows loading spinner then renders page", async () => {
@@ -361,7 +398,7 @@ describe("PreferencesPage", () => {
     })
 
     // Each setup field row should use flex-col (stacked) by default, sm:flex-row for desktop
-    const labels = ["Coffee Weight", "Ratio", "Grind Size", "Temperature", "Filter Paper"]
+    const labels = ["Coffee Weight", "Ratio", "Grind Size", "Temperature", "Filter Paper", "Dripper"]
     for (const labelText of labels) {
       const label = screen.getByText(labelText, { selector: "label" })
       const row = label.parentElement!
@@ -406,5 +443,89 @@ describe("PreferencesPage", () => {
     await user.click(screen.getAllByText("Cancel")[0])
 
     expect(mockNavigate).toHaveBeenCalledWith(-1)
+  })
+
+  it("shows dripper options from equipment", async () => {
+    mockedGetDefaults.mockResolvedValueOnce(emptyDefaults)
+    mockedListFilterPapers.mockResolvedValueOnce(mockFilterPapers)
+
+    render(<PreferencesPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Preferences")).toBeInTheDocument()
+    })
+
+    const select = screen.getByLabelText("Dripper")
+    const options = select.querySelectorAll("option")
+
+    // "Select dripper..." + 2 drippers
+    expect(options).toHaveLength(3)
+    expect(options[1].textContent).toBe("V60 (Hario)")
+    expect(options[2].textContent).toBe("Origami")
+  })
+
+  it("populates dripper from existing defaults", async () => {
+    mockedGetDefaults.mockResolvedValueOnce(populatedDefaults)
+    mockedListFilterPapers.mockResolvedValueOnce(mockFilterPapers)
+
+    render(<PreferencesPage />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Dripper")).toHaveValue("d-1")
+    })
+  })
+
+  it("renders empty dripper when no default exists", async () => {
+    mockedGetDefaults.mockResolvedValueOnce(emptyDefaults)
+    mockedListFilterPapers.mockResolvedValueOnce(mockFilterPapers)
+
+    render(<PreferencesPage />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Dripper")).toHaveValue("")
+    })
+  })
+
+  it("clears dripper default", async () => {
+    mockedGetDefaults.mockResolvedValueOnce(populatedDefaults)
+    mockedListFilterPapers.mockResolvedValueOnce(mockFilterPapers)
+    const user = userEvent.setup()
+
+    render(<PreferencesPage />)
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Dripper")).toHaveValue("d-1")
+    })
+
+    await user.click(screen.getByLabelText("Clear dripper"))
+
+    expect(screen.getByLabelText("Dripper")).toHaveValue("")
+  })
+
+  it("includes dripper_id in save payload", async () => {
+    mockedGetDefaults.mockResolvedValueOnce(emptyDefaults)
+    mockedListFilterPapers.mockResolvedValueOnce(mockFilterPapers)
+
+    const savedDefaults = {
+      ...emptyDefaults,
+      dripper_id: "d-1",
+    }
+    mockedUpdateDefaults.mockResolvedValueOnce(savedDefaults)
+
+    const user = userEvent.setup()
+    render(<PreferencesPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText("Preferences")).toBeInTheDocument()
+    })
+
+    await user.selectOptions(screen.getByLabelText("Dripper"), "d-1")
+    await user.click(screen.getAllByText("Save")[0])
+
+    await waitFor(() => {
+      expect(mockedUpdateDefaults).toHaveBeenCalledWith(
+        expect.objectContaining({ dripper_id: "d-1" })
+      )
+    })
   })
 })

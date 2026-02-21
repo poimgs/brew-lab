@@ -19,7 +19,9 @@ import (
 	"github.com/poimgs/coffee-tracker/backend/internal/domain/brew"
 	"github.com/poimgs/coffee-tracker/backend/internal/domain/coffee"
 	"github.com/poimgs/coffee-tracker/backend/internal/domain/defaults"
+	"github.com/poimgs/coffee-tracker/backend/internal/domain/dripper"
 	"github.com/poimgs/coffee-tracker/backend/internal/domain/filterpaper"
+	"github.com/poimgs/coffee-tracker/backend/internal/domain/sharelink"
 	"github.com/poimgs/coffee-tracker/backend/internal/middleware"
 )
 
@@ -48,17 +50,21 @@ func main() {
 	userRepo := auth.NewPgUserRepository(pool)
 	refreshTokenRepo := auth.NewPgRefreshTokenRepository(pool)
 	filterPaperRepo := filterpaper.NewPgRepository(pool)
+	dripperRepo := dripper.NewPgRepository(pool)
 	coffeeRepo := coffee.NewPgRepository(pool)
 	brewRepo := brew.NewPgRepository(pool)
 	defaultsRepo := defaults.NewPgRepository(pool)
+	shareLinkRepo := sharelink.NewPgRepository(pool)
 
 	// Handlers
 	secureCookie := cfg.Environment != "development"
 	authHandler := auth.NewHandler(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL, secureCookie)
 	filterPaperHandler := filterpaper.NewHandler(filterPaperRepo)
+	dripperHandler := dripper.NewHandler(dripperRepo)
 	coffeeHandler := coffee.NewHandler(coffeeRepo)
 	brewHandler := brew.NewHandler(brewRepo)
 	defaultsHandler := defaults.NewHandler(defaultsRepo)
+	shareLinkHandler := sharelink.NewHandler(shareLinkRepo, cfg.BaseURL)
 
 	r := chi.NewRouter()
 
@@ -84,6 +90,9 @@ func main() {
 
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
+		// Public share endpoint (rate limited)
+		r.With(middleware.RateLimit(30, time.Minute)).Get("/share/{token}", shareLinkHandler.GetSharedCoffees)
+
 		// Auth routes (public)
 		r.Route("/auth", func(r chi.Router) {
 			r.With(middleware.RateLimit(5, time.Minute)).Post("/login", authHandler.Login)
@@ -103,6 +112,15 @@ func main() {
 				r.Get("/{id}", filterPaperHandler.GetByID)
 				r.Put("/{id}", filterPaperHandler.Update)
 				r.Delete("/{id}", filterPaperHandler.Delete)
+			})
+
+			// Drippers
+			r.Route("/drippers", func(r chi.Router) {
+				r.Get("/", dripperHandler.List)
+				r.Post("/", dripperHandler.Create)
+				r.Get("/{id}", dripperHandler.GetByID)
+				r.Put("/{id}", dripperHandler.Update)
+				r.Delete("/{id}", dripperHandler.Delete)
 			})
 
 			// Coffees
@@ -136,6 +154,11 @@ func main() {
 				r.Put("/{id}", brewHandler.Update)
 				r.Delete("/{id}", brewHandler.Delete)
 			})
+
+			// Share link management
+			r.Get("/share-link", shareLinkHandler.GetShareLink)
+			r.Post("/share-link", shareLinkHandler.CreateShareLink)
+			r.Delete("/share-link", shareLinkHandler.RevokeShareLink)
 		})
 	})
 

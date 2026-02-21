@@ -21,6 +21,7 @@ type Brew struct {
 	GrindSize        *float64     `json:"grind_size"`
 	WaterTemperature *float64     `json:"water_temperature"`
 	FilterPaper      *FilterPaper `json:"filter_paper"`
+	Dripper          *Dripper     `json:"dripper"`
 	Pours            []Pour       `json:"pours"`
 	TotalBrewTime    *int         `json:"total_brew_time"`
 	TechniqueNotes   *string      `json:"technique_notes"`
@@ -49,6 +50,12 @@ type FilterPaper struct {
 	Brand *string `json:"brand"`
 }
 
+type Dripper struct {
+	ID    string  `json:"id"`
+	Name  string  `json:"name"`
+	Brand *string `json:"brand"`
+}
+
 type Pour struct {
 	PourNumber  int      `json:"pour_number"`
 	WaterAmount *float64 `json:"water_amount"`
@@ -64,6 +71,7 @@ type CreateRequest struct {
 	GrindSize        *float64 `json:"grind_size"`
 	WaterTemperature *float64 `json:"water_temperature"`
 	FilterPaperID    *string  `json:"filter_paper_id"`
+	DripperID        *string  `json:"dripper_id"`
 	Pours            []PourRequest `json:"pours"`
 	TotalBrewTime    *int     `json:"total_brew_time"`
 	TechniqueNotes   *string  `json:"technique_notes"`
@@ -90,6 +98,7 @@ type UpdateRequest struct {
 	GrindSize        *float64 `json:"grind_size"`
 	WaterTemperature *float64 `json:"water_temperature"`
 	FilterPaperID    *string  `json:"filter_paper_id"`
+	DripperID        *string  `json:"dripper_id"`
 	Pours            []PourRequest `json:"pours"`
 	TotalBrewTime    *int     `json:"total_brew_time"`
 	TechniqueNotes   *string  `json:"technique_notes"`

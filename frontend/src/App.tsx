@@ -14,6 +14,7 @@ import { BrewsPage } from "@/pages/BrewsPage"
 import { PreferencesPage } from "@/pages/PreferencesPage"
 import { CoffeeFormPage } from "@/pages/CoffeeFormPage"
 import { BrewComparisonPage } from "@/pages/BrewComparisonPage"
+import { SharePage } from "@/pages/SharePage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 
 function AppToaster() {
@@ -37,6 +38,7 @@ export default function App() {
           <AppToaster />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/share/:token" element={<SharePage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route path="/" element={<HomePage />} />

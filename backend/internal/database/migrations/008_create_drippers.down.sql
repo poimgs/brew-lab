@@ -1,0 +1,2 @@
+ALTER TABLE brews DROP COLUMN dripper_id;
+DROP TABLE IF EXISTS drippers;

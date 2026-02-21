@@ -17,6 +17,7 @@ import { FormPageLayout } from "@/components/layout/FormPageLayout"
 import { CollapsibleSection, type SectionFill } from "@/components/ui/CollapsibleSection"
 import { listCoffees, setReferenceBrew, type Coffee } from "@/api/coffees"
 import { listFilterPapers, type FilterPaper } from "@/api/filterPapers"
+import { listDrippers, type Dripper } from "@/api/drippers"
 import {
   createBrew,
   updateBrew,
@@ -79,6 +80,7 @@ const brewFormSchema = z.object({
     .optional()
     .transform((v) => (v === "" || v === undefined ? null : v)),
   filter_paper_id: z.string().optional().default(""),
+  dripper_id: z.string().optional().default(""),
   // Brewing
   pours: z.array(pourSchema).optional().default([]),
   total_brew_time_display: z.string().optional().default(""),
@@ -302,6 +304,7 @@ export function BrewFormPage() {
   // Data loading
   const [coffees, setCoffees] = useState<Coffee[]>([])
   const [filterPapers, setFilterPapers] = useState<FilterPaper[]>([])
+  const [drippers, setDrippers] = useState<Dripper[]>([])
   const [isPageLoading, setIsPageLoading] = useState(true)
   const [reference, setReference] = useState<ReferenceResponse | null>(null)
   const [userDefaults, setUserDefaults] = useState<DefaultsResponse | null>(null)
@@ -339,6 +342,7 @@ export function BrewFormPage() {
       grind_size: "",
       water_temperature: "",
       filter_paper_id: "",
+      dripper_id: "",
       pours: [],
       total_brew_time_display: "",
       technique_notes: "",
@@ -376,13 +380,15 @@ export function BrewFormPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [coffeeRes, fpRes, defaultsRes] = await Promise.all([
+        const [coffeeRes, fpRes, dripperRes, defaultsRes] = await Promise.all([
           listCoffees({ per_page: 100 }),
           listFilterPapers(1, 100),
+          listDrippers(1, 100),
           !id && !fromBrewId ? getDefaults().catch(() => null) : Promise.resolve(null),
         ])
         setCoffees(coffeeRes.items)
         setFilterPapers(fpRes.items)
+        setDrippers(dripperRes.items)
         if (defaultsRes) setUserDefaults(defaultsRes)
 
         // If editing, load the existing brew
@@ -427,6 +433,7 @@ export function BrewFormPage() {
         grind_size: brew.grind_size ?? "",
         water_temperature: brew.water_temperature ?? "",
         filter_paper_id: brew.filter_paper?.id ?? "",
+        dripper_id: brew.dripper?.id ?? "",
         pours: brew.pours.map((p) => ({
           water_amount: p.water_amount ?? "",
           pour_style: p.pour_style ?? "",
@@ -482,6 +489,7 @@ export function BrewFormPage() {
         grind_size: brew.grind_size ?? "",
         water_temperature: brew.water_temperature ?? "",
         filter_paper_id: brew.filter_paper?.id ?? "",
+        dripper_id: brew.dripper?.id ?? "",
         pours: brew.pours.map((p) => ({
           water_amount: p.water_amount ?? "",
           pour_style: p.pour_style ?? "",
@@ -514,6 +522,7 @@ export function BrewFormPage() {
         grind_size: defaults.grind_size ?? "",
         water_temperature: defaults.water_temperature ?? "",
         filter_paper_id: defaults.filter_paper_id ?? "",
+        dripper_id: defaults.dripper_id ?? "",
         pours: defaults.pour_defaults.map((p) => ({
           water_amount: p.water_amount ?? "",
           pour_style: p.pour_style ?? "",
@@ -565,6 +574,7 @@ export function BrewFormPage() {
           setValue("grind_size", ref.brew.grind_size ?? "")
           setValue("water_temperature", ref.brew.water_temperature ?? "")
           setValue("filter_paper_id", ref.brew.filter_paper?.id ?? "")
+          setValue("dripper_id", ref.brew.dripper?.id ?? "")
           replacePours(ref.brew.pours.map((p) => ({
             water_amount: p.water_amount ?? "",
             pour_style: p.pour_style ?? "",
@@ -577,6 +587,7 @@ export function BrewFormPage() {
           setValue("grind_size", userDefaults.grind_size ?? "")
           setValue("water_temperature", userDefaults.water_temperature ?? "")
           setValue("filter_paper_id", userDefaults.filter_paper_id ?? "")
+          setValue("dripper_id", userDefaults.dripper_id ?? "")
           replacePours(userDefaults.pour_defaults.map((p) => ({
             water_amount: p.water_amount ?? "",
             pour_style: p.pour_style ?? "",
@@ -648,6 +659,7 @@ export function BrewFormPage() {
       watchAll.grind_size,
       watchAll.water_temperature,
       watchAll.filter_paper_id,
+      watchAll.dripper_id,
     ]
     const filled = fields.filter(
       (v) => v !== "" && v !== null && v !== undefined
@@ -661,6 +673,7 @@ export function BrewFormPage() {
     watchAll.grind_size,
     watchAll.water_temperature,
     watchAll.filter_paper_id,
+    watchAll.dripper_id,
   ])
 
   const brewingFill: SectionFill = useMemo(() => {
@@ -744,6 +757,7 @@ export function BrewFormPage() {
       grind_size: toNum(data.grind_size),
       water_temperature: toNum(data.water_temperature),
       filter_paper_id: data.filter_paper_id || null,
+      dripper_id: data.dripper_id || null,
       pours: (data.pours ?? []).map((p, i) => ({
         pour_number: i + 1,
         water_amount: toNum(p.water_amount),
@@ -1048,23 +1062,44 @@ export function BrewFormPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="filter-paper" className="text-sm font-medium text-foreground">
-                    Filter Paper
-                  </label>
-                  <select
-                    id="filter-paper"
-                    className={inputClass()}
-                    {...register("filter_paper_id")}
-                  >
-                    <option value="">Select filter...</option>
-                    {filterPapers.map((fp) => (
-                      <option key={fp.id} value={fp.id}>
-                        {fp.name}
-                        {fp.brand ? ` (${fp.brand})` : ""}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label htmlFor="filter-paper" className="text-sm font-medium text-foreground">
+                      Filter Paper
+                    </label>
+                    <select
+                      id="filter-paper"
+                      className={inputClass()}
+                      {...register("filter_paper_id")}
+                    >
+                      <option value="">Select filter...</option>
+                      {filterPapers.map((fp) => (
+                        <option key={fp.id} value={fp.id}>
+                          {fp.name}
+                          {fp.brand ? ` (${fp.brand})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="dripper" className="text-sm font-medium text-foreground">
+                      Dripper
+                    </label>
+                    <select
+                      id="dripper"
+                      className={inputClass()}
+                      {...register("dripper_id")}
+                    >
+                      <option value="">Select dripper...</option>
+                      {drippers.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                          {d.brand ? ` (${d.brand})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
           </CollapsibleSection>
 

@@ -20,7 +20,7 @@ func NewPgRepository(pool *pgxpool.Pool) *PgRepository {
 }
 
 const brewColumns = `b.id, b.user_id, b.coffee_id, b.brew_date, b.days_off_roast,
-	b.coffee_weight, b.ratio, b.grind_size, b.water_temperature, b.filter_paper_id,
+	b.coffee_weight, b.ratio, b.grind_size, b.water_temperature, b.filter_paper_id, b.dripper_id,
 	b.total_brew_time, b.technique_notes,
 	b.coffee_ml, b.tds,
 	b.aroma_intensity, b.body_intensity, b.sweetness_intensity,
@@ -29,18 +29,23 @@ const brewColumns = `b.id, b.user_id, b.coffee_id, b.brew_date, b.days_off_roast
 	b.created_at, b.updated_at,
 	c.name AS coffee_name, c.roaster AS coffee_roaster, c.tasting_notes AS coffee_tasting_notes,
 	c.reference_brew_id AS coffee_reference_brew_id,
-	fp.id AS fp_id, fp.name AS fp_name, fp.brand AS fp_brand`
+	fp.id AS fp_id, fp.name AS fp_name, fp.brand AS fp_brand,
+	d.id AS d_id, d.name AS d_name, d.brand AS d_brand`
 
 func scanBrew(row pgx.Row) (*Brew, error) {
 	var b Brew
 	var brewDate time.Time
 	var filterPaperID *string
+	var dripperID *string
 	var fpID *string
 	var fpName *string
 	var fpBrand *string
+	var dID *string
+	var dName *string
+	var dBrand *string
 	err := row.Scan(
 		&b.ID, &b.UserID, &b.CoffeeID, &brewDate, &b.DaysOffRoast,
-		&b.CoffeeWeight, &b.Ratio, &b.GrindSize, &b.WaterTemperature, &filterPaperID,
+		&b.CoffeeWeight, &b.Ratio, &b.GrindSize, &b.WaterTemperature, &filterPaperID, &dripperID,
 		&b.TotalBrewTime, &b.TechniqueNotes,
 		&b.CoffeeMl, &b.TDS,
 		&b.AromaIntensity, &b.BodyIntensity, &b.SweetnessIntensity,
@@ -50,6 +55,7 @@ func scanBrew(row pgx.Row) (*Brew, error) {
 		&b.CoffeeName, &b.CoffeeRoaster, &b.CoffeeTastingNotes,
 		&b.CoffeeReferenceBrewID,
 		&fpID, &fpName, &fpBrand,
+		&dID, &dName, &dBrand,
 	)
 	if err != nil {
 		return nil, err
@@ -62,6 +68,14 @@ func scanBrew(row pgx.Row) (*Brew, error) {
 			ID:    *fpID,
 			Name:  derefStr(fpName),
 			Brand: fpBrand,
+		}
+	}
+
+	if dID != nil && *dID != "" {
+		b.Dripper = &Dripper{
+			ID:    *dID,
+			Name:  derefStr(dName),
+			Brand: dBrand,
 		}
 	}
 
@@ -81,7 +95,8 @@ func derefStr(s *string) string {
 const brewSelectBase = `SELECT %s
 	FROM brews b
 	JOIN coffees c ON c.id = b.coffee_id
-	LEFT JOIN filter_papers fp ON fp.id = b.filter_paper_id`
+	LEFT JOIN filter_papers fp ON fp.id = b.filter_paper_id
+	LEFT JOIN drippers d ON d.id = b.dripper_id`
 
 func (r *PgRepository) loadPours(ctx context.Context, brewID string) ([]Pour, error) {
 	rows, err := r.pool.Query(ctx,
@@ -287,12 +302,16 @@ func scanBrewFromRows(rows pgx.Rows) (*Brew, error) {
 	var b Brew
 	var brewDate time.Time
 	var filterPaperID *string
+	var dripperID *string
 	var fpID *string
 	var fpName *string
 	var fpBrand *string
+	var dID *string
+	var dName *string
+	var dBrand *string
 	err := rows.Scan(
 		&b.ID, &b.UserID, &b.CoffeeID, &brewDate, &b.DaysOffRoast,
-		&b.CoffeeWeight, &b.Ratio, &b.GrindSize, &b.WaterTemperature, &filterPaperID,
+		&b.CoffeeWeight, &b.Ratio, &b.GrindSize, &b.WaterTemperature, &filterPaperID, &dripperID,
 		&b.TotalBrewTime, &b.TechniqueNotes,
 		&b.CoffeeMl, &b.TDS,
 		&b.AromaIntensity, &b.BodyIntensity, &b.SweetnessIntensity,
@@ -302,6 +321,7 @@ func scanBrewFromRows(rows pgx.Rows) (*Brew, error) {
 		&b.CoffeeName, &b.CoffeeRoaster, &b.CoffeeTastingNotes,
 		&b.CoffeeReferenceBrewID,
 		&fpID, &fpName, &fpBrand,
+		&dID, &dName, &dBrand,
 	)
 	if err != nil {
 		return nil, err
@@ -314,6 +334,14 @@ func scanBrewFromRows(rows pgx.Rows) (*Brew, error) {
 			ID:    *fpID,
 			Name:  derefStr(fpName),
 			Brand: fpBrand,
+		}
+	}
+
+	if dID != nil && *dID != "" {
+		b.Dripper = &Dripper{
+			ID:    *dID,
+			Name:  derefStr(dName),
+			Brand: dBrand,
 		}
 	}
 
@@ -451,15 +479,15 @@ func (r *PgRepository) Create(ctx context.Context, userID string, req CreateRequ
 	if brewDate == nil {
 		err = tx.QueryRow(ctx,
 			`INSERT INTO brews (user_id, coffee_id, days_off_roast,
-				coffee_weight, ratio, grind_size, water_temperature, filter_paper_id,
+				coffee_weight, ratio, grind_size, water_temperature, filter_paper_id, dripper_id,
 				total_brew_time, technique_notes, coffee_ml, tds,
 				aroma_intensity, body_intensity, sweetness_intensity,
 				brightness_intensity, complexity_intensity, aftertaste_intensity,
 				overall_score, overall_notes, improvement_notes)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
 			 RETURNING id`,
 			userID, req.CoffeeID, daysOffRoast,
-			req.CoffeeWeight, req.Ratio, req.GrindSize, req.WaterTemperature, req.FilterPaperID,
+			req.CoffeeWeight, req.Ratio, req.GrindSize, req.WaterTemperature, req.FilterPaperID, req.DripperID,
 			req.TotalBrewTime, req.TechniqueNotes, req.CoffeeMl, req.TDS,
 			req.AromaIntensity, req.BodyIntensity, req.SweetnessIntensity,
 			req.BrightnessIntensity, req.ComplexityIntensity, req.AftertasteIntensity,
@@ -468,15 +496,15 @@ func (r *PgRepository) Create(ctx context.Context, userID string, req CreateRequ
 	} else {
 		err = tx.QueryRow(ctx,
 			`INSERT INTO brews (user_id, coffee_id, brew_date, days_off_roast,
-				coffee_weight, ratio, grind_size, water_temperature, filter_paper_id,
+				coffee_weight, ratio, grind_size, water_temperature, filter_paper_id, dripper_id,
 				total_brew_time, technique_notes, coffee_ml, tds,
 				aroma_intensity, body_intensity, sweetness_intensity,
 				brightness_intensity, complexity_intensity, aftertaste_intensity,
 				overall_score, overall_notes, improvement_notes)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
 			 RETURNING id`,
 			userID, req.CoffeeID, *brewDate, daysOffRoast,
-			req.CoffeeWeight, req.Ratio, req.GrindSize, req.WaterTemperature, req.FilterPaperID,
+			req.CoffeeWeight, req.Ratio, req.GrindSize, req.WaterTemperature, req.FilterPaperID, req.DripperID,
 			req.TotalBrewTime, req.TechniqueNotes, req.CoffeeMl, req.TDS,
 			req.AromaIntensity, req.BodyIntensity, req.SweetnessIntensity,
 			req.BrightnessIntensity, req.ComplexityIntensity, req.AftertasteIntensity,
@@ -545,16 +573,16 @@ func (r *PgRepository) Update(ctx context.Context, userID, id string, req Update
 	var tag string
 	if req.BrewDate != nil {
 		tag = `UPDATE brews SET coffee_id = $1, brew_date = $2, days_off_roast = $3,
-			coffee_weight = $4, ratio = $5, grind_size = $6, water_temperature = $7, filter_paper_id = $8,
-			total_brew_time = $9, technique_notes = $10, coffee_ml = $11, tds = $12,
-			aroma_intensity = $13, body_intensity = $14, sweetness_intensity = $15,
-			brightness_intensity = $16, complexity_intensity = $17, aftertaste_intensity = $18,
-			overall_score = $19, overall_notes = $20, improvement_notes = $21,
+			coffee_weight = $4, ratio = $5, grind_size = $6, water_temperature = $7, filter_paper_id = $8, dripper_id = $9,
+			total_brew_time = $10, technique_notes = $11, coffee_ml = $12, tds = $13,
+			aroma_intensity = $14, body_intensity = $15, sweetness_intensity = $16,
+			brightness_intensity = $17, complexity_intensity = $18, aftertaste_intensity = $19,
+			overall_score = $20, overall_notes = $21, improvement_notes = $22,
 			updated_at = NOW()
-			WHERE id = $22 AND user_id = $23`
+			WHERE id = $23 AND user_id = $24`
 		_, err = tx.Exec(ctx, tag,
 			req.CoffeeID, *req.BrewDate, daysOffRoast,
-			req.CoffeeWeight, req.Ratio, req.GrindSize, req.WaterTemperature, req.FilterPaperID,
+			req.CoffeeWeight, req.Ratio, req.GrindSize, req.WaterTemperature, req.FilterPaperID, req.DripperID,
 			req.TotalBrewTime, req.TechniqueNotes, req.CoffeeMl, req.TDS,
 			req.AromaIntensity, req.BodyIntensity, req.SweetnessIntensity,
 			req.BrightnessIntensity, req.ComplexityIntensity, req.AftertasteIntensity,
@@ -563,16 +591,16 @@ func (r *PgRepository) Update(ctx context.Context, userID, id string, req Update
 		)
 	} else {
 		tag = `UPDATE brews SET coffee_id = $1, days_off_roast = $2,
-			coffee_weight = $3, ratio = $4, grind_size = $5, water_temperature = $6, filter_paper_id = $7,
-			total_brew_time = $8, technique_notes = $9, coffee_ml = $10, tds = $11,
-			aroma_intensity = $12, body_intensity = $13, sweetness_intensity = $14,
-			brightness_intensity = $15, complexity_intensity = $16, aftertaste_intensity = $17,
-			overall_score = $18, overall_notes = $19, improvement_notes = $20,
+			coffee_weight = $3, ratio = $4, grind_size = $5, water_temperature = $6, filter_paper_id = $7, dripper_id = $8,
+			total_brew_time = $9, technique_notes = $10, coffee_ml = $11, tds = $12,
+			aroma_intensity = $13, body_intensity = $14, sweetness_intensity = $15,
+			brightness_intensity = $16, complexity_intensity = $17, aftertaste_intensity = $18,
+			overall_score = $19, overall_notes = $20, improvement_notes = $21,
 			updated_at = NOW()
-			WHERE id = $21 AND user_id = $22`
+			WHERE id = $22 AND user_id = $23`
 		_, err = tx.Exec(ctx, tag,
 			req.CoffeeID, daysOffRoast,
-			req.CoffeeWeight, req.Ratio, req.GrindSize, req.WaterTemperature, req.FilterPaperID,
+			req.CoffeeWeight, req.Ratio, req.GrindSize, req.WaterTemperature, req.FilterPaperID, req.DripperID,
 			req.TotalBrewTime, req.TechniqueNotes, req.CoffeeMl, req.TDS,
 			req.AromaIntensity, req.BodyIntensity, req.SweetnessIntensity,
 			req.BrightnessIntensity, req.ComplexityIntensity, req.AftertasteIntensity,

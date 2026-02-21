@@ -7,12 +7,13 @@ import (
 )
 
 type Config struct {
-	DatabaseURL    string
-	JWTSecret      string
-	Port           string
-	AccessTokenTTL int
+	DatabaseURL     string
+	JWTSecret       string
+	Port            string
+	AccessTokenTTL  int
 	RefreshTokenTTL int
-	Environment    string
+	Environment     string
+	BaseURL         string
 }
 
 func Load() (*Config, error) {
@@ -54,6 +55,11 @@ func Load() (*Config, error) {
 		env = "development"
 	}
 
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:5173"
+	}
+
 	return &Config{
 		DatabaseURL:     dbURL,
 		JWTSecret:       jwtSecret,
@@ -61,5 +67,6 @@ func Load() (*Config, error) {
 		AccessTokenTTL:  accessTTL,
 		RefreshTokenTTL: refreshTTL,
 		Environment:     env,
+		BaseURL:         baseURL,
 	}, nil
 }
