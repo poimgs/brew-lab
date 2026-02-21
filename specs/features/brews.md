@@ -85,11 +85,13 @@ Null values display as "—".
 - Checkbox column on the left of each brew row
 - Checkboxes don't interfere with row click (clicking the checkbox toggles selection; clicking elsewhere on the row opens the brew detail modal)
 - When 2-4 brews are checked, a "Compare" floating bar appears above the table with text "{N} brews selected" and a "Compare" button
-- **Same-coffee validation:** If selected brews span multiple coffees, the Compare button is disabled with message "Select brews from the same coffee to compare"
-- When all selected brews share the same `coffee_id`, clicking "Compare" navigates to `/coffees/:id/compare?brews=id1,id2,...` using the common coffee ID (see [brew-comparison.md](brew-comparison.md))
+- Clicking "Compare" navigates to `/brews/compare?brews=id1,id2,...&from=brews` (see [brew-comparison.md](brew-comparison.md))
+- Brews from different coffees can be compared — no same-coffee restriction
 - Max 4 selection enforced — checkbox disabled on the 5th brew with tooltip "Maximum 4 brews can be compared"
 - Selection state resets on page navigation or when filters change
 - On mobile card layout: checkbox appears as a small circle in the top-left corner of each card
+
+**Compare bar space reservation:** The compare bar's space is always reserved (invisible placeholder when no brews are selected) to prevent the table from shifting vertically when the first brew is selected. When brews are selected, the bar becomes visible in the reserved space.
 
 ### Pagination
 

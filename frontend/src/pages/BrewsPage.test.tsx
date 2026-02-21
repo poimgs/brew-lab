@@ -389,22 +389,24 @@ describe("BrewsPage", () => {
       expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
-    // Set a filter to make Clear appear
+    // Set a filter to make filter Clear button appear
     await user.selectOptions(screen.getByLabelText("Coffee"), "c-1")
 
+    // There should be 2 "Clear" texts: filter clear + compare bar clear
     await waitFor(() => {
-      expect(screen.getByText("Clear")).toBeInTheDocument()
+      expect(screen.getAllByText("Clear").length).toBeGreaterThanOrEqual(2)
     })
 
-    await user.click(screen.getByText("Clear"))
-
-    // Clear button should disappear after clearing
-    await waitFor(() => {
-      expect(screen.queryByText("Clear")).not.toBeInTheDocument()
-    })
+    // Click the filter Clear button (the one with the X icon)
+    const filterClearBtn = screen.getAllByText("Clear").find((el) =>
+      el.closest("button")?.querySelector("svg")
+    )!
+    await user.click(filterClearBtn)
 
     // Dropdown should reset
-    expect(screen.getByLabelText("Coffee")).toHaveValue("")
+    await waitFor(() => {
+      expect(screen.getByLabelText("Coffee")).toHaveValue("")
+    })
   })
 
   it("toggles sort direction when clicking Date header", async () => {
@@ -584,7 +586,7 @@ describe("BrewsPage — comparison selection", () => {
     expect(checkboxes.length).toBeGreaterThanOrEqual(2)
   })
 
-  it("does not show compare bar when no brews are selected", async () => {
+  it("reserves space for compare bar but hides it when no brews are selected", async () => {
     mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
     renderPage()
 
@@ -592,8 +594,9 @@ describe("BrewsPage — comparison selection", () => {
       expect(screen.getAllByText("Kiamaina").length).toBeGreaterThanOrEqual(1)
     })
 
-    expect(screen.queryByText("Compare")).not.toBeInTheDocument()
-    expect(screen.queryByText(/selected/)).not.toBeInTheDocument()
+    const compareBar = screen.getByTestId("compare-bar")
+    expect(compareBar).toBeInTheDocument()
+    expect(compareBar.className).toContain("invisible")
   })
 
   it("shows compare bar with selection count when a brew is selected", async () => {
@@ -625,13 +628,9 @@ describe("BrewsPage — comparison selection", () => {
     expect(compareBtn).toBeDisabled()
   })
 
-  it("enables Compare button when 2 same-coffee brews are selected", async () => {
+  it("enables Compare button when 2 brews are selected", async () => {
     const user = userEvent.setup()
-    const sameCoffeeBrews = [
-      mockBrews[0],
-      { ...mockBrews[1], id: "b-3", coffee_id: "c-1", coffee_name: "Kiamaina", coffee_roaster: "Cata Coffee" },
-    ]
-    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(sameCoffeeBrews))
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
     renderPage()
 
     await waitFor(() => {
@@ -646,7 +645,7 @@ describe("BrewsPage — comparison selection", () => {
     expect(compareBtn).not.toBeDisabled()
   })
 
-  it("disables Compare button and shows message when selected brews span multiple coffees", async () => {
+  it("enables Compare button when selected brews span multiple coffees", async () => {
     const user = userEvent.setup()
     mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
     renderPage()
@@ -661,17 +660,12 @@ describe("BrewsPage — comparison selection", () => {
     await user.click(checkboxes[1])
 
     const compareBtn = screen.getByText("Compare").closest("button")!
-    expect(compareBtn).toBeDisabled()
-    expect(screen.getByText("Select brews from the same coffee to compare")).toBeInTheDocument()
+    expect(compareBtn).not.toBeDisabled()
   })
 
-  it("navigates to comparison page with correct coffee ID and brew IDs", async () => {
+  it("navigates to comparison page with brew IDs", async () => {
     const user = userEvent.setup()
-    const sameCoffeeBrews = [
-      mockBrews[0],
-      { ...mockBrews[1], id: "b-3", coffee_id: "c-1", coffee_name: "Kiamaina", coffee_roaster: "Cata Coffee", brew_date: "2026-01-15" },
-    ]
-    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(sameCoffeeBrews))
+    mockedListBrews.mockResolvedValueOnce(mockPaginatedBrews(mockBrews))
     renderPage()
 
     await waitFor(() => {
@@ -684,7 +678,7 @@ describe("BrewsPage — comparison selection", () => {
     await user.click(screen.getByText("Compare").closest("button")!)
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      "/coffees/c-1/compare?brews=b-1,b-3&from=brews"
+      "/brews/compare?brews=b-1,b-2&from=brews"
     )
   })
 
@@ -750,8 +744,8 @@ describe("BrewsPage — comparison selection", () => {
     // Click the Clear button in the compare bar
     await user.click(screen.getByText("Clear"))
 
-    expect(screen.queryByText("Compare")).not.toBeInTheDocument()
-    expect(screen.queryByText(/selected/)).not.toBeInTheDocument()
+    const compareBar = screen.getByTestId("compare-bar")
+    expect(compareBar.className).toContain("invisible")
   })
 
   it("resets selection when coffee filter changes", async () => {
@@ -770,9 +764,10 @@ describe("BrewsPage — comparison selection", () => {
     // Change coffee filter
     await user.selectOptions(screen.getByLabelText("Coffee"), "c-1")
 
-    // Selection should be cleared
+    // Selection should be cleared — compare bar becomes invisible
     await waitFor(() => {
-      expect(screen.queryByText(/selected/)).not.toBeInTheDocument()
+      const compareBar = screen.getByTestId("compare-bar")
+      expect(compareBar.className).toContain("invisible")
     })
   })
 
@@ -790,8 +785,8 @@ describe("BrewsPage — comparison selection", () => {
     expect(screen.getByText("1 selected")).toBeInTheDocument()
 
     await user.click(firstCheckbox)
-    expect(screen.queryByText("1 selected")).not.toBeInTheDocument()
-    expect(screen.queryByText("Compare")).not.toBeInTheDocument()
+    const compareBar = screen.getByTestId("compare-bar")
+    expect(compareBar.className).toContain("invisible")
   })
 })
 

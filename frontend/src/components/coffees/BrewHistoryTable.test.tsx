@@ -188,7 +188,7 @@ describe("BrewHistoryTable — comparison selection", () => {
     await user.click(screen.getByText("Compare").closest("button")!)
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      "/coffees/c-1/compare?brews=b-1,b-2"
+      "/brews/compare?brews=b-1,b-2&from=coffee&coffee_id=c-1"
     )
   })
 

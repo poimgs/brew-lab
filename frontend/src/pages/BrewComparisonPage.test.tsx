@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
@@ -98,7 +98,7 @@ function renderPage(route: string) {
   return render(
     <MemoryRouter initialEntries={[route]}>
       <Routes>
-        <Route path="/coffees/:id/compare" element={<BrewComparisonPage />} />
+        <Route path="/brews/compare" element={<BrewComparisonPage />} />
         <Route path="/coffees/:id" element={<div data-testid="coffee-detail">Coffee Detail</div>} />
         <Route path="/brews" element={<div data-testid="brews-page">Brews Page</div>} />
       </Routes>
@@ -113,49 +113,34 @@ describe("BrewComparisonPage", () => {
 
   // --- Redirect/Validation ---
 
-  it("redirects to coffee detail with toast when fewer than 2 brew IDs", async () => {
-    renderPage("/coffees/c-1/compare?brews=b-1")
+  it("redirects to /brews with toast when fewer than 2 brew IDs", async () => {
+    renderPage("/brews/compare?brews=b-1")
 
     await waitFor(() => {
-      expect(screen.getByTestId("coffee-detail")).toBeInTheDocument()
+      expect(screen.getByTestId("brews-page")).toBeInTheDocument()
     })
 
     expect(mockedToast.info).toHaveBeenCalledWith("Select at least 2 brews to compare")
   })
 
   it("redirects when no brews query param is provided", async () => {
-    renderPage("/coffees/c-1/compare")
+    renderPage("/brews/compare")
 
     await waitFor(() => {
-      expect(screen.getByTestId("coffee-detail")).toBeInTheDocument()
+      expect(screen.getByTestId("brews-page")).toBeInTheDocument()
     })
 
     expect(mockedToast.info).toHaveBeenCalledWith("Select at least 2 brews to compare")
   })
 
   it("redirects when more than 4 brew IDs are provided", async () => {
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2,b-3,b-4,b-5")
+    renderPage("/brews/compare?brews=b-1,b-2,b-3,b-4,b-5")
 
     await waitFor(() => {
-      expect(screen.getByTestId("coffee-detail")).toBeInTheDocument()
+      expect(screen.getByTestId("brews-page")).toBeInTheDocument()
     })
 
     expect(mockedToast.info).toHaveBeenCalledWith("Maximum 4 brews can be compared")
-  })
-
-  it("redirects with error toast when a brew has wrong coffee_id", async () => {
-    const wrongCoffeeBrew = makeBrew({ id: "b-2", coffee_id: "c-999" })
-    mockedGetBrew
-      .mockResolvedValueOnce(brew1)
-      .mockResolvedValueOnce(wrongCoffeeBrew)
-
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
-
-    await waitFor(() => {
-      expect(screen.getByTestId("coffee-detail")).toBeInTheDocument()
-    })
-
-    expect(mockedToast.error).toHaveBeenCalledWith("All brews must belong to the same coffee")
   })
 
   it("redirects with error toast when a brew fetch fails (404)", async () => {
@@ -163,10 +148,10 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew1)
       .mockRejectedValueOnce(new Error("Not Found"))
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
-      expect(screen.getByTestId("coffee-detail")).toBeInTheDocument()
+      expect(screen.getByTestId("brews-page")).toBeInTheDocument()
     })
 
     expect(mockedToast.error).toHaveBeenCalledWith("One or more brews could not be found")
@@ -175,7 +160,7 @@ describe("BrewComparisonPage", () => {
   it("redirects to /brews when from=brews and fetch fails", async () => {
     mockedGetBrew.mockRejectedValue(new Error("Not Found"))
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2&from=brews")
+    renderPage("/brews/compare?brews=b-1,b-2&from=brews")
 
     await waitFor(() => {
       expect(screen.getByTestId("brews-page")).toBeInTheDocument()
@@ -187,7 +172,7 @@ describe("BrewComparisonPage", () => {
   it("shows loading skeleton while fetching", () => {
     mockedGetBrew.mockReturnValue(new Promise(() => {})) // Never resolves
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     expect(screen.getByTestId("comparison-skeleton")).toBeInTheDocument()
   })
@@ -199,7 +184,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew1)
       .mockResolvedValueOnce(brew2)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -215,7 +200,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew1)
       .mockResolvedValueOnce(brew2)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -231,7 +216,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew1)
       .mockResolvedValueOnce(brew2)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -246,7 +231,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew1)
       .mockResolvedValueOnce(brew2)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -263,7 +248,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew1)
       .mockResolvedValueOnce(brew2)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -292,7 +277,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew1)
       .mockResolvedValueOnce(brew2)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -314,7 +299,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew1)
       .mockResolvedValueOnce(brew2)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -336,7 +321,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew2)
       .mockResolvedValueOnce(brew3)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2,b-3")
+    renderPage("/brews/compare?brews=b-1,b-2,b-3")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -367,7 +352,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(sameBrew1)
       .mockResolvedValueOnce(sameBrew2)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -397,7 +382,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew1)
       .mockResolvedValueOnce(brewWithNulls)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -418,7 +403,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew2)
 
     const user = userEvent.setup()
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -436,18 +421,33 @@ describe("BrewComparisonPage", () => {
 
   // --- Back navigation ---
 
-  it("shows 'Back to Coffee' link by default", async () => {
+  it("shows 'Back to Brews' link by default", async () => {
     mockedGetBrew
       .mockResolvedValueOnce(brew1)
       .mockResolvedValueOnce(brew2)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
     })
 
-    const backLink = screen.getByText("Back to Coffee")
+    const backLink = screen.getByText("Back to Brews")
+    expect(backLink.closest("a")).toHaveAttribute("href", "/brews")
+  })
+
+  it("shows 'Back to {Coffee Name}' link when from=coffee with coffee_id", async () => {
+    mockedGetBrew
+      .mockResolvedValueOnce(brew1)
+      .mockResolvedValueOnce(brew2)
+
+    renderPage("/brews/compare?brews=b-1,b-2&from=coffee&coffee_id=c-1")
+
+    await waitFor(() => {
+      expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
+    })
+
+    const backLink = screen.getByText("Back to Kiamaina")
     expect(backLink.closest("a")).toHaveAttribute("href", "/coffees/c-1")
   })
 
@@ -456,7 +456,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew1)
       .mockResolvedValueOnce(brew2)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2&from=brews")
+    renderPage("/brews/compare?brews=b-1,b-2&from=brews")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -474,7 +474,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew2)
       .mockResolvedValueOnce(brew3)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2,b-3")
+    renderPage("/brews/compare?brews=b-1,b-2,b-3")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -493,7 +493,7 @@ describe("BrewComparisonPage", () => {
       .mockResolvedValueOnce(brew1)
       .mockResolvedValueOnce(brew2)
 
-    renderPage("/coffees/c-1/compare?brews=b-1,b-2")
+    renderPage("/brews/compare?brews=b-1,b-2")
 
     await waitFor(() => {
       expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
@@ -502,5 +502,244 @@ describe("BrewComparisonPage", () => {
     expect(mockedGetBrew).toHaveBeenCalledWith("b-1")
     expect(mockedGetBrew).toHaveBeenCalledWith("b-2")
     expect(mockedGetBrew).toHaveBeenCalledTimes(2)
+  })
+
+  // --- Cross-coffee comparison ---
+
+  it("shows 'Brew Comparison' title for cross-coffee comparison", async () => {
+    const crossCoffeeBrew = makeBrew({
+      id: "b-2",
+      coffee_id: "c-2",
+      coffee_name: "El Diamante",
+      coffee_roaster: "April",
+      brew_date: "2026-01-15",
+    })
+
+    mockedGetBrew
+      .mockResolvedValueOnce(brew1)
+      .mockResolvedValueOnce(crossCoffeeBrew)
+
+    renderPage("/brews/compare?brews=b-1,b-2")
+
+    await waitFor(() => {
+      expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
+    })
+
+    expect(screen.getByText("Brew Comparison")).toBeInTheDocument()
+    // Should NOT show coffee name as title
+    expect(screen.queryByRole("heading", { name: /Kiamaina/ })).not.toBeInTheDocument()
+  })
+
+  it("shows coffee name in column headers for cross-coffee comparison", async () => {
+    const crossCoffeeBrew = makeBrew({
+      id: "b-2",
+      coffee_id: "c-2",
+      coffee_name: "El Diamante",
+      coffee_roaster: "April",
+      brew_date: "2026-01-15",
+    })
+
+    mockedGetBrew
+      .mockResolvedValueOnce(brew1)
+      .mockResolvedValueOnce(crossCoffeeBrew)
+
+    renderPage("/brews/compare?brews=b-1,b-2")
+
+    await waitFor(() => {
+      expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
+    })
+
+    // Column headers should show coffee names
+    const headers = screen.getByTestId("comparison-table").querySelectorAll("th")
+    const headerTexts = Array.from(headers).map((h) => h.textContent)
+    expect(headerTexts.some((t) => t?.includes("Kiamaina"))).toBe(true)
+    expect(headerTexts.some((t) => t?.includes("El Diamante"))).toBe(true)
+  })
+
+  it("does not show coffee name in column headers for same-coffee comparison", async () => {
+    mockedGetBrew
+      .mockResolvedValueOnce(brew1)
+      .mockResolvedValueOnce(brew2)
+
+    renderPage("/brews/compare?brews=b-1,b-2")
+
+    await waitFor(() => {
+      expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
+    })
+
+    // Column headers should NOT show coffee name (all same coffee)
+    const headers = screen.getByTestId("comparison-table").querySelectorAll("th")
+    // The first <th> is the field name column (empty), the rest are brew columns
+    const brewHeaders = Array.from(headers).slice(1)
+    // None of the brew column headers should contain "Kiamaina" as a separate coffee indicator
+    brewHeaders.forEach((h) => {
+      const textDivs = h.querySelectorAll("div.text-muted-foreground")
+      // The only text-muted-foreground divs should be days-off-roast, not coffee name
+      textDivs.forEach((div) => {
+        expect(div.textContent).toMatch(/d off roast/)
+      })
+    })
+  })
+
+  it("redirects to coffee detail on fetch error when from=coffee", async () => {
+    mockedGetBrew.mockRejectedValue(new Error("Not Found"))
+
+    renderPage("/brews/compare?brews=b-1,b-2&from=coffee&coffee_id=c-1")
+
+    await waitFor(() => {
+      expect(screen.getByTestId("coffee-detail")).toBeInTheDocument()
+    })
+
+    expect(mockedToast.error).toHaveBeenCalledWith("One or more brews could not be found")
+  })
+
+  // --- Drag-to-reorder ---
+
+  it("reorders columns when dragging one brew header onto another", async () => {
+    mockedGetBrew
+      .mockResolvedValueOnce(brew1)
+      .mockResolvedValueOnce(brew2)
+      .mockResolvedValueOnce(brew3)
+
+    renderPage("/brews/compare?brews=b-1,b-2,b-3")
+
+    await waitFor(() => {
+      expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
+    })
+
+    // Initial order: Jan 19, Jan 15, Jan 12 (columns 0, 1, 2)
+    const col0 = screen.getByTestId("brew-column-0")
+    const col2 = screen.getByTestId("brew-column-2")
+
+    expect(col0).toHaveTextContent("Jan 19")
+    expect(col2).toHaveTextContent("Jan 12")
+
+    // Drag column 0 (Jan 19) onto column 2 (Jan 12)
+    fireEvent.dragStart(col0, { dataTransfer: { effectAllowed: "move" } })
+    fireEvent.dragOver(col2, { dataTransfer: {} })
+    fireEvent.drop(col2, { dataTransfer: {} })
+    fireEvent.dragEnd(col0)
+
+    // After reorder: Jan 15, Jan 12, Jan 19 (brew1 moved from index 0 to index 2)
+    const newCol0 = screen.getByTestId("brew-column-0")
+    const newCol2 = screen.getByTestId("brew-column-2")
+
+    expect(newCol0).toHaveTextContent("Jan 15")
+    expect(newCol2).toHaveTextContent("Jan 19")
+  })
+
+  it("does not reorder when dropping on the same column", async () => {
+    mockedGetBrew
+      .mockResolvedValueOnce(brew1)
+      .mockResolvedValueOnce(brew2)
+
+    renderPage("/brews/compare?brews=b-1,b-2")
+
+    await waitFor(() => {
+      expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
+    })
+
+    const col0 = screen.getByTestId("brew-column-0")
+
+    // Drag and drop on itself
+    fireEvent.dragStart(col0, { dataTransfer: { effectAllowed: "move" } })
+    fireEvent.dragOver(col0, { dataTransfer: {} })
+    fireEvent.drop(col0, { dataTransfer: {} })
+    fireEvent.dragEnd(col0)
+
+    // Order unchanged
+    expect(screen.getByTestId("brew-column-0")).toHaveTextContent("Jan 19")
+    expect(screen.getByTestId("brew-column-1")).toHaveTextContent("Jan 15")
+  })
+
+  it("column headers have draggable attribute and cursor-grab class", async () => {
+    mockedGetBrew
+      .mockResolvedValueOnce(brew1)
+      .mockResolvedValueOnce(brew2)
+
+    renderPage("/brews/compare?brews=b-1,b-2")
+
+    await waitFor(() => {
+      expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
+    })
+
+    const col0 = screen.getByTestId("brew-column-0")
+    expect(col0).toHaveAttribute("draggable", "true")
+    expect(col0.className).toContain("cursor-grab")
+  })
+
+  it("applies opacity to the dragged column header", async () => {
+    mockedGetBrew
+      .mockResolvedValueOnce(brew1)
+      .mockResolvedValueOnce(brew2)
+
+    renderPage("/brews/compare?brews=b-1,b-2")
+
+    await waitFor(() => {
+      expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
+    })
+
+    const col0 = screen.getByTestId("brew-column-0")
+
+    fireEvent.dragStart(col0, { dataTransfer: { effectAllowed: "move" } })
+
+    // The dragged column should have opacity-50
+    expect(screen.getByTestId("brew-column-0").className).toContain("opacity-50")
+
+    fireEvent.dragEnd(col0)
+
+    // Opacity removed after drag end
+    expect(screen.getByTestId("brew-column-0").className).not.toContain("opacity-50")
+  })
+
+  it("shows drop indicator on the target column during drag over", async () => {
+    mockedGetBrew
+      .mockResolvedValueOnce(brew1)
+      .mockResolvedValueOnce(brew2)
+
+    renderPage("/brews/compare?brews=b-1,b-2")
+
+    await waitFor(() => {
+      expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
+    })
+
+    const col0 = screen.getByTestId("brew-column-0")
+    const col1 = screen.getByTestId("brew-column-1")
+
+    fireEvent.dragStart(col0, { dataTransfer: { effectAllowed: "move" } })
+    fireEvent.dragOver(col1, { dataTransfer: {} })
+
+    // Target column should have border indicator
+    expect(screen.getByTestId("brew-column-1").className).toContain("border-l-2")
+    expect(screen.getByTestId("brew-column-1").className).toContain("border-primary")
+
+    // Dragged column should NOT have border indicator
+    expect(screen.getByTestId("brew-column-0").className).not.toContain("border-l-2")
+
+    fireEvent.dragEnd(col0)
+  })
+
+  it("preserves diff highlighting after reordering columns", async () => {
+    mockedGetBrew
+      .mockResolvedValueOnce(brew1)
+      .mockResolvedValueOnce(brew2)
+
+    renderPage("/brews/compare?brews=b-1,b-2")
+
+    await waitFor(() => {
+      expect(screen.getByTestId("comparison-table")).toBeInTheDocument()
+    })
+
+    // Reorder columns
+    const col0 = screen.getByTestId("brew-column-0")
+    const col1 = screen.getByTestId("brew-column-1")
+    fireEvent.dragStart(col0, { dataTransfer: { effectAllowed: "move" } })
+    fireEvent.dragOver(col1, { dataTransfer: {} })
+    fireEvent.drop(col1, { dataTransfer: {} })
+    fireEvent.dragEnd(col0)
+
+    // Diff highlighting should still exist (e.g. ratio row still differs)
+    const diffRows = screen.getByTestId("comparison-table").querySelectorAll("[data-diff='true']")
+    expect(diffRows.length).toBeGreaterThan(0)
   })
 })

@@ -2,12 +2,11 @@
 
 ## Overview
 
-The Brew Comparison feature provides a dedicated page for comparing up to 4 brews of the **same coffee** side-by-side in a diff table. It helps users identify what changed between brews and which parameters produced the best outcomes.
+The Brew Comparison feature provides a dedicated page for comparing up to 4 brews side-by-side in a diff table. Brews can be from the same coffee or different coffees. It helps users identify what changed between brews and which parameters produced the best outcomes.
 
-**Route:** `/coffees/:id/compare?brews=id1,id2,id3,id4`
+**Route:** `/brews/compare?brews=id1,id2,id3,id4`
 
 **Constraints:**
-- All compared brews must belong to the same coffee
 - Minimum 2 brews, maximum 4 brews
 - No new API endpoints needed — fetches individual brews via existing `GET /api/v1/brews/:id`
 
@@ -21,7 +20,7 @@ The Brew Comparison feature provides a dedicated page for comparing up to 4 brew
 
 - Checkbox column on the left of each brew row in the brew history table (see [coffees.md](coffees.md))
 - When 2-4 brews are checked, a "Compare" button appears (floating bar above the table)
-- Clicking "Compare" navigates to `/coffees/:id/compare?brews=id1,id2,...`
+- Clicking "Compare" navigates to `/brews/compare?brews=id1,id2,...&from=coffee&coffee_id=:id`
 - Checkboxes are unobtrusive — they don't interfere with row click opening the brew detail modal
 - Max 4 selection enforced: checkbox disabled on the 5th brew with tooltip "Maximum 4 brews can be compared"
 
@@ -29,8 +28,7 @@ The Brew Comparison feature provides a dedicated page for comparing up to 4 brew
 
 - Checkbox column on the left of each brew row (see [brews.md](brews.md))
 - "Compare" button appears when 2-4 brews are selected
-- **Same-coffee validation:** If selected brews span multiple coffees, the Compare button shows a disabled state with message "Select brews from the same coffee to compare"
-- When all selected brews share the same `coffee_id`, clicking "Compare" navigates to `/coffees/:id/compare?brews=id1,id2,...` using the common coffee ID
+- Clicking "Compare" navigates to `/brews/compare?brews=id1,id2,...&from=brews`
 
 ---
 
@@ -38,6 +36,7 @@ The Brew Comparison feature provides a dedicated page for comparing up to 4 brew
 
 ### Page Layout (Desktop)
 
+**Same-coffee comparison:**
 ```
 +-------------------------------------------------------------+
 | <- Back to {origin}                                          |
@@ -48,47 +47,47 @@ The Brew Comparison feature provides a dedicated page for comparing up to 4 brew
 | |          | Jan 19    | Jan 15    | Jan 12    |             |
 | +----------+-----------+-----------+-----------+             |
 | | SETUP                                        |             |
-| +----------+-----------+-----------+-----------+             |
-| | Days Off | 61        | 57        | 54        |             |
-| | Coffee   | 15g       | 15g       | 15g       |             |
-| | Ratio    | 1:15      | 1:15      | 1:16      |  <- diff   |
-| | Water    | 225g      | 225g      | 240g      |  <- diff   |
-| | Grind    | 3.5       | 3.5       | 4.0       |  <- diff   |
-| | Temp     | 96C       | 96C       | 94C       |  <- diff   |
-| | Filter   | Abaca     | Abaca     | Abaca     |             |
-| +----------+-----------+-----------+-----------+             |
-| | BREWING                                       |             |
-| +----------+-----------+-----------+-----------+             |
-| | Pours    | 3         | 2         | 3         |             |
-| | Time     | 2:45      | 2:30      | 2:50      |             |
-| | Technique| [expand]  | [expand]  | [expand]  |             |
-| +----------+-----------+-----------+-----------+             |
-| | OUTCOMES                                      |             |
-| +----------+-----------+-----------+-----------+             |
-| | Coffee   | 200ml     | 195ml     | 210ml     |             |
-| | TDS      | 1.38      | 1.42*     | 1.30      |  <- best   |
-| | EY       | 18.4%     | 18.5%*    | 17.1%     |  <- best   |
-| | Score    | 7/10      | 8/10*     | 6/10      |  <- best   |
-| | Aroma    | 7         | 8         | 6         |             |
-| | Body     | 7         | 7         | 5         |             |
-| | Sweetness| 8         | 8         | 6         |             |
-| | Bright.  | 7         | 7         | 7         |             |
-| | Complex. | 6         | 7         | 5         |             |
-| | Aftertst | 7         | 7         | 6         |             |
-| +----------+-----------+-----------+-----------+             |
-| | NOTES                                         |             |
-| +----------+-----------+-----------+-----------+             |
-| | Overall  | [expand]  | [expand]  | [expand]  |             |
-| | Improve  | [expand]  | [expand]  | [expand]  |             |
-| +----------+-----------+-----------+-----------+             |
+| ...                                                          |
 +-------------------------------------------------------------+
 ```
+
+**Cross-coffee comparison:**
+```
++-------------------------------------------------------------+
+| <- Back to {origin}                                          |
+|                                                              |
+| Brew Comparison                      Comparing 3 brews      |
+|                                                              |
+| +----------+-----------+-----------+-----------+             |
+| |          | Kiamaina  | El Calag. | Kiamaina  |             |
+| |          | Jan 19    | Jan 15    | Jan 12    |             |
+| +----------+-----------+-----------+-----------+             |
+| | SETUP                                        |             |
+| ...                                                          |
++-------------------------------------------------------------+
+```
+
+### Page Title
+
+- **Same-coffee** (all brews share the same `coffee_id`): Show coffee name + roaster (e.g., "Kiamaina - Cata Coffee")
+- **Cross-coffee** (brews from different coffees): Show "Brew Comparison"
 
 ### Column Headers
 
 - First column: field names (fixed width)
-- Subsequent columns (2-4): one per brew, labeled with brew date (formatted "Jan 19")
-- Column headers also show the brew date's days off roast in smaller text below
+- Subsequent columns (2-4): one per brew
+- **Same-coffee:** Column header shows brew date (formatted "Jan 19") with days off roast in smaller text below
+- **Cross-coffee:** Column header shows coffee name on a first line, then brew date below it, with days off roast in smaller text below that
+
+### Column Reordering
+
+Brew columns can be reordered via drag-and-drop to facilitate side-by-side comparison of specific brews:
+
+- **Desktop:** HTML5 drag & drop on column headers. Grab handle icon appears on hover. Dragging a column header repositions that brew column.
+- **Mobile:** Touch drag on column headers. Long-press activates drag mode, then slide to reposition.
+- **Visual feedback:** During drag, the dragged column gets a subtle lift/shadow effect. Drop targets are indicated by a vertical insertion line between columns.
+- **Scope:** Reordering is visual only — it affects the `brews` array order in component state. No persistence to backend or URL.
+- **First column (field names) is not draggable** — only brew columns participate in reordering.
 
 ### Table Sections
 
@@ -149,15 +148,14 @@ Same table structure with horizontal scroll:
 
 - Parse `brews` query parameter to get brew IDs
 - Fetch each brew individually via `GET /api/v1/brews/:id` (parallel requests)
-- Validate that all brews belong to the coffee identified by `:id` in the route
 - Coffee name and roaster come from the brew response (`coffee_name`, `coffee_roaster`)
+- Determine if all brews share the same `coffee_id` to decide page title and column header format
 
 ### Navigation
 
 - **Back link:** Returns to the originating page
-  - If navigated from coffee detail: back to `/coffees/:id`
-  - If navigated from global brews page: back to `/brews`
-  - Default (direct URL): back to `/coffees/:id`
+  - If `from=coffee&coffee_id=X`: back to `/coffees/:coffee_id`
+  - If `from=brews` or default: back to `/brews`
 - Back link text: "Back to {Coffee Name}" or "Back to Brews" based on origin
 
 ---
@@ -165,14 +163,10 @@ Same table structure with horizontal scroll:
 ## Empty & Error States
 
 **Fewer than 2 brew IDs in query:**
-- Redirect back to the coffee detail page with info toast: "Select at least 2 brews to compare"
+- Redirect back to `/brews` with info toast: "Select at least 2 brews to compare"
 
 **Invalid brew IDs (not found):**
 - If any brew ID returns 404, show error toast: "One or more brews could not be found"
-- Redirect back to the originating page
-
-**Brews from different coffees:**
-- If any fetched brew has a different `coffee_id` than the route `:id`, show error toast: "All brews must belong to the same coffee"
 - Redirect back to the originating page
 
 **Loading state:**
@@ -180,14 +174,32 @@ Same table structure with horizontal scroll:
 
 ---
 
+## Legacy Route
+
+The old route `/coffees/:id/compare?brews=...` must redirect to the new route:
+- Redirect to `/brews/compare?brews=...&from=coffee&coffee_id=:id`
+- Preserve any additional query parameters (e.g., `from`)
+- This ensures bookmarks and shared links continue to work
+
+---
+
 ## Design Decisions
 
-### Same-Coffee Constraint
+### Cross-Coffee Comparison
 
-Comparison is limited to brews of the same coffee because:
-- Comparing brews across different coffees conflates too many variables
-- The diff highlighting is meaningful only when the coffee is constant
-- Cross-coffee comparison would require a fundamentally different UI (no shared baseline)
+Earlier versions restricted comparison to brews of the same coffee. This restriction has been removed because:
+- Users often dial in multiple coffees at similar parameters and want to compare outcomes
+- The diff highlighting still works — rows where values differ are highlighted regardless of coffee
+- Column headers show the coffee name when brews span multiple coffees, keeping it clear which brew belongs to which coffee
+- The table format handles cross-coffee comparison naturally — no fundamentally different UI is needed
+
+### Column Reordering
+
+Drag-to-reorder was added because:
+- When comparing 3-4 brews, users often want to place two specific brews side-by-side
+- The URL-determined column order may not reflect the user's preferred comparison order
+- HTML5 drag & drop provides a familiar interaction pattern
+- Visual-only reordering (no persistence) keeps the implementation simple — the `brews` array in component state is reordered, and the table re-renders
 
 ### No New API Endpoints
 

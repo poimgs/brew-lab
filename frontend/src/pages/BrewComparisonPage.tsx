@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom"
-import { ArrowLeft } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useSearchParams, useNavigate, Link } from "react-router-dom"
+import { ArrowLeft, GripVertical } from "lucide-react"
 import { Skeleton } from "@/components/ui/Skeleton"
 import { toast } from "sonner"
 import { getBrew, type Brew } from "@/api/brews"
@@ -249,7 +249,6 @@ function ExpandableCell({ text }: { text: string | null }) {
 // --- Main component ---
 
 export function BrewComparisonPage() {
-  const { id: coffeeId } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
@@ -257,10 +256,29 @@ export function BrewComparisonPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Drag-to-reorder state
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const touchStartRef = useRef<{ index: number; x: number; active: boolean } | null>(null)
+  const headerRefs = useRef<(HTMLTableCellElement | null)[]>([])
+
+  function reorderBrews(fromIndex: number, toIndex: number) {
+    if (fromIndex === toIndex) return
+    setBrews((prev) => {
+      const next = [...prev]
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved)
+      return next
+    })
+  }
+
   // Determine origin for back navigation
   const from = searchParams.get("from")
-  const backTo = from === "brews" ? "/brews" : `/coffees/${coffeeId}`
-  const backLabel = from === "brews" ? "Back to Brews" : "Back to Coffee"
+  const coffeeIdParam = searchParams.get("coffee_id")
+
+  const backTo = from === "coffee" && coffeeIdParam
+    ? `/coffees/${coffeeIdParam}`
+    : "/brews"
 
   // Parse brew IDs
   const brewIds = useMemo(() => {
@@ -272,17 +290,15 @@ export function BrewComparisonPage() {
   }, [searchParams])
 
   const fetchBrews = useCallback(async () => {
-    if (!coffeeId) return
-
     if (brewIds.length < 2) {
       toast.info("Select at least 2 brews to compare")
-      navigate(`/coffees/${coffeeId}`, { replace: true })
+      navigate("/brews", { replace: true })
       return
     }
 
     if (brewIds.length > 4) {
       toast.info("Maximum 4 brews can be compared")
-      navigate(`/coffees/${coffeeId}`, { replace: true })
+      navigate("/brews", { replace: true })
       return
     }
 
@@ -291,15 +307,6 @@ export function BrewComparisonPage() {
 
     try {
       const results = await Promise.all(brewIds.map((id) => getBrew(id)))
-
-      // Validate same coffee
-      const mismatch = results.find((b) => b.coffee_id !== coffeeId)
-      if (mismatch) {
-        toast.error("All brews must belong to the same coffee")
-        navigate(backTo, { replace: true })
-        return
-      }
-
       setBrews(results)
     } catch {
       toast.error("One or more brews could not be found")
@@ -307,7 +314,7 @@ export function BrewComparisonPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [coffeeId, brewIds, navigate, backTo])
+  }, [brewIds, navigate, backTo])
 
   useEffect(() => {
     fetchBrews()
@@ -348,8 +355,12 @@ export function BrewComparisonPage() {
     return null // Redirect already handled in fetchBrews
   }
 
-  const coffeeName = brews[0].coffee_name
-  const coffeeRoaster = brews[0].coffee_roaster
+  const coffeeIds = new Set(brews.map((b) => b.coffee_id))
+  const isSameCoffee = coffeeIds.size === 1
+
+  const backLabel = from === "coffee" && coffeeIdParam
+    ? `Back to ${brews[0].coffee_name}`
+    : "Back to Brews"
 
   return (
     <div className="p-4 sm:p-8">
@@ -363,12 +374,18 @@ export function BrewComparisonPage() {
 
       {/* Header */}
       <div className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-        <h1 className="text-2xl font-semibold sm:text-3xl">
-          {coffeeName}
-          <span className="ml-2 text-lg font-normal text-muted-foreground">
-            {coffeeRoaster}
-          </span>
-        </h1>
+        {isSameCoffee ? (
+          <h1 className="text-2xl font-semibold sm:text-3xl">
+            {brews[0].coffee_name}
+            <span className="ml-2 text-lg font-normal text-muted-foreground">
+              {brews[0].coffee_roaster}
+            </span>
+          </h1>
+        ) : (
+          <h1 className="text-2xl font-semibold sm:text-3xl">
+            Brew Comparison
+          </h1>
+        )}
         <p className="text-sm text-muted-foreground">
           Comparing {brews.length} brews
         </p>
@@ -376,24 +393,104 @@ export function BrewComparisonPage() {
 
       {/* Comparison table */}
       <div className="mt-6 -mx-4 overflow-x-auto sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
-        <table className="w-full min-w-[480px] text-sm" data-testid="comparison-table">
+        <table className="group/table w-full min-w-[480px] text-sm" data-testid="comparison-table">
           {/* Column headers */}
           <thead>
             <tr className="border-b border-border">
               <th className="sticky left-0 z-10 bg-card py-2 pl-4 pr-3 text-left font-medium text-muted-foreground sm:pl-0">
                 &nbsp;
               </th>
-              {brews.map((brew) => (
+              {brews.map((brew, brewIndex) => (
                 <th
                   key={brew.id}
-                  className="py-2 px-3 text-left font-medium"
+                  ref={(el) => { headerRefs.current[brewIndex] = el }}
+                  draggable
+                  onDragStart={(e) => {
+                    setDragIndex(brewIndex)
+                    e.dataTransfer.effectAllowed = "move"
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    setDragOverIndex(brewIndex)
+                  }}
+                  onDragLeave={() => setDragOverIndex(null)}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    if (dragIndex !== null && dragIndex !== brewIndex) {
+                      reorderBrews(dragIndex, brewIndex)
+                    }
+                    setDragIndex(null)
+                    setDragOverIndex(null)
+                  }}
+                  onDragEnd={() => {
+                    setDragIndex(null)
+                    setDragOverIndex(null)
+                  }}
+                  onTouchStart={(e) => {
+                    touchStartRef.current = {
+                      index: brewIndex,
+                      x: e.touches[0].clientX,
+                      active: false,
+                    }
+                    // Long-press activates drag after 200ms
+                    const timer = setTimeout(() => {
+                      if (touchStartRef.current) {
+                        touchStartRef.current.active = true
+                        setDragIndex(brewIndex)
+                      }
+                    }, 200)
+                    ;(e.currentTarget as HTMLElement).dataset.touchTimer = String(timer)
+                  }}
+                  onTouchMove={(e) => {
+                    if (!touchStartRef.current?.active) return
+                    e.preventDefault()
+                    const x = e.touches[0].clientX
+                    // Find which header the touch is over
+                    for (let i = 0; i < headerRefs.current.length; i++) {
+                      const el = headerRefs.current[i]
+                      if (!el) continue
+                      const rect = el.getBoundingClientRect()
+                      if (x >= rect.left && x <= rect.right) {
+                        setDragOverIndex(i)
+                        break
+                      }
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    const timer = (e.currentTarget as HTMLElement).dataset.touchTimer
+                    if (timer) clearTimeout(Number(timer))
+                    if (touchStartRef.current?.active && dragIndex !== null && dragOverIndex !== null && dragIndex !== dragOverIndex) {
+                      reorderBrews(dragIndex, dragOverIndex)
+                    }
+                    touchStartRef.current = null
+                    setDragIndex(null)
+                    setDragOverIndex(null)
+                  }}
+                  className={`py-2 px-3 text-left font-medium cursor-grab select-none ${
+                    dragIndex === brewIndex ? "opacity-50" : ""
+                  } ${
+                    dragOverIndex === brewIndex && dragIndex !== brewIndex
+                      ? "border-l-2 border-primary"
+                      : ""
+                  }`}
+                  data-testid={`brew-column-${brewIndex}`}
                 >
-                  <div>{formatBrewDateShort(brew.brew_date)}</div>
-                  {brew.days_off_roast != null && (
-                    <div className="text-xs font-normal text-muted-foreground">
-                      {brew.days_off_roast}d off roast
+                  <div className="flex items-start gap-1">
+                    <GripVertical className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 group-hover/table:opacity-100 sm:opacity-0 max-sm:opacity-100" />
+                    <div>
+                      {!isSameCoffee && (
+                        <div className="text-xs font-normal text-muted-foreground">
+                          {brew.coffee_name}
+                        </div>
+                      )}
+                      <div>{formatBrewDateShort(brew.brew_date)}</div>
+                      {brew.days_off_roast != null && (
+                        <div className="text-xs font-normal text-muted-foreground">
+                          {brew.days_off_roast}d off roast
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </th>
               ))}
             </tr>

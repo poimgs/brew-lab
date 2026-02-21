@@ -56,7 +56,7 @@ export function BrewHistoryTable({
   const handleCompare = () => {
     if (selectedBrewIds.length < 2) return
     navigate(
-      `/coffees/${coffeeId}/compare?brews=${selectedBrewIds.join(",")}`
+      `/brews/compare?brews=${selectedBrewIds.join(",")}&from=coffee&coffee_id=${coffeeId}`
     )
   }
 

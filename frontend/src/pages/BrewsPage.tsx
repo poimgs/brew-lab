@@ -144,16 +144,10 @@ export function BrewsPage() {
     })
   }
 
-  const selectedCoffeeIds = new Set(selectedBrews.values())
-  const allSameCoffee = selectedCoffeeIds.size === 1
-  const commonCoffeeId = allSameCoffee
-    ? [...selectedCoffeeIds][0]
-    : null
-
   const handleCompare = () => {
-    if (selectedBrews.size < 2 || !allSameCoffee || !commonCoffeeId) return
+    if (selectedBrews.size < 2) return
     navigate(
-      `/coffees/${commonCoffeeId}/compare?brews=${[...selectedBrews.keys()].join(",")}&from=brews`
+      `/brews/compare?brews=${[...selectedBrews.keys()].join(",")}&from=brews`
     )
   }
 
@@ -376,33 +370,33 @@ export function BrewsPage() {
         )}
       </div>
 
-      {/* Compare bar */}
-      {selectedBrews.size > 0 && (
-        <div className="mt-4 flex items-center gap-3 rounded-md border border-border bg-muted/50 px-3 py-2">
-          <span className="text-sm text-muted-foreground">
-            {selectedBrews.size} selected
-          </span>
-          <button
-            onClick={handleCompare}
-            disabled={selectedBrews.size < 2 || !allSameCoffee}
-            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <GitCompareArrows className="h-3.5 w-3.5" />
-            Compare
-          </button>
-          {selectedBrews.size >= 2 && !allSameCoffee && (
-            <span className="text-sm text-muted-foreground">
-              Select brews from the same coffee to compare
-            </span>
-          )}
-          <button
-            onClick={() => setSelectedBrews(new Map())}
-            className="ml-auto text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Clear
-          </button>
-        </div>
-      )}
+      {/* Compare bar — space always reserved */}
+      <div
+        className={`mt-4 flex items-center gap-3 rounded-md border px-3 py-2 ${
+          selectedBrews.size > 0
+            ? "border-border bg-muted/50"
+            : "invisible border-transparent"
+        }`}
+        data-testid="compare-bar"
+      >
+        <span className="text-sm text-muted-foreground">
+          {selectedBrews.size} selected
+        </span>
+        <button
+          onClick={handleCompare}
+          disabled={selectedBrews.size < 2}
+          className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <GitCompareArrows className="h-3.5 w-3.5" />
+          Compare
+        </button>
+        <button
+          onClick={() => setSelectedBrews(new Map())}
+          className="ml-auto text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Clear
+        </button>
+      </div>
 
       {/* Table */}
       {brews.length === 0 ? (
