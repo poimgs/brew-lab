@@ -37,6 +37,7 @@ function makeBrew(overrides: Record<string, unknown> = {}) {
     grind_size: 3.5,
     water_temperature: 96,
     filter_paper: { id: "fp-1", name: "Abaca", brand: "Cafec" },
+    dripper: null,
     pours: [],
     total_brew_time: 165,
     technique_notes: null,

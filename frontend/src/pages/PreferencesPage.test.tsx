@@ -281,6 +281,7 @@ describe("PreferencesPage", () => {
       grind_size: null,
       water_temperature: null,
       filter_paper_id: null,
+      dripper_id: null,
       pour_defaults: [],
     }
     mockedUpdateDefaults.mockResolvedValueOnce(savedDefaults)

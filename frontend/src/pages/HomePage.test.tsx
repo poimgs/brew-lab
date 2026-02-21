@@ -43,6 +43,7 @@ const mockBrews = [
     grind_size: 3.5,
     water_temperature: 96,
     filter_paper: { id: "fp-1", name: "Abaca", brand: "Cafec" },
+    dripper: null,
     pours: [
       { pour_number: 1, water_amount: 45, pour_style: "center", wait_time: 30 },
       { pour_number: 2, water_amount: 90, pour_style: "circular", wait_time: null },
@@ -79,6 +80,7 @@ const mockBrews = [
     grind_size: 4,
     water_temperature: 93,
     filter_paper: null,
+    dripper: null,
     pours: [],
     total_brew_time: null,
     technique_notes: null,
