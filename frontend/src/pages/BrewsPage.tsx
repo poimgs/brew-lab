@@ -286,9 +286,9 @@ export function BrewsPage() {
       </div>
 
       {/* Filters */}
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:flex-wrap sm:items-end">
         {/* Coffee filter */}
-        <div className="flex flex-col gap-1">
+        <div className="col-span-2 flex flex-col gap-1">
           <label htmlFor="coffee-filter" className="text-xs text-muted-foreground">
             Coffee
           </label>
@@ -368,7 +368,7 @@ export function BrewsPage() {
         {hasFilters && (
           <button
             onClick={clearFilters}
-            className="flex h-10 items-center gap-1.5 self-end rounded-md border border-border px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="col-span-2 flex h-10 items-center gap-1.5 self-end rounded-md border border-border px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:col-span-1"
           >
             <X className="h-3.5 w-3.5" />
             Clear

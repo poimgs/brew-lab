@@ -15,7 +15,7 @@ export function Layout() {
       <Sidebar />
       <div className="flex min-h-0 flex-1 flex-col">
         <MobileHeader />
-        <main ref={mainRef} className="flex-1 overflow-auto">
+        <main ref={mainRef} className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>
