@@ -57,7 +57,9 @@ npm run dev     # Start dev server
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start Vite dev server |
-| `npm run build` | Production build |
+| `npm run build` | Production build (`tsc -b && vite build`) |
+| `npm run test` | Run vitest tests once |
+| `npm run test:watch` | Run vitest in watch mode |
 | `npm run preview` | Preview build |
 | `npm run lint` | Run ESLint |
 
@@ -68,9 +70,11 @@ Quick verification steps for agents after making changes:
 | Change Type | Verification |
 |-------------|--------------|
 | Backend code | `cd backend && go build ./...` |
-| Frontend code | `cd frontend && npm run lint && npm run build` |
+| Frontend code | `cd frontend && npm run lint && npm run build && npm run test` |
 | Migrations | `cd backend && make migrate` |
 | E2E-impacting | `cd e2e && make test` |
+
+**Note:** `npm run build` runs `tsc -b` which type-checks test files strictly (unlike `tsc --noEmit`). Always run the full build to catch type errors in tests — this matches CI.
 
 For full E2E testing, see `specs/foundations/e2e-testing.md`.
 
